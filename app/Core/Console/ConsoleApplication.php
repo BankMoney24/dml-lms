@@ -8,10 +8,14 @@ use App\Core\Config;
 use App\Core\Container;
 use App\Core\Database\Connection;
 use App\Core\Database\Migrator;
+use App\Core\Mail\Mailer;
+use App\Core\Mail\MailSettings;
+use App\Core\Mail\Message;
 use App\Database\Seeders\DemoSeeder;
 use App\Modules\Identity\AuthService;
 use App\Modules\Identity\Role;
 use App\Modules\Identity\UserRepository;
+use App\Modules\Notifications\MailOutbox;
 use App\Modules\Tenancy\MembershipRepository;
 use App\Modules\Tenancy\TenantRepository;
 use Throwable;
@@ -40,6 +44,9 @@ final class ConsoleApplication
                 'tenant:add-domain' => $this->tenantAddDomain($args),
                 'user:create' => $this->userCreate($args),
                 'seed:demo' => $this->seedDemo($args),
+                'mail:work' => $this->mailWork(),
+                'mail:status' => $this->mailStatus(),
+                'mail:test' => $this->mailTest($args),
                 default => $this->help(),
             };
         } catch (Throwable $e) {
@@ -63,6 +70,9 @@ final class ConsoleApplication
                                                     from STDIN, or generated and printed once.
                                                     Roles: owner, admin, educator, learner, guardian
           seed:demo <tenant-slug>                   Add a demo course (refused in production)
+          mail:work                                 Send queued emails that are due (run every minute from cron)
+          mail:status                               Counts of queued / sent / failed emails in the last 7 days
+          mail:test <email>                         Send a test email straight away, to check MAIL_* settings
 
         TXT;
 
@@ -173,6 +183,60 @@ final class ConsoleApplication
             ?? throw new \RuntimeException('No tenant with that slug.');
         (new DemoSeeder($this->container))->run($tenant);
         echo "Demo course added to {$slug}.\n";
+
+        return 0;
+    }
+
+    private function mailWork(): int
+    {
+        $lock = fopen(sys_get_temp_dir() . '/dml-lms-mail-work.lock', 'c');
+        if ($lock === false || !flock($lock, LOCK_EX | LOCK_NB)) {
+            echo "Another mail worker is running.\n";
+
+            return 0;
+        }
+        $result = $this->container->get(MailOutbox::class)->deliverDue(100);
+        if (array_sum($result) > 0) {
+            printf("sent %d, retrying %d, failed %d\n", $result['sent'], $result['retrying'], $result['failed']);
+        }
+        flock($lock, LOCK_UN);
+
+        return $result['failed'] > 0 ? 2 : 0;
+    }
+
+    private function mailStatus(): int
+    {
+        $settings = $this->container->get(MailSettings::class);
+        printf("driver: %s (%s)\n", $settings->driver(), $settings->deliveryAvailable() ? 'emails are offered to users' : 'email features hidden');
+        foreach ($this->container->get(MailOutbox::class)->summary() as $status => $count) {
+            printf("%-8s %d\n", $status, $count);
+        }
+
+        return 0;
+    }
+
+    /** @param list<string> $args */
+    private function mailTest(array $args): int
+    {
+        [$to] = $this->requireArgs($args, 1, 'mail:test <email>');
+        $driver = $this->container->get(MailSettings::class)->driver();
+        if ($driver === 'disabled') {
+            echo "Email is disabled (MAIL_DRIVER=disabled). Nothing sent.\n";
+
+            return 1;
+        }
+        $this->container->get(Mailer::class)->send(new Message(
+            $to,
+            null,
+            'DML Learning Platform: test email',
+            "This is a test from the DML Learning Platform.\nIf you can read this, outgoing email works.\n",
+        ));
+        if ($driver !== 'smtp') {
+            printf("MAIL_DRIVER=%s: the message was written to storage/mail, not sent. Set MAIL_DRIVER=smtp to send real email.\n", $driver);
+
+            return 1;
+        }
+        printf("Sent to %s through the mail server.\n", $to);
 
         return 0;
     }

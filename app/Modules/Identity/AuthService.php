@@ -7,6 +7,7 @@ namespace App\Modules\Identity;
 use App\Core\Security\Csrf;
 use App\Core\Session\Session;
 use App\Modules\Audit\AuditLog;
+use App\Modules\Identity\TwoFactor\TwoFactorService;
 use App\Modules\Tenancy\MembershipRepository;
 use App\Modules\Tenancy\Tenant;
 
@@ -15,6 +16,10 @@ final class AuthService
     public const SESSION_USER = 'auth.user_id';
     public const SESSION_TENANT = 'auth.tenant_id';
     public const SESSION_VERSION = 'auth.session_version';
+    private const PENDING_USER = 'auth.pending_user_id';
+    private const PENDING_TENANT = 'auth.pending_tenant_id';
+    private const PENDING_AT = 'auth.pending_at';
+    private const PENDING_SECONDS = 300;
 
     public const GENERIC_FAILURE = 'That email and password did not match an account here. Check them and try again.';
     public const LOCKED_FAILURE = 'Too many sign-in attempts. Wait 15 minutes, then try again.';
@@ -26,10 +31,16 @@ final class AuthService
         private readonly Session $session,
         private readonly Csrf $csrf,
         private readonly AuditLog $audit,
+        private readonly TwoFactorService $twoFactor,
     ) {
     }
 
-    /** @return array{ok: bool, message: ?string, user: ?User} */
+    /**
+     * First step: email and password. When the account has two-step sign-in,
+     * the user is not signed in yet; the caller sends them to the code step.
+     *
+     * @return array{ok: bool, message: ?string, user: ?User, second_factor?: bool}
+     */
     public function attempt(Tenant $tenant, string $email, string $password, string $clientIp): array
     {
         if ($this->throttle->isLocked($tenant->id, $email, $clientIp)) {
@@ -61,15 +72,100 @@ final class AuthService
             $this->users->rehashPassword($user->id, password_hash($password, PASSWORD_DEFAULT));
         }
 
-        $this->throttle->clear($tenant->id, $email);
+        if ($this->twoFactor->isEnabled($user->id)) {
+            $this->session->regenerate();
+            $this->csrf->rotate();
+            $this->session->set(self::PENDING_USER, $user->id);
+            $this->session->set(self::PENDING_TENANT, $tenant->id);
+            $this->session->set(self::PENDING_AT, time());
+
+            return ['ok' => true, 'message' => null, 'user' => $user, 'second_factor' => true];
+        }
+
+        $this->completeLogin($tenant, $user, $clientIp, 'password');
+
+        return ['ok' => true, 'message' => null, 'user' => $user, 'second_factor' => false];
+    }
+
+    public function hasPendingSecondFactor(Tenant $tenant): bool
+    {
+        return $this->pendingUserId($tenant) !== null;
+    }
+
+    /**
+     * Second step: a code from the authenticator app or a recovery code.
+     * Failures count towards the same lock as wrong passwords.
+     *
+     * @return array{ok: bool, message: ?string, restart: bool}
+     */
+    public function verifySecondFactor(Tenant $tenant, string $code, string $clientIp): array
+    {
+        $userId = $this->pendingUserId($tenant);
+        $user = $userId === null ? null : $this->users->findById($userId);
+        if ($user === null) {
+            $this->clearPending();
+
+            return ['ok' => false, 'message' => 'Your sign-in timed out. Enter your email and password again.', 'restart' => true];
+        }
+        if ($this->throttle->isLocked($tenant->id, $user->email, $clientIp)) {
+            $this->clearPending();
+
+            return ['ok' => false, 'message' => self::LOCKED_FAILURE, 'restart' => true];
+        }
+
+        $method = $this->twoFactor->verify($user->id, $code);
+        if ($method === null) {
+            $this->throttle->recordFailure($tenant->id, $user->email, $clientIp);
+            $this->audit->record($tenant->id, $user->id, 'auth.second_step_failed', 'user', $user->id, [], $clientIp);
+
+            return ['ok' => false, 'message' => 'That code did not work. Enter the newest code from your app, or one of your recovery codes.', 'restart' => false];
+        }
+
+        $membership = $this->memberships->find($tenant->id, $user->id);
+        if (!$user->isActive() || $membership === null || !$membership->isActive()) {
+            $this->clearPending();
+
+            return ['ok' => false, 'message' => self::GENERIC_FAILURE, 'restart' => true];
+        }
+
+        $this->clearPending();
+        $this->completeLogin($tenant, $user, $clientIp, $method);
+
+        return ['ok' => true, 'message' => null, 'restart' => false];
+    }
+
+    private function completeLogin(Tenant $tenant, User $user, string $clientIp, string $method): void
+    {
+        $this->throttle->clear($tenant->id, $user->email);
         $this->session->regenerate();
         $this->csrf->rotate();
         $this->session->set(self::SESSION_USER, $user->id);
         $this->session->set(self::SESSION_TENANT, $tenant->id);
         $this->session->set(self::SESSION_VERSION, $user->sessionVersion);
-        $this->audit->record($tenant->id, $user->id, 'auth.login', 'user', $user->id, [], $clientIp);
+        $this->audit->record($tenant->id, $user->id, 'auth.login', 'user', $user->id, $method === 'password' ? [] : ['method' => $method], $clientIp);
+    }
 
-        return ['ok' => true, 'message' => null, 'user' => $user];
+    private function pendingUserId(Tenant $tenant): ?int
+    {
+        $userId = $this->session->get(self::PENDING_USER);
+        $at = $this->session->get(self::PENDING_AT);
+        if (!is_int($userId) || !is_int($at) || $this->session->get(self::PENDING_TENANT) !== $tenant->id) {
+            return null;
+        }
+        if (time() - $at > self::PENDING_SECONDS) {
+            $this->clearPending();
+
+            return null;
+        }
+
+        return $userId;
+    }
+
+    private function clearPending(): void
+    {
+        $this->session->remove(self::PENDING_USER);
+        $this->session->remove(self::PENDING_TENANT);
+        $this->session->remove(self::PENDING_AT);
     }
 
     public function logout(?int $tenantId, ?int $userId, string $clientIp): void

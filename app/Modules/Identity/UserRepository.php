@@ -81,6 +81,15 @@ final class UserRepository
         );
     }
 
+    /** Signs the user out of every session on their next request. */
+    public function endAllSessions(int $userId): void
+    {
+        $this->db->execute(
+            'UPDATE users SET session_version = session_version + 1, updated_at = ? WHERE id = ?',
+            [$this->clock->sqlNow(), $userId],
+        );
+    }
+
     public function setStatus(int $userId, string $status): void
     {
         $this->db->execute(

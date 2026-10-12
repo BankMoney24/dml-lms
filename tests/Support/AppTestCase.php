@@ -11,6 +11,9 @@ use App\Core\Database\Connection;
 use App\Core\Http\Kernel;
 use App\Core\Http\Request;
 use App\Core\Http\Response;
+use App\Core\Mail\FileMailer;
+use App\Core\Mail\Mailer;
+use App\Core\Mail\MimeBuilder;
 use App\Core\Security\Csrf;
 use App\Core\Session\ArraySession;
 use App\Core\Session\Session;
@@ -23,6 +26,7 @@ use App\Modules\Identity\AuthService;
 use App\Modules\Identity\Role;
 use App\Modules\Identity\User;
 use App\Modules\Identity\UserRepository;
+use App\Modules\Notifications\MailOutbox;
 use App\Modules\Tenancy\MembershipRepository;
 use App\Modules\Tenancy\Tenant;
 use App\Modules\Tenancy\TenantRepository;
@@ -37,20 +41,26 @@ abstract class AppTestCase extends TestCase
 {
     protected Container $app;
     protected ArraySession $session;
+    /** Captures every email the outbox delivers. */
+    protected FileMailer $mailer;
+    /** @var array<string, string> per-test configuration on top of TestDatabase::config() */
+    protected array $config = [];
 
     protected function setUp(): void
     {
         parent::setUp();
         TestDatabase::truncateAll();
+        $this->mailer = new FileMailer(new MimeBuilder('no-reply@school.test', 'Test'), null);
         $this->session = new ArraySession();
         $this->app = $this->freshApp($this->session);
     }
 
     protected function freshApp(ArraySession $session): Container
     {
-        return Application::create(new Config(TestDatabase::config()), [
+        return Application::create(new Config($this->config + TestDatabase::config()), [
             Connection::class => TestDatabase::connection(),
             Session::class => $session,
+            Mailer::class => $this->mailer,
         ]);
     }
 
@@ -66,6 +76,34 @@ abstract class AppTestCase extends TestCase
     {
         $this->session = $session;
         $this->app = $this->freshApp($session);
+    }
+
+    /** Changes configuration for the rest of the test (same browser session). */
+    protected function configure(string $key, string $value): void
+    {
+        $this->config[$key] = $value;
+        $this->app = $this->freshApp($this->session);
+    }
+
+    /**
+     * Runs the outbox as the cron worker would and returns what was sent.
+     *
+     * @return list<\App\Core\Mail\Message>
+     */
+    protected function deliverMail(): array
+    {
+        $before = count($this->mailer->sent);
+        $this->app->get(MailOutbox::class)->deliverDue();
+
+        return array_slice($this->mailer->sent, $before);
+    }
+
+    /** First link in an email body that points at this path prefix. */
+    protected function linkIn(\App\Core\Mail\Message $message, string $pathPrefix): string
+    {
+        $this->assertSame(1, preg_match('#https?://[^/\s]+(' . preg_quote($pathPrefix, '#') . '[^\s]*)#', $message->text, $m), 'link found in email');
+
+        return $m[1] ?? '';
     }
 
     protected function db(): Connection

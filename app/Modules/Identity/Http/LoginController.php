@@ -46,6 +46,9 @@ final class LoginController
                 'error' => $result['message'],
             ]), 422);
         }
+        if ($result['second_factor'] ?? false) {
+            return Response::redirect('/login/verify');
+        }
 
         $intended = $this->session->get(RequireAuthentication::INTENDED_KEY);
         $this->session->remove(RequireAuthentication::INTENDED_KEY);

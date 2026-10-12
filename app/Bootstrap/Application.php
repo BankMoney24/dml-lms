@@ -16,7 +16,11 @@ use App\Core\Http\Middleware\StartSession;
 use App\Core\Http\Middleware\VerifyCsrf;
 use App\Core\Http\Router;
 use App\Core\Log\Logger;
+use App\Core\Mail\MailSettings;
+use App\Core\Mail\Mailer;
 use App\Core\Security\Csrf;
+use App\Core\Security\RateLimiter;
+use App\Core\Security\SecretBox;
 use App\Core\Session\NativeSession;
 use App\Core\Session\Session;
 use App\Core\View\View;
@@ -34,15 +38,21 @@ use App\Modules\Courses\Http\CatalogueController;
 use App\Modules\Courses\Http\LessonEditorController;
 use App\Modules\Courses\Http\TeachController;
 use App\Modules\Courses\LessonRepository;
+use App\Modules\Identity\AccountLinkService;
 use App\Modules\Identity\AccountService;
+use App\Modules\Identity\AccountTokenRepository;
 use App\Modules\Identity\AuthService;
 use App\Modules\Identity\Http\AccountController;
 use App\Modules\Identity\Http\LoginController;
+use App\Modules\Identity\Http\PasswordResetController;
+use App\Modules\Identity\Http\TwoFactorController;
 use App\Modules\Identity\LoginThrottle;
 use App\Modules\Identity\Middleware\AuthenticateSession;
 use App\Modules\Identity\Middleware\RequireAuthentication;
 use App\Modules\Identity\Middleware\RequirePermission;
 use App\Modules\Identity\Permission;
+use App\Modules\Identity\TwoFactor\TwoFactorRepository;
+use App\Modules\Identity\TwoFactor\TwoFactorService;
 use App\Modules\Identity\UserRepository;
 use App\Modules\Learning\CompletionRule;
 use App\Modules\Learning\EnrolmentRepository;
@@ -50,6 +60,8 @@ use App\Modules\Learning\Http\LearnController;
 use App\Modules\Learning\LearningService;
 use App\Modules\Learning\ProgressReport;
 use App\Modules\Learning\ProgressRepository;
+use App\Modules\Notifications\EmailComposer;
+use App\Modules\Notifications\MailOutbox;
 use App\Modules\Platform\HealthController;
 use App\Modules\Platform\HomeController;
 use App\Modules\Tenancy\Http\PeopleController;
@@ -114,6 +126,41 @@ final class Application
             $c->get(Session::class),
             $c->get(Csrf::class),
             $c->get(AuditLog::class),
+            $c->get(TwoFactorService::class),
+        ));
+
+        // Email, account links, two-step sign-in
+        $c->set(MailSettings::class, static fn () => new MailSettings($config, $storage));
+        $c->set(Mailer::class, static fn (Container $c) => $c->get(MailSettings::class)->mailer());
+        $c->set(MailOutbox::class, static fn (Container $c) => new MailOutbox(
+            $c->get(Connection::class),
+            $c->get(Mailer::class),
+            $c->get(Clock::class),
+            $c->get(Logger::class),
+        ));
+        $c->set(EmailComposer::class, static fn (Container $c) => new EmailComposer($c->get(View::class)));
+        $c->set(RateLimiter::class, static fn (Container $c) => new RateLimiter($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(AccountTokenRepository::class, static fn (Container $c) => new AccountTokenRepository($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(AccountLinkService::class, static fn (Container $c) => new AccountLinkService(
+            $c->get(Connection::class),
+            $c->get(UserRepository::class),
+            $c->get(MembershipRepository::class),
+            $c->get(AccountTokenRepository::class),
+            $c->get(EmailComposer::class),
+            $c->get(MailOutbox::class),
+            $c->get(RateLimiter::class),
+            $c->get(AuditLog::class),
+        ));
+        $c->set(TwoFactorService::class, static fn (Container $c) => new TwoFactorService(
+            new TwoFactorRepository($c->get(Connection::class), $c->get(Clock::class)),
+            $c->get(UserRepository::class),
+            $c->get(MembershipRepository::class),
+            new SecretBox($appKey),
+            $c->get(Session::class),
+            $c->get(Clock::class),
+            $c->get(AuditLog::class),
+            $appKey,
+            self::twoStepRoles($config),
         ));
 
         // Courses, learning, assessments
@@ -158,6 +205,7 @@ final class Application
             $c->get(AuthService::class),
             $c->get(TenantContext::class),
             $c->get(View::class),
+            self::twoStepRoles($config),
         ));
         $c->set(VerifyCsrf::class, static fn (Container $c) => new VerifyCsrf($c->get(Csrf::class)));
 
@@ -237,6 +285,22 @@ final class Application
             $c->get(Session::class),
             $c->get(MembershipRepository::class),
             $c->get(MemberService::class),
+            $c->get(AccountLinkService::class),
+            $c->get(UserRepository::class),
+            $c->get(TwoFactorService::class),
+            $c->get(MailSettings::class),
+        ));
+        $c->set(PasswordResetController::class, static fn (Container $c) => new PasswordResetController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(AccountLinkService::class),
+            $c->get(MailSettings::class),
+        ));
+        $c->set(TwoFactorController::class, static fn (Container $c) => new TwoFactorController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(AuthService::class),
+            $c->get(TwoFactorService::class),
         ));
         $c->set(ActivityController::class, static fn (Container $c) => new ActivityController(
             $c->get(View::class),
@@ -284,6 +348,19 @@ final class Application
             return new RequirePermission($permission);
         }
         throw new HttpException(500, 'Server misconfiguration.');
+    }
+
+    /**
+     * Roles that must use two-step sign-in. Default: owners and admins
+     * (PRD IAM-005). Set TWO_FACTOR_REQUIRED_ROLES= (empty) to require none.
+     *
+     * @return list<string>
+     */
+    public static function twoStepRoles(Config $config): array
+    {
+        $value = $config->has('TWO_FACTOR_REQUIRED_ROLES') ? ($config->get('TWO_FACTOR_REQUIRED_ROLES') ?? '') : 'owner,admin';
+
+        return array_values(array_filter(array_map('trim', explode(',', strtolower($value))), static fn ($r) => $r !== ''));
     }
 
     /** DB_SOCKET (a Unix socket path) takes precedence over DB_HOST/DB_PORT. */

@@ -73,12 +73,12 @@ final class MembershipRepository
     /**
      * Active members with their user details, for the People page.
      *
-     * @return list<array{user_id: int, name: string, email: string, role: Role, joined_at: string}>
+     * @return list<array{user_id: int, name: string, email: string, role: Role, joined_at: string, two_step: bool, pending: bool}>
      */
     public function listActive(int $tenantId): array
     {
         $rows = $this->db->fetchAll(
-            "SELECT m.user_id, m.role, m.created_at, u.display_name, u.email
+            "SELECT m.user_id, m.role, m.created_at, u.display_name, u.email, u.totp_enabled_at, u.must_change_password
              FROM memberships m JOIN users u ON u.id = m.user_id
              WHERE m.tenant_id = ? AND m.status = 'active'
              ORDER BY FIELD(m.role, 'owner', 'admin', 'educator', 'learner', 'guardian'), u.display_name
@@ -92,6 +92,8 @@ final class MembershipRepository
             'email' => (string) $r['email'],
             'role' => Role::from((string) $r['role']),
             'joined_at' => (string) $r['created_at'],
+            'two_step' => $r['totp_enabled_at'] !== null,
+            'pending' => (bool) $r['must_change_password'],
         ], $rows);
     }
 }

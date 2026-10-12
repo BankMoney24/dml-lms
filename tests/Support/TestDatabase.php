@@ -31,6 +31,10 @@ final class TestDatabase
             'DB_USERNAME' => getenv('DB_TEST_USERNAME') ?: 'dml',
             'DB_PASSWORD' => getenv('DB_TEST_PASSWORD') === false ? 'dml-local' : (string) getenv('DB_TEST_PASSWORD'),
             'STORAGE_PATH' => sys_get_temp_dir() . '/dml-lms-test-storage',
+            // Feature tests opt in to these explicitly (see AppTestCase::$config).
+            'MAIL_DRIVER' => 'disabled',
+            'TWO_FACTOR_REQUIRED_ROLES' => '',
+            'MAIL_FROM_ADDRESS' => 'no-reply@school.test',
         ];
     }
 

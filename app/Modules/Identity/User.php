@@ -17,6 +17,7 @@ final class User
         public readonly bool $isPlatformAdmin,
         public readonly int $sessionVersion,
         public readonly bool $mustChangePassword = false,
+        public readonly bool $twoFactorEnabled = false,
     ) {
     }
 
@@ -31,6 +32,7 @@ final class User
             (bool) $row['is_platform_admin'],
             (int) $row['session_version'],
             (bool) ($row['must_change_password'] ?? false),
+            ($row['totp_enabled_at'] ?? null) !== null,
         );
     }
 

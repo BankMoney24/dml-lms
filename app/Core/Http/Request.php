@@ -76,6 +76,26 @@ final class Request
         return $path === '/' ? '/' : rtrim($path, '/');
     }
 
+    /**
+     * Scheme, host and port this request arrived on, for links in emails.
+     * The host has already been matched to a verified tenant domain; the
+     * port is taken from the Host header only if it is numeric.
+     */
+    public function baseUrl(): string
+    {
+        $port = '';
+        $raw = strtolower(trim($this->header('host') ?? ''));
+        if (preg_match('/:(\d{1,5})$/', $raw, $m) === 1 && self::normaliseHost($raw) === $this->host) {
+            $port = ':' . $m[1];
+        }
+        $scheme = $this->secure ? 'https' : 'http';
+        if (($scheme === 'https' && $port === ':443') || ($scheme === 'http' && $port === ':80')) {
+            $port = '';
+        }
+
+        return $scheme . '://' . $this->host . $port;
+    }
+
     public function query(string $key, ?string $default = null): ?string
     {
         $value = $this->query[$key] ?? $default;

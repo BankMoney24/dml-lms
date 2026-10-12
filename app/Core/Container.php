@@ -32,6 +32,12 @@ final class Container
         $this->instances[$id] = $service;
     }
 
+    /** True once the service has been built in this process (it may have work pending). */
+    public function resolved(string $id): bool
+    {
+        return isset($this->instances[$id]);
+    }
+
     public function has(string $id): bool
     {
         return isset($this->instances[$id]) || isset($this->factories[$id]);

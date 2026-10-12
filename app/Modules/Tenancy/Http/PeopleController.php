@@ -7,9 +7,14 @@ namespace App\Modules\Tenancy\Http;
 use App\Core\Http\Request;
 use App\Core\Http\RequestContext;
 use App\Core\Http\Response;
+use App\Core\Mail\MailSettings;
 use App\Core\Session\Session;
 use App\Core\Validation\ValidationException;
 use App\Core\View\View;
+use App\Modules\Identity\AccountLinkService;
+use App\Modules\Identity\Role;
+use App\Modules\Identity\TwoFactor\TwoFactorService;
+use App\Modules\Identity\UserRepository;
 use App\Modules\Tenancy\MemberService;
 use App\Modules\Tenancy\MembershipRepository;
 
@@ -23,6 +28,10 @@ final class PeopleController
         private readonly Session $session,
         private readonly MembershipRepository $memberships,
         private readonly MemberService $members,
+        private readonly AccountLinkService $links,
+        private readonly UserRepository $users,
+        private readonly TwoFactorService $twoFactor,
+        private readonly MailSettings $mail,
     ) {
     }
 
@@ -34,19 +43,31 @@ final class PeopleController
     public function store(Request $request): Response
     {
         $tenant = RequestContext::tenant($request);
+        $me = RequestContext::user($request);
+        $emailing = $this->mail->deliveryAvailable();
         $old = [
             'name' => $request->input('name', '') ?? '',
             'email' => $request->input('email', '') ?? '',
             'role' => $request->input('role', '') ?? '',
         ];
         try {
-            $added = $this->members->add($tenant, RequestContext::user($request), $old['name'], $old['email'], $old['role'], $request->clientIp);
+            $added = $this->members->add($tenant, $me, $old['name'], $old['email'], $old['role'], $request->clientIp, !$emailing);
         } catch (ValidationException $e) {
             return $this->render($request, $e->errors, $old, 422);
         }
 
-        // The one-time password is shown exactly once, on the next page, then discarded.
-        $this->session->flash(self::NEW_MEMBER_FLASH, json_encode($added, JSON_THROW_ON_ERROR));
+        if ($emailing) {
+            $user = $this->users->findById($added['user_id']);
+            $role = Role::from($added['role']);
+            if ($user !== null) {
+                $added['existing_account']
+                    ? $this->links->sendAddedNotice($tenant, $user, $me, $role, $request->baseUrl())
+                    : $this->links->sendInvitation($tenant, $user, $me, $role, $request->baseUrl());
+            }
+        }
+
+        // A one-time password (when email is not set up) is shown exactly once, on the next page.
+        $this->session->flash(self::NEW_MEMBER_FLASH, json_encode($added + ['emailed' => $emailing], JSON_THROW_ON_ERROR));
 
         return Response::redirect('/people');
     }
@@ -81,6 +102,41 @@ final class PeopleController
         return Response::redirect('/people');
     }
 
+    public function sendLink(Request $request): Response
+    {
+        if (!$this->mail->deliveryAvailable()) {
+            $this->session->flash('error', 'Email is not set up for this site yet, so links cannot be sent.');
+
+            return Response::redirect('/people');
+        }
+        try {
+            $user = $this->links->sendLinkFor(
+                RequestContext::tenant($request),
+                RequestContext::user($request),
+                $request->routeInt('user'),
+                $request->baseUrl(),
+                $request->clientIp,
+            );
+            $this->session->flash('success', sprintf('Sign-in link emailed to %s.', $user->email));
+        } catch (ValidationException $e) {
+            $this->session->flash('error', implode(' ', $e->errors));
+        }
+
+        return Response::redirect('/people');
+    }
+
+    public function resetTwoStep(Request $request): Response
+    {
+        try {
+            $this->twoFactor->resetFor(RequestContext::tenant($request), RequestContext::user($request), $request->routeInt('user'), $request->clientIp);
+            $this->session->flash('success', 'Two-step sign-in reset. They will set it up again next time they sign in.');
+        } catch (ValidationException $e) {
+            $this->session->flash('error', implode(' ', $e->errors));
+        }
+
+        return Response::redirect('/people');
+    }
+
     /**
      * @param array<string, string> $errors
      * @param array<string, string> $old
@@ -101,7 +157,8 @@ final class PeopleController
             'members' => $this->memberships->listActive($tenant->id),
             'roles' => $this->members->assignableRoles($me),
             'meId' => $me->user->id,
-            'iAmOwner' => $me->membership?->role->value === 'owner',
+            'iAmOwner' => $me->membership?->role === Role::Owner,
+            'emailing' => $this->mail->deliveryAvailable(),
             'newMember' => $newMember,
             'errors' => $errors,
             'old' => $old + ['name' => '', 'email' => '', 'role' => 'learner'],

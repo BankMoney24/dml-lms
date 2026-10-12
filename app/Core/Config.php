@@ -54,6 +54,12 @@ final class Config
         return $values;
     }
 
+    /** True when the key is present, even if set to an empty value. */
+    public function has(string $key): bool
+    {
+        return array_key_exists($key, $this->values);
+    }
+
     public function get(string $key, ?string $default = null): ?string
     {
         $value = $this->values[$key] ?? null;

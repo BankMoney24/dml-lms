@@ -16,7 +16,11 @@ foreach ($members as $m) {
 
 <?php if ($newMember !== null): ?>
 <div class="notice notice-done" role="status">
-  <?php if ($newMember['one_time_password'] !== null): ?>
+  <?php if ($newMember['emailed'] ?? false): ?>
+    <p><strong><?= $v->e($newMember['name']) ?></strong> was added. <?= ($newMember['existing_account'] ?? false)
+        ? 'They already had a DML account, so we emailed them that they can now sign in here.'
+        : 'We emailed an invitation to ' . $v->e($newMember['email']) . ' with a link to choose their password (valid 7 days).' ?></p>
+  <?php elseif ($newMember['one_time_password'] !== null): ?>
     <p><strong><?= $v->e($newMember['name']) ?></strong> can now sign in as <strong><?= $v->e($newMember['email']) ?></strong> with this one-time password:</p>
     <p><span class="secret"><?= $v->e($newMember['one_time_password']) ?></span></p>
     <p class="small">Give it to them in person or by phone. It is shown only once, and they will choose their own password when they first sign in.</p>
@@ -38,7 +42,10 @@ foreach ($members as $m) {
         $isMe = $m['user_id'] === $meId;
         $locked = $isMe || ($m['role']->value === 'owner' && !$iAmOwner); ?>
         <tr>
-          <td><?= $v->e($m['name']) ?><?= $isMe ? ' ' . $v->badge('You') : '' ?><span class="small muted"><?= $v->e($m['email']) ?></span></td>
+          <td><?= $v->e($m['name']) ?><?= $isMe ? ' ' . $v->badge('You') : '' ?>
+            <?= $m['pending'] ? ' ' . $v->badge('Not signed in yet', 'draft') : '' ?>
+            <?= $m['two_step'] ? ' ' . $v->badge('Two-step on', 'ok') : '' ?>
+            <span class="small muted"><?= $v->e($m['email']) ?></span></td>
           <td>
             <?php if ($locked): ?>
               <?= $v->e($m['role']->label()) ?>
@@ -57,11 +64,23 @@ foreach ($members as $m) {
           </td>
           <td class="num">
             <?php if (!$locked): ?>
-            <details class="confirm">
-              <summary>Remove<span class="visually-hidden"> <?= $v->e($m['name']) ?></span></summary>
+            <details class="confirm menu">
+              <summary>Manage<span class="visually-hidden"> <?= $v->e($m['name']) ?></span></summary>
+              <?php if ($emailing): ?>
+              <form method="post" action="/people/<?= $m['user_id'] ?>/send-link">
+                <?= $v->csrfField() ?>
+                <button type="submit" class="linklike"><?= $m['pending'] ? 'Resend invitation' : 'Email a password reset link' ?></button>
+              </form>
+              <?php endif; ?>
+              <?php if ($m['two_step'] && $iAmOwner): ?>
+              <form method="post" action="/people/<?= $m['user_id'] ?>/reset-two-step">
+                <?= $v->csrfField() ?>
+                <button type="submit" class="linklike">Reset two-step sign-in (lost phone)</button>
+              </form>
+              <?php endif; ?>
               <form method="post" action="/people/<?= $m['user_id'] ?>/remove">
                 <?= $v->csrfField() ?>
-                <p class="small">They lose access straight away. Their learning history is kept.</p>
+                <p class="small">Removing access takes effect straight away. Their learning history is kept.</p>
                 <button type="submit" class="button button-danger button-small">Remove <?= $v->e($m['name']) ?></button>
               </form>
             </details>
@@ -83,7 +102,9 @@ foreach ($members as $m) {
         <?= $v->csrfField() ?>
         <?= $v->field('name', 'Full name', ['value' => $old['name'], 'error' => $errors['name'] ?? null, 'autocomplete' => 'off', 'maxlength' => 120]) ?>
         <?= $v->field('email', 'Email address', ['type' => 'email', 'value' => $old['email'], 'error' => $errors['email'] ?? null, 'autocomplete' => 'off', 'maxlength' => 254,
-            'hint' => 'They sign in with this. For young learners, a parent’s or the school’s address is fine.']) ?>
+            'hint' => $emailing
+                ? 'We email them a link to choose their password. For young learners, use a parent’s or the school’s address.'
+                : 'They sign in with this. For young learners, a parent’s or the school’s address is fine.']) ?>
         <?= $v->field('role', 'Role', ['type' => 'select', 'options' => $roles, 'value' => $old['role'], 'error' => $errors['role'] ?? null]) ?>
         <button type="submit" class="button button-small">Add person</button>
       </form>

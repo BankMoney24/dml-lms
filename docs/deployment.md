@@ -28,8 +28,9 @@ Inspected 2026-10-12. Apache serves ~20 other domains from `/etc/httpd/conf.d/`;
 | Code, releases, shared config | `/var/www/dml-lms/` (`releases/`, `shared/.env`, `shared/storage/`, `current →`) |
 | Apache site | `/etc/httpd/conf.d/dml-lms.conf` (temporary: IP, port 8088) · later `dml-lms-domain.conf` |
 | PHP-FPM pool | `/etc/php-fpm.d/dml-lms.conf` → `/run/php-fpm/dml-lms.sock`, runs as `dmllms` |
-| Database | `dml_lms`, user `dml_lms@localhost`, via the MySQL Unix socket |
+| Database | `dml_lms`, user `dml_lms@127.0.0.1`, over TCP (the socket directory is not readable by the app users) |
 | Deploy user | `dmldeploy` (owns releases; runs migrations; forced-command SSH key later) |
+| Email worker | `/etc/cron.d/dml-lms`: `mail:work` every minute as `dmllms` |
 | SELinux | `shared/storage` labelled `httpd_sys_rw_content_t`; port 8088 added to `http_port_t` |
 
 **First install** (as root): upload the release tarball, unpack only the installer, run it.
@@ -63,6 +64,43 @@ sed -i 's/^HEALTH_HOST=.*/HEALTH_HOST=dmlschooloftechnology.com/; s/^HEALTH_SCHE
 rm /etc/httpd/conf.d/dml-lms.conf && apachectl configtest && systemctl reload httpd
 firewall-cmd --permanent --remove-port=8088/tcp && firewall-cmd --reload
 ```
+
+### Email (password reset, invitations)
+
+Until `MAIL_DRIVER=smtp` is set, nothing is emailed: admins get a one-time password to pass on, and *Forgotten your password?* tells people to ask an administrator. To turn email on:
+
+1. **Pick a sender.** Either a transactional email provider (Brevo, Mailgun, Postmark, Amazon SES, Zoho ZeptoMail… any that offers SMTP), or the mail server already on this machine if it is set up to send for other domains. A provider is the safer choice for reaching Gmail/Outlook inboxes.
+2. **Authorise the domain** at your DNS host with the records the provider gives you: SPF (TXT), DKIM (TXT/CNAME) and ideally DMARC (`_dmarc` TXT, e.g. `v=DMARC1; p=none; rua=mailto:you@…`). Without these, mail lands in spam or is rejected.
+3. **Add the settings** to `/var/www/dml-lms/shared/.env` (keep `chmod 640`):
+   ```ini
+   MAIL_DRIVER=smtp
+   MAIL_HOST=smtp.your-provider.example
+   MAIL_PORT=587
+   MAIL_ENCRYPTION=tls
+   MAIL_USERNAME=…
+   MAIL_PASSWORD=…
+   MAIL_FROM_ADDRESS=no-reply@dmlschooloftechnology.com
+   MAIL_FROM_NAME="DML School of Technology"
+   ```
+   Local relay on this server instead: `MAIL_HOST=127.0.0.1`, `MAIL_PORT=25`, `MAIL_ENCRYPTION=none`, no username/password. SELinux must let PHP-FPM reach mail ports (25, 465, 587): `setsebool -P httpd_can_sendmail on`. A provider on any other port also needs `httpd_can_network_connect`.
+4. **Reload and test:**
+   ```bash
+   systemctl reload php-fpm
+   sudo -u dmllms php /var/www/dml-lms/current/bin/console mail:test you@example.com
+   sudo -u dmllms php /var/www/dml-lms/current/bin/console mail:status
+   ```
+5. **Cron** (the installer adds it; for an existing install run once):
+   `install -m 644 /var/www/dml-lms/current/deploy/cron/dml-lms /etc/cron.d/dml-lms`
+
+How it behaves: messages go into the `mail_outbox` table and are sent right after the page is returned; failures are retried after 1 min, 5 min, 30 min, 2 h and 6 h, then marked failed. Message bodies (which contain sign-in links) are erased once sent or abandoned. Reset links last 60 minutes, invitations 7 days; both work once.
+
+### Two-step sign-in
+
+Owners and admins must set up an authenticator app (Google Authenticator, Microsoft Authenticator, Authy) the next time they sign in, and get 10 one-use recovery codes. Change who is forced with `TWO_FACTOR_REQUIRED_ROLES` in `shared/.env` (comma-separated roles; empty = optional for everyone). If someone loses their phone and codes, another **owner** resets it from *People → Manage*. If the only owner is locked out:
+```bash
+mysql dml_lms -e "UPDATE users SET totp_secret=NULL, totp_enabled_at=NULL, totp_last_step=NULL, session_version=session_version+1 WHERE email='owner@example.com'; DELETE rc FROM recovery_codes rc JOIN users u ON u.id=rc.user_id WHERE u.email='owner@example.com';"
+```
+Two-step secrets are encrypted with `APP_KEY`; changing `APP_KEY` means everyone sets it up again.
 
 ---
 

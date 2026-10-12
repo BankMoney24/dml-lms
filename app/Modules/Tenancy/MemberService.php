@@ -32,10 +32,22 @@ final class MemberService
     }
 
     /**
-     * @return array{user_id: int, name: string, email: string, one_time_password: ?string, existing_account: bool}
+     * Adds a member. A new account gets a password the person must replace at
+     * first sign-in: either a one-time password returned here for the admin
+     * to pass on ($revealPassword), or an unguessable one never shown, when
+     * the caller emails an invitation link instead.
+     *
+     * @return array{user_id: int, name: string, email: string, role: string, one_time_password: ?string, existing_account: bool}
      */
-    public function add(Tenant $tenant, CurrentUser $actor, string $name, string $email, string $roleValue, string $clientIp): array
-    {
+    public function add(
+        Tenant $tenant,
+        CurrentUser $actor,
+        string $name,
+        string $email,
+        string $roleValue,
+        string $clientIp,
+        bool $revealPassword = true,
+    ): array {
         $actor->authorise(Permission::MembersManage);
         $name = trim((string) preg_replace('/\s+/u', ' ', $name));
         $email = UserRepository::normaliseEmail($email);
@@ -58,11 +70,12 @@ final class MemberService
         }
         /** @var Role $role */
 
-        return $this->db->transaction(function () use ($tenant, $actor, $name, $email, $role, $clientIp): array {
+        return $this->db->transaction(function () use ($tenant, $actor, $name, $email, $role, $clientIp, $revealPassword): array {
             $user = $this->users->findByEmail($email);
             $password = null;
+            $existingAccount = $user !== null;
             if ($user === null) {
-                $password = self::oneTimePassword();
+                $password = $revealPassword ? self::oneTimePassword() : bin2hex(random_bytes(24));
                 $user = $this->users->create($email, $name, AuthService::hashPassword($password), false, true);
             }
 
@@ -80,10 +93,11 @@ final class MemberService
 
             return [
                 'user_id' => $user->id,
-                'name' => $password === null ? $user->displayName : $name,
+                'name' => $existingAccount ? $user->displayName : $name,
                 'email' => $email,
-                'one_time_password' => $password,
-                'existing_account' => $password === null,
+                'role' => $role->value,
+                'one_time_password' => $revealPassword && !$existingAccount ? $password : null,
+                'existing_account' => $existingAccount,
             ];
         });
     }

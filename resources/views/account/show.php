@@ -31,6 +31,12 @@ $passwordErrors = array_intersect_key($errors, array_flip(['current_password', '
   </section>
 
   <?php if (!$mustChange): ?>
+  <section class="section" aria-labelledby="two-step-h">
+    <h2 id="two-step-h">Two-step sign-in</h2>
+    <p><?= $me->user->twoFactorEnabled ? $v->badge('On', 'ok') . ' Your account asks for a code from your phone after your password.' : $v->badge('Off') . ' Add a code from your phone to protect your account.' ?></p>
+    <p><a class="button button-quiet" href="/account/two-step"><?= $me->user->twoFactorEnabled ? 'Manage two-step sign-in' : 'Set up two-step sign-in' ?></a></p>
+  </section>
+
   <section class="section" aria-labelledby="name-h">
     <h2 id="name-h">Your name</h2>
     <form method="post" action="/account" class="form" novalidate>

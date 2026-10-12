@@ -18,5 +18,6 @@
     ]) ?>
     <button type="submit" class="button">Sign in</button>
   </form>
-  <p class="muted small section">Forgotten your password, or no account yet? Ask your school administrator. Younger learners: ask a parent or teacher to help you sign in.</p>
+  <p class="section"><a href="/password/forgot">Forgotten your password?</a></p>
+  <p class="muted small">No account yet? Ask your school administrator. Younger learners: ask a parent or teacher to help you sign in.</p>
 </section>

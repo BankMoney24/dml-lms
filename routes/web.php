@@ -11,6 +11,8 @@ use App\Modules\Courses\Http\LessonEditorController;
 use App\Modules\Courses\Http\TeachController;
 use App\Modules\Identity\Http\AccountController;
 use App\Modules\Identity\Http\LoginController;
+use App\Modules\Identity\Http\PasswordResetController;
+use App\Modules\Identity\Http\TwoFactorController;
 use App\Modules\Learning\Http\LearnController;
 use App\Modules\Platform\HealthController;
 use App\Modules\Platform\HomeController;
@@ -32,6 +34,12 @@ return static function (Router $r): void {
     $r->get('/login', [LoginController::class, 'show'], ['tenant']);
     $r->post('/login', [LoginController::class, 'login'], ['tenant']);
     $r->post('/logout', [LoginController::class, 'logout'], ['tenant']);
+    $r->get('/login/verify', [TwoFactorController::class, 'showChallenge'], ['tenant']);
+    $r->post('/login/verify', [TwoFactorController::class, 'verifyChallenge'], ['tenant']);
+    $r->get('/password/forgot', [PasswordResetController::class, 'showForgot'], ['tenant']);
+    $r->post('/password/forgot', [PasswordResetController::class, 'sendForgot'], ['tenant']);
+    $r->get('/password/reset/{token}', [PasswordResetController::class, 'showReset'], ['tenant']);
+    $r->post('/password/reset/{token}', [PasswordResetController::class, 'reset'], ['tenant']);
 
     $r->get('/courses', [CatalogueController::class, 'index'], ['tenant']);
     $r->get('/courses/{slug}', [CatalogueController::class, 'show'], ['tenant']);
@@ -69,12 +77,18 @@ return static function (Router $r): void {
     $r->get('/account', [AccountController::class, 'show'], $signedIn);
     $r->post('/account', [AccountController::class, 'updateName'], $signedIn);
     $r->post('/account/password', [AccountController::class, 'updatePassword'], $signedIn);
+    $r->get('/account/two-step', [TwoFactorController::class, 'show'], $signedIn);
+    $r->post('/account/two-step/enable', [TwoFactorController::class, 'enable'], $signedIn);
+    $r->post('/account/two-step/disable', [TwoFactorController::class, 'disable'], $signedIn);
+    $r->post('/account/two-step/recovery-codes', [TwoFactorController::class, 'regenerateCodes'], $signedIn);
 
     $people = ['tenant', 'auth', 'can:members.manage'];
     $r->get('/people', [PeopleController::class, 'index'], $people);
     $r->post('/people', [PeopleController::class, 'store'], $people);
     $r->post('/people/{user:int}/role', [PeopleController::class, 'updateRole'], $people);
     $r->post('/people/{user:int}/remove', [PeopleController::class, 'remove'], $people);
+    $r->post('/people/{user:int}/send-link', [PeopleController::class, 'sendLink'], $people);
+    $r->post('/people/{user:int}/reset-two-step', [PeopleController::class, 'resetTwoStep'], $people);
 
     $r->get('/activity', [ActivityController::class, 'index'], ['tenant', 'auth', 'can:audit.view']);
 };

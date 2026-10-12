@@ -138,6 +138,15 @@ install -o "$DEPLOY_USER" -g "$DEPLOY_USER" -m 600 "$TARBALL" "$APP_ROOT/incomin
 SUM="$(sha256sum "$TARBALL" | cut -d' ' -f1)"
 sudo -u "$DEPLOY_USER" -H /usr/local/bin/dml-deploy activate "$ID" "$SUM"
 
+step "Email worker (cron)"
+if [ -d /etc/cron.d ]; then
+  install -m 644 "$SRC/deploy/cron/dml-lms" /etc/cron.d/dml-lms
+  restorecon /etc/cron.d/dml-lms 2>/dev/null || true
+  echo "/etc/cron.d/dml-lms installed (sends queued email once a minute)"
+else
+  echo "no /etc/cron.d; install cronie, then copy deploy/cron/dml-lms there"
+fi
+
 step "Tenant for $HOST"
 CONSOLE=(sudo -u "$DEPLOY_USER" -H php "$APP_ROOT/current/bin/console")
 if "${CONSOLE[@]}" tenant:create dml "DML School of Technology" "$HOST" 2>/dev/null; then :; else
@@ -153,6 +162,13 @@ Create your owner account (prints a one-time password):
 
 Optional demo course (needs APP_ENV other than production, so run it this way):
   sudo -u $DEPLOY_USER -H env APP_ENV=staging php $APP_ROOT/current/bin/console seed:demo dml
+
+Email is off until you add MAIL_* settings to $APP_ROOT/shared/.env
+(see docs/deployment.md, "Email"). Test with:
+  sudo -u $APP_USER php $APP_ROOT/current/bin/console mail:test you@example.com
+
+Owners and admins must set up two-step sign-in (an authenticator app) at
+their first sign-in. To change that, set TWO_FACTOR_REQUIRED_ROLES in shared/.env.
 
 Logs: /var/log/httpd/dml-lms-error.log   $APP_ROOT/shared/storage/logs/   $APP_ROOT/deploy.log
 DONE

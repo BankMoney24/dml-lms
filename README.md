@@ -64,6 +64,8 @@ Tests need a disposable database whose name contains `test` (default `dml_lms_te
 
 See **[docs/deployment.md](docs/deployment.md)**. In short: tag `vX.Y.Z` on `main`; GitHub Actions builds once, deploys to staging, waits for approval, deploys to production through a restricted SSH key, and rolls back automatically if the health check fails.
 
+Email (password reset, invitations) needs `MAIL_*` settings and the `mail:work` cron job; owners and admins must use two-step sign-in. Both are covered in the runbook.
+
 ## Contributing
 
 Short-lived branches, pull requests into protected `main`, CI must be green. Record consequential decisions as ADRs in `docs/adr/`. Never commit `.env`, credentials, learner data or database dumps.
