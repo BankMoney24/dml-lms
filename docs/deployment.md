@@ -31,6 +31,7 @@ Inspected 2026-10-12. Apache serves ~20 other domains from `/etc/httpd/conf.d/`;
 | Database | `dml_lms`, user `dml_lms@127.0.0.1`, over TCP (the socket directory is not readable by the app users) |
 | Deploy user | `dmldeploy` (owns releases; runs migrations; forced-command SSH key later) |
 | Email worker | `/etc/cron.d/dml-lms`: `mail:work` every minute as `dmllms` |
+| Uploaded files | `shared/storage/uploads/<school>/<year>/<month>/<random>` (back up with the database) |
 | SELinux | `shared/storage` labelled `httpd_sys_rw_content_t`; port 8088 added to `http_port_t` |
 
 **First install** (as root): upload the release tarball, unpack only the installer, run it.
@@ -65,6 +66,38 @@ rm /etc/httpd/conf.d/dml-lms.conf && apachectl configtest && systemctl reload ht
 firewall-cmd --permanent --remove-port=8088/tcp && firewall-cmd --reload
 ```
 
+### Uploaded files
+
+Lesson files and assignment files are stored in `/var/www/dml-lms/shared/storage/uploads/` (outside the web root, readable only through the app after an access check). **Back this folder up together with the database**; a database dump alone does not contain them, for example:
+
+```bash
+tar -czf /root/backups/dml-uploads-$(date +%F).tar.gz -C /var/www/dml-lms/shared/storage uploads
+```
+
+Limits, in `shared/.env`: `UPLOAD_MAX_MB` (per file, default 10) and `UPLOAD_TENANT_QUOTA_MB` (per school, default 5120). The PHP pool and Apache site allow up to 3 files of 20 MB per request; raise both if you raise `UPLOAD_MAX_MB` above 13. After updating from a release before uploads existed, install the new pool and site files once:
+
+```bash
+install -m 644 /var/www/dml-lms/current/deploy/php-fpm/dml-lms-almalinux.conf /etc/php-fpm.d/dml-lms.conf
+# optional: cap request bodies at 50 MB in the Apache site (the default cap is 1 GB)
+grep -q LimitRequestBody /etc/httpd/conf.d/dml-lms.conf || sed -i '/ErrorLog \/var\/log\/httpd\/dml-lms-error.log/i\    LimitRequestBody 52428800' /etc/httpd/conf.d/dml-lms.conf
+php-fpm -t && apachectl configtest && systemctl reload php-fpm httpd
+```
+
+**Virus scanning (recommended):** install ClamAV and point the app at it.
+
+```bash
+dnf install -y clamav clamd clamav-update          # from EPEL
+sed -i 's/^Example/#Example/; s/^#\?TCPSocket .*/TCPSocket 3310/; s/^#\?TCPAddr .*/TCPAddr 127.0.0.1/' /etc/clamd.d/scan.conf
+sed -i 's/^Example/#Example/' /etc/freshclam.conf
+freshclam && systemctl enable --now clamd@scan clamav-freshclam
+setsebool -P antivirus_can_scan_system 1
+setsebool -P httpd_can_network_connect 1           # lets PHP-FPM reach clamd on 127.0.0.1:3310
+printf 'UPLOAD_SCANNER=clamd\nCLAMD_HOST=127.0.0.1\nCLAMD_PORT=3310\n' >> /var/www/dml-lms/shared/.env
+systemctl reload php-fpm
+```
+
+With scanning on, uploads are refused while clamd is down (fail closed). clamd needs about 1 GB of memory.
+
 ### Courses that ship with the platform
 
 Release packages include ready-made courses in `courses/`. To add one to the school (once per course; importing again makes a second copy):
@@ -74,7 +107,7 @@ sudo -u dmldeploy -H php /var/www/dml-lms/current/bin/console course:packages
 sudo -u dmldeploy -H php /var/www/dml-lms/current/bin/console course:import dml linux-server-administration --publish --author=you@example.com
 ```
 
-Without `--publish` it arrives as a draft for teachers to review first. Revoke a certificate issued by mistake with `bin/console certificate:revoke ABCD-EFGH-JKLM "reason"`; the reason is shown on the public `/verify` page.
+Without `--publish` it arrives as a draft for teachers to review first. A course imported before its package had files gets them with `course:sync-files dml linux-server-administration linux-server-administration` (it skips files already there). Revoke a certificate issued by mistake with `bin/console certificate:revoke ABCD-EFGH-JKLM "reason"`; the reason is shown on the public `/verify` page.
 
 ### Email (password reset, invitations)
 

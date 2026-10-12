@@ -1,0 +1,11 @@
+# /etc/systemd/system/backup-site.service
+[Unit]
+Description=Back up website, /etc and database
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/backup-site.sh
+Nice=10
+IOSchedulingClass=idle

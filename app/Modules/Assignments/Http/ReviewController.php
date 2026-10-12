@@ -16,6 +16,7 @@ use App\Modules\Assignments\Submission;
 use App\Modules\Assignments\SubmissionRepository;
 use App\Modules\Courses\CourseRepository;
 use App\Modules\Courses\LessonRepository;
+use App\Modules\Files\FileRepository;
 use App\Modules\Identity\UserRepository;
 
 /** Teachers' queue of assignment submissions waiting for review. */
@@ -29,6 +30,7 @@ final class ReviewController
         private readonly LessonRepository $lessons,
         private readonly CourseRepository $courses,
         private readonly UserRepository $users,
+        private readonly FileRepository $files,
     ) {
     }
 
@@ -111,6 +113,7 @@ final class ReviewController
             'lesson' => $lesson,
             'course' => $course,
             'history' => $history,
+            'submissionFiles' => $this->files->forSubmissions($tenant->id, array_map(static fn (Submission $s): int => $s->id, array_merge([$submission], $history))),
             'reviewerNames' => $reviewerNames,
             'isOwnWork' => $submission->userId === RequestContext::user($request)->user->id,
             'errors' => $errors,

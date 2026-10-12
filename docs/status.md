@@ -7,7 +7,7 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 | Item | Status | Notes |
 |---|---|---|
 | Repository, layout, coding standards | Built | PSR-12 (phpcs), PHPStan level 8, strict types |
-| Architecture overview, ADRs | Built | `docs/architecture.md`, `docs/adr/0001–0007` |
+| Architecture overview, ADRs | Built | `docs/architecture.md`, `docs/adr/0001–0008` |
 | ERD / data dictionary | Partial | Schema diagram in architecture.md; full data dictionary next |
 | Threat model | Next | Controls are listed below; a written threat model is still required |
 | CI (lint, analysis, tests, secret scan, asset budget) | Built | `.github/workflows/ci.yml`, PHP 8.3 / 8.4 / 8.5 matrix on MySQL 8.4 |
@@ -35,12 +35,12 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 | IAM-005 MFA for privileged admins | Built | Authenticator-app codes (TOTP, RFC 6238) with replay protection, 10 hashed recovery codes, secret encrypted at rest; required for owners/admins (`TWO_FACTOR_REQUIRED_ROLES`); owner can reset a member who lost their phone. ADR 0006 |
 | IAM-006 invalidate sessions on credential/membership change | Built | session_version |
 | IAM-007 generic auth errors | Built | Constant-time path for unknown accounts |
-| CRS-001/002 courses, modules, ordered lessons | Built | Reading (Markdown: headings, lists, code blocks with copy, callouts, tables), video (YouTube/Vimeo, privacy-enhanced, loads only on request), quiz and assignment lessons; edit, reorder, preview, unpublish; level, hours, outcomes and prerequisites. Course packages import with `course:import`. PDF/file and lab lessons, price next |
+| CRS-001/002 courses, modules, ordered lessons | Built | Reading (Markdown: headings, lists, code blocks with copy, callouts, tables), video (YouTube/Vimeo, privacy-enhanced, loads only on request), quiz and assignment lessons; edit, reorder, preview, unpublish; level, hours, outcomes and prerequisites. Files on any lesson (PDFs, handouts, configs, scripts), shown with their size. Course packages import with `course:import`, including files. Lab lessons and price next |
 | CRS-003 preview/gated content | Partial | Enrolment gate ✔; preview lessons next |
 | CRS-004 progress and resume | Built | "Continue" goes to the first incomplete lesson |
 | ASM-001 MCQ, server scoring, thresholds | Built | Floor rounding; answers never sent to the browser; per-question explanations shown once the learner passes (or runs out of attempts) |
 | ASM-002 auditable attempts, limits | Built | Idempotency keys, attempt limits under row lock |
-| ASM-003 file/text submissions | Partial | Assignment lessons: text answer (Markdown) plus a link; teacher review queue with approve / ask for changes, feedback, full history, email to the learner. File uploads next (needs storage and scanning) |
+| ASM-003 file/text submissions | Built | Assignment lessons: text answer (Markdown), a link and up to 3 files; teacher review queue with approve / ask for changes, feedback, full history, email to the learner |
 | ASM-004 configurable completion rule | Partial | All mandatory lessons, quizzes need their pass mark; per-course rule config next |
 | ASM-005 certificates | Built | Issued automatically on completion, printable (A4 landscape), 12-character code checked on the public `/verify` page, revocable (`certificate:revoke`). ADR 0007 |
 | LAB-001…007 virtual labs | Next | Separate service per PRD §10.1; not in this slice |
@@ -56,7 +56,7 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 
 ## Security controls in place
 
-Parameterised SQL everywhere · two-step sign-in for owners/admins · hashed single-use account links · DB-backed rate limits on reset requests · contextual output escaping · CSRF on all state changes · `__Host-` secure session cookie, rotation on login/logout · login throttling · strict CSP with no inline code · `X-Frame-Options: DENY`, `nosniff`, referrer and permissions policies, HSTS on HTTPS · `Cache-Control: no-store` on pages · user-facing errors carry a request id, never internals · IPs in audit stored as keyed hashes · composite foreign keys against cross-tenant writes · secrets only in `shared/.env` · forced-command deploy key · actions pinned to SHAs.
+Parameterised SQL everywhere · uploads checked by content, stored outside the web root, served only after an access check (text as text/plain under a sandbox CSP), per-school quota, optional ClamAV with fail-closed scanning · two-step sign-in for owners/admins · hashed single-use account links · DB-backed rate limits on reset requests · contextual output escaping · CSRF on all state changes · `__Host-` secure session cookie, rotation on login/logout · login throttling · strict CSP with no inline code · `X-Frame-Options: DENY`, `nosniff`, referrer and permissions policies, HSTS on HTTPS · `Cache-Control: no-store` on pages · user-facing errors carry a request id, never internals · IPs in audit stored as keyed hashes · composite foreign keys against cross-tenant writes · secrets only in `shared/.env` · forced-command deploy key · actions pinned to SHAs.
 
 ## Content
 
@@ -70,7 +70,7 @@ Shared components rendered by `ViewHelpers` (labelled fields with inline errors,
 
 1. Run `inspect.sh`, set up staging, complete the backup/restore drill (closes Phase 0).
 2. Choose the email provider for the server and add SPF/DKIM for the domain (code is ready; see deployment.md → Email).
-3. File uploads (assignment files, PDF lessons) with storage limits and scanning.
+3. Turn on ClamAV scanning on the server and add uploads to the backup routine (deployment.md → Uploaded files).
 4. Institution onboarding wizard on a reusable wizard engine (PRD §6.3–6.4).
 5. Paystack adapter with verified, idempotent webhooks.
 6. First lab provider behind the lab-session contract.

@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace App\Modules\Courses;
 
 use App\Core\Database\Connection;
+use App\Core\Http\UploadedFile;
 use App\Core\Validation\ValidationException;
+use App\Modules\Files\FileRepository;
+use App\Modules\Files\FileService;
 use App\Modules\Identity\CurrentUser;
 use JsonException;
 use RuntimeException;
+use Throwable;
 
 /**
  * Imports a course package: a folder with course.json and Markdown lesson
@@ -21,26 +25,36 @@ use RuntimeException;
  *   "title": "…", "summary": "…", "level": "advanced", "duration_hours": 40,
  *   "outcomes": ["…"], "prerequisites": "…",
  *   "modules": [{ "title": "…", "lessons": [
- *     { "type": "text", "title": "…", "file": "lessons/01-intro.md" },
+ *     { "type": "text", "title": "…", "file": "lessons/01-intro.md", "attachments": ["files/cheat-sheet.pdf"] },
  *     { "type": "video", "title": "…", "url": "https://www.youtube.com/watch?v=…", "file": "…" },
  *     { "type": "assignment", "title": "…", "file": "…" },
  *     { "type": "quiz", "title": "…", "intro": "…", "pass_threshold": 70, "max_attempts": 3,
  *       "questions": [{ "prompt": "…", "options": ["…", "…"], "correct": 0, "explanation": "…" }] }
  *   ]}]
  * }
+ *
+ * "attachments" (any lesson type) become lesson files, checked like uploads.
  */
 final class CoursePackageImporter
 {
-    public function __construct(private readonly Connection $db, private readonly CourseAuthoring $authoring)
-    {
+    /** @var list<string> storage keys written during the current import, removed again if it fails */
+    private array $storedKeys = [];
+
+    public function __construct(
+        private readonly Connection $db,
+        private readonly CourseAuthoring $authoring,
+        private readonly FileService $files,
+        private readonly FileRepository $fileRecords,
+        private readonly LessonRepository $lessons,
+    ) {
     }
 
-    /** @return array{course: Course, modules: int, lessons: int, questions: int} */
+    /** @return array{course: Course, modules: int, lessons: int, questions: int, files: int} */
     public function import(int $tenantId, CurrentUser $author, string $directory, bool $publish): array
     {
         $package = $this->read($directory);
 
-        return $this->db->transaction(function () use ($tenantId, $author, $directory, $package, $publish): array {
+        return $this->guarded(fn (): array => $this->db->transaction(function () use ($tenantId, $author, $directory, $package, $publish): array {
             $course = $this->authoring->createCourse($tenantId, $author, self::str($package, 'title', 'course'), self::str($package, 'summary', 'course', ''));
             $this->step('course details', fn () => $this->authoring->updateDetails($course, $author, [
                 'title' => $course->title,
@@ -51,14 +65,16 @@ final class CoursePackageImporter
                 'prerequisites' => self::str($package, 'prerequisites', 'course', ''),
             ]));
 
-            $counts = ['modules' => 0, 'lessons' => 0, 'questions' => 0];
+            $counts = ['modules' => 0, 'lessons' => 0, 'questions' => 0, 'files' => 0];
             foreach (self::list($package, 'modules', 'course') as $m => $module) {
                 $where = sprintf('modules[%d]', $m);
                 $moduleId = $this->step($where, fn (): int => $this->authoring->addModule($course, $author, self::str($module, 'title', $where)));
                 $counts['modules']++;
                 foreach (self::list($module, 'lessons', $where) as $l => $lesson) {
                     $at = sprintf('%s.lessons[%d]', $where, $l);
-                    $counts['questions'] += $this->importLesson($course, $author, $moduleId, $lesson, $directory, $at);
+                    [$questions, $files] = $this->importLesson($course, $author, $moduleId, $lesson, $directory, $at);
+                    $counts['questions'] += $questions;
+                    $counts['files'] += $files;
                     $counts['lessons']++;
                 }
             }
@@ -68,18 +84,83 @@ final class CoursePackageImporter
             }
 
             return ['course' => $course] + $counts;
-        });
+        }));
+    }
+
+    /**
+     * Adds the package's files to a course imported earlier (before packages
+     * carried files, or after a teacher removed some). Lessons are matched by
+     * title; a file already attached under the same name is skipped.
+     *
+     * @return int files added
+     */
+    public function syncFiles(Course $course, CurrentUser $author, string $directory): int
+    {
+        $package = $this->read($directory);
+        $byTitle = [];
+        foreach ($this->lessons->orderedLessons($course->tenantId, $course->id) as $lesson) {
+            $byTitle[$lesson->title] ??= $lesson;
+        }
+
+        return $this->guarded(fn (): int => $this->db->transaction(function () use ($course, $author, $directory, $package, $byTitle): int {
+            $added = 0;
+            foreach (self::list($package, 'modules', 'course') as $m => $module) {
+                foreach (self::list($module, 'lessons', sprintf('modules[%d]', $m)) as $l => $entry) {
+                    $at = sprintf('modules[%d].lessons[%d]', $m, $l);
+                    $lesson = $byTitle[self::str($entry, 'title', $at)] ?? null;
+                    if ($lesson === null) {
+                        continue;
+                    }
+                    $existing = array_map(static fn ($f): string => $f->originalName, $this->fileRecords->forLesson($course->tenantId, $lesson->id));
+                    foreach (self::strings($entry, 'attachments', $at) as $relative) {
+                        if (!in_array(basename($relative), $existing, true)) {
+                            $this->attach($course->tenantId, $author, $lesson->id, $this->resolve($directory, $relative, $at), $at);
+                            $added++;
+                        }
+                    }
+                }
+            }
+
+            return $added;
+        }));
+    }
+
+    /**
+     * @template T
+     * @param callable(): T $work
+     * @return T
+     */
+    private function guarded(callable $work): mixed
+    {
+        $this->storedKeys = [];
+        try {
+            return $work();
+        } catch (Throwable $e) {
+            // The transaction rolled back the rows; remove the copied files too.
+            $this->files->deleteBlobs($this->storedKeys);
+            throw $e;
+        } finally {
+            $this->storedKeys = [];
+        }
+    }
+
+    private function attach(int $tenantId, CurrentUser $author, int $lessonId, string $path, string $at): void
+    {
+        $prepared = $this->step($at . ' (' . basename($path) . ')', fn (): array => $this->files->prepare($tenantId, [UploadedFile::fromLocalPath($path)]));
+        foreach ($this->files->persist($tenantId, $author->user->id, $prepared, $lessonId, null) as $stored) {
+            $this->storedKeys[] = $stored->storageKey;
+        }
     }
 
     /**
      * @param array<mixed> $lesson
-     * @return int questions added
+     * @return array{0: int, 1: int} questions and files added
      */
-    private function importLesson(Course $course, CurrentUser $author, int $moduleId, array $lesson, string $directory, string $at): int
+    private function importLesson(Course $course, CurrentUser $author, int $moduleId, array $lesson, string $directory, string $at): array
     {
         $type = self::str($lesson, 'type', $at);
         $body = isset($lesson['file'])
-            ? $this->file($directory, self::str($lesson, 'file', $at), $at)
+            ? (string) file_get_contents($this->resolve($directory, self::str($lesson, 'file', $at), $at))
             : self::str($lesson, $type === 'quiz' ? 'intro' : 'body', $at, '');
 
         $lessonId = $this->step($at, fn (): int => $this->authoring->addLesson($course, $author, $moduleId, [
@@ -91,8 +172,13 @@ final class CoursePackageImporter
             'max_attempts' => isset($lesson['max_attempts']) ? (string) $lesson['max_attempts'] : '',
         ]));
 
+        $attachments = self::strings($lesson, 'attachments', $at);
+        foreach ($attachments as $relative) {
+            $this->attach($course->tenantId, $author, $lessonId, $this->resolve($directory, $relative, $at), $at);
+        }
+
         if ($type !== Lesson::TYPE_QUIZ) {
-            return 0;
+            return [0, count($attachments)];
         }
         $questions = self::list($lesson, 'questions', $at);
         foreach ($questions as $q => $question) {
@@ -109,7 +195,7 @@ final class CoursePackageImporter
             ));
         }
 
-        return count($questions);
+        return [count($questions), count($attachments)];
     }
 
     /** @return array<mixed> */
@@ -131,7 +217,8 @@ final class CoursePackageImporter
         return $data;
     }
 
-    private function file(string $directory, string $relative, string $at): string
+    /** Absolute path of a file inside the package; anything outside it is refused. */
+    private function resolve(string $directory, string $relative, string $at): string
     {
         $base = realpath($directory);
         $full = realpath(rtrim($directory, '/') . '/' . $relative);
@@ -140,7 +227,7 @@ final class CoursePackageImporter
             throw new RuntimeException("$at: file \"$relative\" not found in the package.");
         }
 
-        return (string) file_get_contents($full);
+        return $full;
     }
 
     /**

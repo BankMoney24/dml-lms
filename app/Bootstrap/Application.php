@@ -45,6 +45,12 @@ use App\Modules\Courses\Http\CatalogueController;
 use App\Modules\Courses\Http\LessonEditorController;
 use App\Modules\Courses\Http\TeachController;
 use App\Modules\Courses\LessonRepository;
+use App\Modules\Files\ClamdScanner;
+use App\Modules\Files\FileRepository;
+use App\Modules\Files\FileService;
+use App\Modules\Files\Http\FileController;
+use App\Modules\Files\NoScanner;
+use App\Modules\Files\UploadPolicy;
 use App\Modules\Identity\AccountLinkService;
 use App\Modules\Identity\AccountService;
 use App\Modules\Identity\AccountTokenRepository;
@@ -187,6 +193,9 @@ final class Application
         $c->set(CoursePackageImporter::class, static fn (Container $c) => new CoursePackageImporter(
             $c->get(Connection::class),
             $c->get(CourseAuthoring::class),
+            $c->get(FileService::class),
+            $c->get(FileRepository::class),
+            $c->get(LessonRepository::class),
         ));
         $c->set(CertificateService::class, static fn (Container $c) => new CertificateService(
             new CertificateRepository($c->get(Connection::class), $c->get(Clock::class)),
@@ -203,6 +212,19 @@ final class Application
             $c->get(AuditLog::class),
             $c->get(CertificateService::class),
         ));
+        $c->set(FileRepository::class, static fn (Container $c) => new FileRepository($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(FileService::class, static fn (Container $c) => new FileService(
+            $c->get(FileRepository::class),
+            $c->get(LessonRepository::class),
+            new UploadPolicy(max(1, $config->int('UPLOAD_MAX_MB', 10)) * 1048576),
+            strtolower($config->get('UPLOAD_SCANNER', '') ?? '') === 'clamd'
+                ? new ClamdScanner($config->get('CLAMD_HOST', '127.0.0.1') ?? '127.0.0.1', $config->int('CLAMD_PORT', 3310))
+                : new NoScanner(),
+            $c->get(AuditLog::class),
+            $c->get(Logger::class),
+            $storage . '/uploads',
+            max(1, $config->int('UPLOAD_TENANT_QUOTA_MB', 5120)) * 1048576,
+        ));
         $c->set(SubmissionRepository::class, static fn (Container $c) => new SubmissionRepository($c->get(Connection::class), $c->get(Clock::class)));
         $c->set(AssignmentService::class, static fn (Container $c) => new AssignmentService(
             $c->get(Connection::class),
@@ -216,6 +238,8 @@ final class Application
             $c->get(MailSettings::class),
             $c->get(MailOutbox::class),
             $c->get(EmailComposer::class),
+            $c->get(FileService::class),
+            $c->get(FileRepository::class),
         ));
         $c->set(AttemptService::class, static fn (Container $c) => new AttemptService(
             $c->get(Connection::class),
@@ -273,6 +297,8 @@ final class Application
             $c->get(AttemptRepository::class),
             $c->get(AssignmentService::class),
             $c->get(SubmissionRepository::class),
+            $c->get(FileRepository::class),
+            $c->get(FileService::class),
         ));
         $c->set(AttemptController::class, static fn (Container $c) => new AttemptController(
             $c->get(View::class),
@@ -302,6 +328,15 @@ final class Application
             $c->get(LessonRepository::class),
             $c->get(CourseRepository::class),
             $c->get(UserRepository::class),
+            $c->get(FileRepository::class),
+        ));
+        $c->set(FileController::class, static fn (Container $c) => new FileController(
+            $c->get(FileRepository::class),
+            $c->get(FileService::class),
+            $c->get(LessonRepository::class),
+            $c->get(CourseRepository::class),
+            $c->get(EnrolmentRepository::class),
+            $c->get(SubmissionRepository::class),
         ));
         $c->set(CertificateController::class, static fn (Container $c) => new CertificateController(
             $c->get(View::class),
@@ -315,6 +350,8 @@ final class Application
             $c->get(LessonRepository::class),
             $c->get(AssessmentRepository::class),
             $c->get(CourseAuthoring::class),
+            $c->get(FileService::class),
+            $c->get(FileRepository::class),
         ));
         $c->set(AccountService::class, static fn (Container $c) => new AccountService(
             $c->get(UserRepository::class),

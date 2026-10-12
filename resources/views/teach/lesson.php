@@ -16,7 +16,7 @@ $bodyLabel = match ($lesson->type) {
     'assignment' => 'The task: what to do, what to submit, how it is judged',
     default => 'Lesson text',
 };
-$lessonErrors = array_diff_key($errors, $questionErrors);
+$lessonErrors = array_diff_key($errors, $questionErrors, ['file' => true]);
 ?>
 <?php include __DIR__ . '/_course_head.php'; ?>
 
@@ -55,6 +55,24 @@ $lessonErrors = array_diff_key($errors, $questionErrors);
       <?php endif; ?>
       <button type="submit" class="button">Save lesson</button>
     </form>
+
+    <section id="files" class="section" aria-labelledby="files-h">
+      <h2 id="files-h">Files for learners</h2>
+      <p class="muted small">Handouts, PDFs, example configs or scripts. Learners see them under the lesson, with their size. Up to <?= (int) $policy->maxMegabytes() ?> MB each.</p>
+      <?php if ($files !== []): ?>
+        <?php $fileList = $files; $removeUrl = static fn ($f): string => $url . '/files/' . $f->id . '/delete'; include __DIR__ . '/../files/_list.php'; ?>
+      <?php endif; ?>
+      <form method="post" action="<?= $url ?>/files" enctype="multipart/form-data" class="form upload-form" novalidate>
+        <?= $v->csrfField() ?>
+        <div class="field">
+          <label for="file">Add a file</label>
+          <p class="hint" id="file-hint"><?= $v->e(\App\Modules\Files\UploadPolicy::summary()) ?>.</p>
+          <input type="file" id="file" name="file" accept="<?= $v->e(\App\Modules\Files\UploadPolicy::acceptAttribute()) ?>" aria-describedby="file-hint<?= isset($errors['file']) ? ' file-error' : '' ?>"<?= isset($errors['file']) ? ' aria-invalid="true"' : '' ?> data-max-bytes="<?= (int) $policy->maxBytes ?>">
+          <?php if (isset($errors['file'])): ?><p class="field-error" id="file-error"><?= $v->e($errors['file']) ?></p><?php endif; ?>
+        </div>
+        <button type="submit" class="button button-small button-quiet">Upload</button>
+      </form>
+    </section>
 
     <div class="danger-zone">
       <h2>Delete this lesson</h2>

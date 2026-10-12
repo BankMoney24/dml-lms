@@ -9,7 +9,10 @@ use App\Core\Http\HttpException;
 use App\Core\Mail\MailSettings;
 use App\Core\Validation\ValidationException;
 use App\Modules\Audit\AuditLog;
+use App\Core\Http\UploadedFile;
 use App\Modules\Courses\Course;
+use App\Modules\Files\FileRepository;
+use App\Modules\Files\FileService;
 use App\Modules\Courses\CourseRepository;
 use App\Modules\Courses\Lesson;
 use App\Modules\Courses\LessonRepository;
@@ -45,6 +48,8 @@ final class AssignmentService
         private readonly MailSettings $mail,
         private readonly MailOutbox $outbox,
         private readonly EmailComposer $composer,
+        private readonly FileService $files,
+        private readonly FileRepository $fileRecords,
     ) {
     }
 
@@ -53,7 +58,8 @@ final class AssignmentService
      * waiting for review it is replaced (a correction, or a double click);
      * after a review a new submission is added.
      */
-    public function submit(Enrolment $enrolment, Lesson $lesson, string $body, string $link, string $clientIp): Submission
+    /** @param list<UploadedFile> $uploads files attached to this submission */
+    public function submit(Enrolment $enrolment, Lesson $lesson, string $body, string $link, string $clientIp, array $uploads = []): Submission
     {
         if (!$lesson->isAssignment() || $lesson->tenantId !== $enrolment->tenantId || $lesson->courseId !== $enrolment->courseId) {
             throw HttpException::notFound();
@@ -61,29 +67,45 @@ final class AssignmentService
         $body = trim(str_replace("\r\n", "\n", $body));
         $link = trim($link);
         $errors = [];
-        if ($body === '') {
-            $errors['answer'] = 'Write your answer, or describe what you did, before submitting.';
+        if ($body === '' && $uploads === []) {
+            $errors['answer'] = 'Write your answer, or attach your work, before submitting.';
         } elseif (mb_strlen($body) > self::MAX_BODY) {
             $errors['answer'] = 'Keep your answer under 20,000 characters. Put long work in a document and share the link.';
         }
         if ($link !== '' && (mb_strlen($link) > 500 || preg_match('#^https?://[^\s<>"]+\.[^\s<>"]+$#i', $link) !== 1)) {
             $errors['link'] = 'Enter a full web address starting with https://, or leave it empty.';
         }
+        if (count($uploads) > FileService::MAX_PER_SUBMISSION) {
+            $errors['attachments'] = sprintf('Attach at most %d files. Put more in a zip archive.', FileService::MAX_PER_SUBMISSION);
+        }
         if ($errors !== []) {
             throw new ValidationException($errors);
         }
         $linkOrNull = $link === '' ? null : $link;
+        // Type, size, quota and virus checks happen before the transaction.
+        $prepared = $this->files->prepare($enrolment->tenantId, $uploads, 'attachments');
 
-        return $this->db->transaction(function () use ($enrolment, $lesson, $body, $linkOrNull, $clientIp): Submission {
+        return $this->db->transaction(function () use ($enrolment, $lesson, $body, $linkOrNull, $clientIp, $prepared): Submission {
             $latest = $this->submissions->latest($enrolment->tenantId, $enrolment->id, $lesson->id, true);
             if ($latest !== null && $latest->isApproved()) {
                 throw ValidationException::single('answer', 'This assignment has already been approved.');
             }
             if ($latest !== null && $latest->isPending()) {
+                $already = $this->fileRecords->countForSubmission($enrolment->tenantId, $latest->id);
+                if ($already + count($prepared) > FileService::MAX_PER_SUBMISSION) {
+                    throw ValidationException::single('attachments', sprintf(
+                        'This submission already has %d of %d files. Attach fewer.',
+                        $already,
+                        FileService::MAX_PER_SUBMISSION,
+                    ));
+                }
                 $this->submissions->replacePending($enrolment->tenantId, $latest->id, $body, $linkOrNull);
                 $id = $latest->id;
             } else {
                 $id = $this->submissions->insert($enrolment->tenantId, $lesson->id, $enrolment->id, $enrolment->userId, $body, $linkOrNull);
+            }
+            if ($prepared !== []) {
+                $this->files->persist($enrolment->tenantId, $enrolment->userId, $prepared, null, $id);
             }
             $this->audit->record($enrolment->tenantId, $enrolment->userId, 'assignment.submitted', 'assignment_submission', $id, [
                 'lesson_id' => $lesson->id,

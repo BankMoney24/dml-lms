@@ -53,6 +53,7 @@ final class ConsoleApplication
                 'mail:test' => $this->mailTest($args),
                 'course:packages' => $this->coursePackages(),
                 'course:import' => $this->courseImport($args),
+                'course:sync-files' => $this->courseSyncFiles($args),
                 'certificate:revoke' => $this->certificateRevoke($args),
                 default => $this->help(),
             };
@@ -84,6 +85,8 @@ final class ConsoleApplication
           course:import <tenant-slug> <package> [--publish] [--author=<email>]
                                                     Import a course package (a name from course:packages,
                                                     or a folder with course.json). Draft unless --publish.
+          course:sync-files <tenant-slug> <package> <course-slug>
+                                                    Add a package's lesson files to a course imported earlier
           certificate:revoke <code> "<reason>"      Revoke a certificate; the reason shows on /verify
 
         TXT;
@@ -215,32 +218,44 @@ final class ConsoleApplication
         return 0;
     }
 
-    /** @param list<string> $args */
-    private function courseImport(array $args): int
+    /**
+     * Splits "--flag" and "--key=value" options from positional arguments.
+     *
+     * @param list<string> $args
+     * @return array{0: list<string>, 1: array<string, string>}
+     */
+    private static function options(array $args): array
     {
-        $publish = in_array('--publish', $args, true);
-        $authorEmail = null;
         $positional = [];
+        $options = [];
         foreach ($args as $arg) {
-            if (str_starts_with($arg, '--author=')) {
-                $authorEmail = strtolower(substr($arg, 9));
-            } elseif (!str_starts_with($arg, '--')) {
+            if (preg_match('/^--([a-z-]+)(?:=(.*))?$/', $arg, $m) === 1) {
+                $options[$m[1]] = $m[2] ?? '1';
+            } else {
                 $positional[] = $arg;
             }
         }
-        [$slug, $package] = $this->requireArgs($positional, 2, 'course:import <tenant-slug> <package> [--publish] [--author=<email>]');
-        $tenant = $this->container->get(TenantRepository::class)->findBySlug($slug)
-            ?? throw new \RuntimeException('No tenant with that slug.');
 
+        return [$positional, $options];
+    }
+
+    private function packageDirectory(string $package): string
+    {
         $directory = is_dir($package) ? $package : Application::basePath('courses/' . basename($package));
         if (!is_file($directory . '/course.json')) {
             throw new \RuntimeException("No course package \"$package\". Run course:packages to see what is available.");
         }
 
+        return $directory;
+    }
+
+    /** The member who will be recorded as author: --author=<email>, or the first owner/admin/educator. */
+    private function author(\App\Modules\Tenancy\Tenant $tenant, ?string $email): CurrentUser
+    {
         $memberships = $this->container->get(MembershipRepository::class);
         $users = $this->container->get(UserRepository::class);
-        if ($authorEmail !== null) {
-            $user = $users->findByEmail($authorEmail) ?? throw new \RuntimeException('No user with that email.');
+        if ($email !== null) {
+            $user = $users->findByEmail(strtolower($email)) ?? throw new \RuntimeException('No user with that email.');
         } else {
             $authorId = $this->container->get(Connection::class)->fetchValue(
                 "SELECT user_id FROM memberships WHERE tenant_id = ? AND role IN ('owner', 'admin', 'educator') AND status = 'active' ORDER BY id LIMIT 1",
@@ -256,16 +271,54 @@ final class ConsoleApplication
             throw new \RuntimeException('The author must be an active member of this tenant.');
         }
 
-        $result = $this->container->get(CoursePackageImporter::class)->import($tenant->id, new CurrentUser($user, $membership), $directory, $publish);
+        return new CurrentUser($user, $membership);
+    }
+
+    /** @param list<string> $args */
+    private function courseImport(array $args): int
+    {
+        [$positional, $options] = self::options($args);
+        [$slug, $package] = $this->requireArgs($positional, 2, 'course:import <tenant-slug> <package> [--publish] [--author=<email>]');
+        $tenant = $this->container->get(TenantRepository::class)->findBySlug($slug)
+            ?? throw new \RuntimeException('No tenant with that slug.');
+        $publish = isset($options['publish']);
+
+        $result = $this->container->get(CoursePackageImporter::class)->import(
+            $tenant->id,
+            $this->author($tenant, $options['author'] ?? null),
+            $this->packageDirectory($package),
+            $publish,
+        );
         printf(
-            "Imported \"%s\": %d modules, %d lessons, %d quiz questions. %s\nTeaching page: /teach/courses/%d\n",
+            "Imported \"%s\": %d modules, %d lessons, %d quiz questions, %d files. %s\nTeaching page: /teach/courses/%d\n",
             $result['course']->title,
             $result['modules'],
             $result['lessons'],
             $result['questions'],
+            $result['files'],
             $publish ? 'Published at /courses/' . $result['course']->slug . '.' : 'Saved as a draft; publish it from the Teaching page.',
             $result['course']->id,
         );
+
+        return 0;
+    }
+
+    /** @param list<string> $args */
+    private function courseSyncFiles(array $args): int
+    {
+        [$positional, $options] = self::options($args);
+        [$slug, $package, $courseSlug] = $this->requireArgs($positional, 3, 'course:sync-files <tenant-slug> <package> <course-slug> [--author=<email>]');
+        $tenant = $this->container->get(TenantRepository::class)->findBySlug($slug)
+            ?? throw new \RuntimeException('No tenant with that slug.');
+        $course = $this->container->get(\App\Modules\Courses\CourseRepository::class)->findBySlug($tenant->id, $courseSlug)
+            ?? throw new \RuntimeException("No course \"$courseSlug\" in $slug.");
+
+        $added = $this->container->get(CoursePackageImporter::class)->syncFiles(
+            $course,
+            $this->author($tenant, $options['author'] ?? null),
+            $this->packageDirectory($package),
+        );
+        printf("Added %d file%s to \"%s\".\n", $added, $added === 1 ? '' : 's', $course->title);
 
         return 0;
     }

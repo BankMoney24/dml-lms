@@ -21,7 +21,10 @@
         {
           "type": "text",
           "title": "How Linux servers are run",
-          "file": "lessons/01-how-servers-are-run.md"
+          "file": "lessons/01-how-servers-are-run.md",
+          "attachments": [
+            "files/linux-server-cheat-sheet.pdf"
+          ]
         },
         {
           "type": "text",
@@ -335,7 +338,11 @@
         {
           "type": "text",
           "title": "SSH keys and hardening",
-          "file": "lessons/12-ssh-keys-hardening.md"
+          "file": "lessons/12-ssh-keys-hardening.md",
+          "attachments": [
+            "files/00-hardening.conf",
+            "files/jail.local"
+          ]
         },
         {
           "type": "text",
@@ -445,12 +452,19 @@
         {
           "type": "text",
           "title": "Backups you can restore",
-          "file": "lessons/16-backups.md"
+          "file": "lessons/16-backups.md",
+          "attachments": [
+            "files/backup-site.sh"
+          ]
         },
         {
           "type": "text",
           "title": "Scheduling with cron and systemd timers",
-          "file": "lessons/17-scheduling.md"
+          "file": "lessons/17-scheduling.md",
+          "attachments": [
+            "files/backup-site.service",
+            "files/backup-site.timer"
+          ]
         },
         {
           "type": "quiz",
@@ -534,7 +548,10 @@
         {
           "type": "text",
           "title": "Web servers and virtual hosts",
-          "file": "lessons/18-web-servers.md"
+          "file": "lessons/18-web-servers.md",
+          "attachments": [
+            "files/school.example.org.conf"
+          ]
         },
         {
           "type": "text",
@@ -644,7 +661,10 @@
         {
           "type": "text",
           "title": "Logs, monitoring and alerts",
-          "file": "lessons/22-logs-monitoring.md"
+          "file": "lessons/22-logs-monitoring.md",
+          "attachments": [
+            "files/health-check.sh"
+          ]
         },
         {
           "type": "text",

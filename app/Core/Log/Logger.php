@@ -44,8 +44,14 @@ final class Logger
 
         $dir = dirname($this->file);
         if (!is_dir($dir)) {
-            @mkdir($dir, 0750, true);
+            @mkdir($dir, 0770, true);
         }
+        $new = !is_file($this->file);
         @file_put_contents($this->file, $line . "\n", FILE_APPEND | LOCK_EX);
+        if ($new) {
+            // The web app and console commands run as different users in one group;
+            // whoever creates the log first must leave it writable for the other.
+            @chmod($this->file, 0660);
+        }
     }
 }

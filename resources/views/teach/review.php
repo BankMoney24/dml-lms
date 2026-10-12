@@ -5,6 +5,7 @@
 /** @var \App\Modules\Courses\Lesson $lesson */
 /** @var \App\Modules\Courses\Course $course */
 /** @var list<\App\Modules\Assignments\Submission> $history */
+/** @var array<int, list<\App\Modules\Files\StoredFile>> $submissionFiles */
 /** @var array<int, string> $reviewerNames */
 /** @var array<string, string> $errors */
 /** @var array<string, string> $old */
@@ -28,6 +29,10 @@ $name = $learner?->displayName ?? 'Former member';
     <?php if ($submission->linkUrl !== null): ?>
       <p>Link: <a href="<?= $v->e($submission->linkUrl) ?>" rel="noopener noreferrer nofollow" class="external"><?= $v->e($submission->linkUrl) ?></a></p>
     <?php endif; ?>
+    <?php if (($submissionFiles[$submission->id] ?? []) !== []): ?>
+      <h3 class="small-heading">Attached files</h3>
+      <?php $fileList = $submissionFiles[$submission->id]; include __DIR__ . '/../files/_list.php'; ?>
+    <?php endif; ?>
 
     <details class="panel">
       <summary>The task as learners see it</summary>
@@ -42,6 +47,7 @@ $name = $learner?->displayName ?? 'Former member';
         <li>
           <p class="small"><?= $v->badge($s->statusLabel(), $s->tone()) ?> <?= $v->datetime($s->submittedAt) ?></p>
           <div class="prose prose-small"><?= $v->markdown($s->body) ?></div>
+          <?php if (($submissionFiles[$s->id] ?? []) !== []): ?><?php $fileList = $submissionFiles[$s->id]; include __DIR__ . '/../files/_list.php'; ?><?php endif; ?>
           <?php if ($s->feedback !== null): ?>
             <div class="feedback"><p class="feedback-title">Feedback from <?= $v->e($reviewerNames[$s->reviewedBy ?? 0] ?? 'a teacher') ?></p><div class="prose prose-small"><?= $v->markdown($s->feedback) ?></div></div>
           <?php endif; ?>

@@ -134,6 +134,33 @@ abstract class AppTestCase extends TestCase
         return $this->app->get(Kernel::class)->handle($request);
     }
 
+    /**
+     * POSTs a multipart form: $files maps field names to local files presented as uploads.
+     *
+     * @param array<string, mixed> $data
+     * @param array<string, list<\App\Core\Http\UploadedFile>> $files
+     */
+    protected function upload(string $host, string $path, array $data, array $files): Response
+    {
+        $data['_token'] = $this->app->get(Csrf::class)->token();
+
+        return $this->send(new Request('POST', $path, $host, [], $data, [], [], '0.0.0.0', false, $files));
+    }
+
+    /** Writes $bytes to a temporary file and returns it as an upload called $name. */
+    protected function fakeUpload(string $name, string $bytes): \App\Core\Http\UploadedFile
+    {
+        $path = (string) tempnam(sys_get_temp_dir(), 'upl');
+        file_put_contents($path, $bytes);
+
+        return \App\Core\Http\UploadedFile::fromLocalPath($path, $name);
+    }
+
+    protected static function pdfBytes(string $text = 'Hello'): string
+    {
+        return "%PDF-1.4\n1 0 obj <</Type /Catalog /Pages 2 0 R>> endobj\n2 0 obj <</Type /Pages /Kids [] /Count 0>> endobj\n% " . $text . "\ntrailer <</Root 1 0 R>>\n%%EOF\n";
+    }
+
     protected function login(string $host, string $email, string $password): Response
     {
         return $this->post($host, '/login', ['email' => $email, 'password' => $password]);

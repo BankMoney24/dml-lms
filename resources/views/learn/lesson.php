@@ -5,6 +5,8 @@
 /** @var list<\App\Modules\Assignments\Submission> $submissions */
 /** @var array<string, string> $errors */
 /** @var array<string, string> $old */
+/** @var list<\App\Modules\Files\StoredFile> $lessonFiles */
+/** @var array<int, list<\App\Modules\Files\StoredFile>> $submissionFiles */
 $base = '/courses/' . $v->e($course->slug);
 $latest = $submissions[0] ?? null;
 ?>
@@ -33,6 +35,7 @@ $latest = $submissions[0] ?? null;
       <?php endif; ?>
     <?php endif; ?>
     <?php if ($lesson->body !== ''): ?><div class="prose"><?= $v->markdown($lesson->body) ?></div><?php endif; ?>
+    <?php include __DIR__ . '/_lesson_files.php'; ?>
     <?php if ($completed): ?>
       <p class="notice notice-done">You have completed this lesson.</p>
     <?php else: ?>
@@ -46,6 +49,7 @@ $latest = $submissions[0] ?? null;
     <section class="assignment-brief" aria-labelledby="brief-h">
       <h2 id="brief-h" class="visually-hidden">The task</h2>
       <div class="prose"><?= $v->markdown($lesson->body) ?></div>
+      <?php include __DIR__ . '/_lesson_files.php'; ?>
     </section>
 
     <section id="submission" class="submission-area" aria-labelledby="sub-h">
@@ -55,6 +59,9 @@ $latest = $submissions[0] ?? null;
           <?= $v->badge($latest->statusLabel(), $latest->tone()) ?>
           <span class="small muted">Sent <?= $v->datetime($latest->submittedAt) ?></span>
         </div>
+        <?php if (($submissionFiles[$latest->id] ?? []) !== []): ?>
+          <?php $fileList = $submissionFiles[$latest->id]; include __DIR__ . '/../files/_list.php'; ?>
+        <?php endif; ?>
         <?php if ($latest->feedback !== null): ?>
           <div class="feedback">
             <p class="feedback-title">Feedback from your teacher</p>
@@ -72,7 +79,7 @@ $latest = $submissions[0] ?? null;
           <p class="small">Make the changes your teacher asked for, then submit again.</p>
         <?php endif; ?>
         <?= $v->errorSummary($errors) ?>
-        <form method="post" action="<?= $base ?>/lessons/<?= $lesson->id ?>/submissions" class="form" novalidate>
+        <form method="post" action="<?= $base ?>/lessons/<?= $lesson->id ?>/submissions" class="form" enctype="multipart/form-data" novalidate>
           <?= $v->csrfField() ?>
           <?= $v->field('answer', $latest !== null && $latest->isPending() ? 'Your answer (replaces what you sent)' : 'Your answer', [
               'type' => 'textarea', 'rows' => 12,
@@ -84,6 +91,12 @@ $latest = $submissions[0] ?? null;
               'value' => $old['link'] ?? ($latest?->linkUrl ?? ''), 'error' => $errors['link'] ?? null, 'optional' => true,
               'inputmode' => 'url', 'hint' => 'For example a GitHub repository, a shared document or a screenshot.', 'maxlength' => 500,
           ]) ?>
+          <div class="field">
+            <label for="attachments">Attach files <span class="optional">(optional, up to 3)</span></label>
+            <p class="hint" id="attachments-hint">Screenshots, a PDF, a zip of your project or a config file; up to <?= (int) $policy->maxMegabytes() ?> MB each.<?= $latest !== null && $latest->isPending() ? ' Files you already sent stay attached.' : '' ?></p>
+            <input type="file" id="attachments" name="attachments[]" multiple accept="<?= $v->e(\App\Modules\Files\UploadPolicy::acceptAttribute()) ?>" aria-describedby="attachments-hint<?= isset($errors['attachments']) ? ' attachments-error' : '' ?>"<?= isset($errors['attachments']) ? ' aria-invalid="true"' : '' ?> data-max-bytes="<?= (int) $policy->maxBytes ?>" data-max-files="3">
+            <?php if (isset($errors['attachments'])): ?><p class="field-error" id="attachments-error"><?= $v->e($errors['attachments']) ?></p><?php endif; ?>
+          </div>
           <button type="submit" class="button"><?= $latest !== null && $latest->isPending() ? 'Update submission' : 'Submit for review' ?></button>
         </form>
       <?php endif; ?>
@@ -97,6 +110,7 @@ $latest = $submissions[0] ?? null;
             <p class="small"><?= $v->badge($s->statusLabel(), $s->tone()) ?> <?= $v->datetime($s->submittedAt) ?></p>
             <div class="prose prose-small"><?= $v->markdown($s->body) ?></div>
             <?php if ($s->linkUrl !== null): ?><p class="small"><a href="<?= $v->e($s->linkUrl) ?>" rel="noopener noreferrer nofollow" class="external"><?= $v->e($s->linkUrl) ?></a></p><?php endif; ?>
+            <?php if (($submissionFiles[$s->id] ?? []) !== []): ?><?php $fileList = $submissionFiles[$s->id]; include __DIR__ . '/../files/_list.php'; ?><?php endif; ?>
           </li>
           <?php endforeach; ?>
         </ol>
@@ -109,6 +123,7 @@ $latest = $submissions[0] ?? null;
 
   <?php else: ?>
     <?php if ($lesson->body !== ''): ?><div class="prose"><?= $v->markdown($lesson->body) ?></div><?php endif; ?>
+    <?php include __DIR__ . '/_lesson_files.php'; ?>
     <p class="quiz-rules">
       <?= $v->plural(count($quiz['questions']), 'question') ?> · pass mark <?= $quiz['pass_threshold'] ?>% ·
       <?= $quiz['attempts_left'] === null ? 'as many tries as you need' : $v->e($v->plural($quiz['attempts_left'], 'attempt') . ' left') ?>

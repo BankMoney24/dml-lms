@@ -26,6 +26,9 @@ $crumb = 'Preview';
     <?php endif; ?>
   <?php endif; ?>
   <?php if ($lesson->body !== ''): ?><div class="prose"><?= $v->markdown($lesson->body) ?></div><?php endif; ?>
+  <?php if ($files !== []): ?>
+    <section class="lesson-files" aria-labelledby="files-h"><h2 id="files-h">Lesson files</h2><?php $fileList = $files; include __DIR__ . '/../files/_list.php'; ?></section>
+  <?php endif; ?>
 
   <?php if ($lesson->isQuiz()): ?>
     <?php if ($assessment !== null): ?>

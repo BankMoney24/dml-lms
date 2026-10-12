@@ -224,6 +224,8 @@ final class AssignmentsAndCertificatesTest extends AppTestCase
         $this->assertSame(8, $result['modules']);
         $this->assertSame(32, $result['lessons']);
         $this->assertGreaterThanOrEqual(60, $result['questions']);
+        $this->assertSame(8, $result['files'], 'handouts: cheat sheet, configs and scripts');
+        $this->assertSame(1, (int) $this->db()->fetchValue("SELECT COUNT(*) FROM files WHERE original_name = 'linux-server-cheat-sheet.pdf' AND mime_type = 'application/pdf'"));
         $course = $result['course'];
         $stored = $this->app->get(CourseRepository::class)->findById($this->tenant->id, $course->id);
         $this->assertNotNull($stored);

@@ -1,0 +1,14 @@
+# /etc/systemd/system/backup-site.timer
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now backup-site.timer
+#   systemctl list-timers backup-site.timer
+[Unit]
+Description=Nightly website backup
+
+[Timer]
+OnCalendar=*-*-* 02:30:00
+RandomizedDelaySec=15m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

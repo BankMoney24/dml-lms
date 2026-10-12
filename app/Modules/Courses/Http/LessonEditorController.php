@@ -17,6 +17,8 @@ use App\Modules\Courses\CourseAuthoring;
 use App\Modules\Courses\CourseRepository;
 use App\Modules\Courses\Lesson;
 use App\Modules\Courses\LessonRepository;
+use App\Modules\Files\FileRepository;
+use App\Modules\Files\FileService;
 
 /** Educator workspace at lesson level: edit, reorder, delete, questions, preview. */
 final class LessonEditorController
@@ -28,7 +30,35 @@ final class LessonEditorController
         private readonly LessonRepository $lessons,
         private readonly AssessmentRepository $assessments,
         private readonly CourseAuthoring $authoring,
+        private readonly FileService $fileService,
+        private readonly FileRepository $files,
     ) {
+    }
+
+    public function uploadFile(Request $request): Response
+    {
+        [$course, $lesson] = $this->load($request);
+        $upload = $request->file('file');
+        try {
+            if ($upload === null) {
+                throw ValidationException::single('file', 'Choose a file first.');
+            }
+            $file = $this->fileService->attachToLesson($course, RequestContext::user($request), $lesson->id, $upload);
+            $this->session->flash('success', sprintf('“%s” added (%s).', $file->originalName, $file->humanSize()));
+        } catch (ValidationException $e) {
+            return $this->render($course, $lesson, $e->errors, [], 422);
+        }
+
+        return Response::redirect($this->editUrl($course, $lesson) . '#files');
+    }
+
+    public function removeFile(Request $request): Response
+    {
+        [$course, $lesson] = $this->load($request);
+        $file = $this->fileService->removeFromLesson($course, RequestContext::user($request), $lesson->id, $request->routeInt('file'));
+        $this->session->flash('success', sprintf('“%s” removed.', $file->originalName));
+
+        return Response::redirect($this->editUrl($course, $lesson) . '#files');
     }
 
     public function edit(Request $request): Response
@@ -76,7 +106,9 @@ final class LessonEditorController
     {
         [$course, $lesson] = $this->load($request);
         try {
+            $keys = $this->files->storageKeysForLesson($course->tenantId, $lesson->id);
             $this->authoring->deleteLesson($course, RequestContext::user($request), $lesson->id);
+            $this->fileService->deleteBlobs($keys);
             $this->session->flash('success', sprintf('Lesson “%s” deleted.', $lesson->title));
 
             return Response::redirect('/teach/courses/' . $course->id);
@@ -156,6 +188,7 @@ final class LessonEditorController
             'lesson' => $lesson,
             'assessment' => $assessment,
             'questions' => $assessment === null ? [] : $this->assessments->questions($course->tenantId, $assessment['id']),
+            'files' => $this->files->forLesson($course->tenantId, $lesson->id),
         ]));
     }
 
@@ -190,6 +223,8 @@ final class LessonEditorController
             'assessment' => $assessment,
             'questions' => $assessment === null ? [] : $this->assessments->questions($course->tenantId, $assessment['id']),
             'attempts' => $attempts,
+            'files' => $this->files->forLesson($course->tenantId, $lesson->id),
+            'policy' => $this->fileService->policy(),
             'inUse' => $attempts > 0 || $this->lessons->hasLearnerActivity($course->tenantId, $lesson->id),
             'errors' => $errors,
             'old' => $old + [

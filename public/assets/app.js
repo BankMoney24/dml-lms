@@ -110,6 +110,33 @@
     side.scrollTop = Math.max(0, current.getBoundingClientRect().top - side.getBoundingClientRect().top - side.clientHeight / 3);
   }
 
+  // File pickers: say before uploading if a file is too big or there are too many,
+  // instead of making someone on slow data wait for the server to refuse it.
+  Array.prototype.forEach.call(document.querySelectorAll('input[type=file][data-max-bytes]'), function (input) {
+    var note = document.createElement('p');
+    note.className = 'upload-warning';
+    note.setAttribute('aria-live', 'polite');
+    input.insertAdjacentElement('afterend', note);
+    input.addEventListener('change', function () {
+      var max = parseInt(input.getAttribute('data-max-bytes') || '0', 10);
+      var maxFiles = parseInt(input.getAttribute('data-max-files') || '0', 10);
+      var problems = [];
+      if (maxFiles && input.files.length > maxFiles) { problems.push('Choose at most ' + maxFiles + ' files.'); }
+      Array.prototype.forEach.call(input.files, function (f) {
+        if (max && f.size > max) { problems.push('“' + f.name + '” is ' + (f.size / 1048576).toFixed(1) + ' MB; the limit is ' + Math.floor(max / 1048576) + ' MB.'); }
+      });
+      note.textContent = problems.join(' ');
+    });
+  });
+
+  // "Go back" on error pages that follow a form (shown only when there is somewhere to go back to).
+  Array.prototype.forEach.call(document.querySelectorAll('[data-back]'), function (button) {
+    if (history.length > 1) {
+      button.hidden = false;
+      button.addEventListener('click', function () { history.back(); });
+    }
+  });
+
   // Print buttons (certificates).
   Array.prototype.forEach.call(document.querySelectorAll('[data-print]'), function (button) {
     button.addEventListener('click', function () { window.print(); });

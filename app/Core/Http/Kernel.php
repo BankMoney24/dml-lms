@@ -101,6 +101,8 @@ final class Kernel
             403 => 'You do not have access',
             404 => 'Page not found',
             405 => 'Not available',
+            409 => 'That could not be done',
+            413 => 'Too much to send',
             419 => 'Session expired',
             503 => 'Temporarily unavailable',
         ];

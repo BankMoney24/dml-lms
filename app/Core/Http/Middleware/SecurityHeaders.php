@@ -40,6 +40,9 @@ final class SecurityHeaders implements Middleware
         }
 
         foreach ($headers as $name => $value) {
+            if ($name === 'Content-Security-Policy' && $response->header($name) !== null) {
+                continue; // a stricter policy set by the controller (downloads) wins
+            }
             $response = $response->withHeader($name, $value);
         }
 

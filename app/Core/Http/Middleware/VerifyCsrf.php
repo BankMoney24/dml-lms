@@ -19,6 +19,9 @@ final class VerifyCsrf implements Middleware
 
     public function process(Request $request, callable $next): Response
     {
+        if ($request->bodyTooLarge) {
+            throw new HttpException(413, 'That was too much to send at once. Choose smaller files, or fewer, and try again.');
+        }
         if (!$request->isSafeMethod()) {
             $token = $request->input('_token') ?? $request->header('x-csrf-token');
             if (!$this->csrf->isValid($token)) {

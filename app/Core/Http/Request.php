@@ -18,6 +18,7 @@ final class Request
      * @param array<string, mixed>  $body
      * @param array<string, string> $headers lower-cased header names
      * @param array<string, string> $cookies
+     * @param array<string, list<UploadedFile>> $files
      */
     public function __construct(
         public readonly string $method,
@@ -29,6 +30,8 @@ final class Request
         private readonly array $cookies = [],
         public readonly string $clientIp = '0.0.0.0',
         public readonly bool $secure = false,
+        private readonly array $files = [],
+        public readonly bool $bodyTooLarge = false,
     ) {
     }
 
@@ -44,6 +47,16 @@ final class Request
             $headers['content-type'] = (string) $_SERVER['CONTENT_TYPE'];
         }
 
+        $files = [];
+        foreach ($_FILES as $key => $entry) {
+            if (is_string($key) && is_array($entry)) {
+                $files[$key] = UploadedFile::listFromPhp($entry);
+            }
+        }
+        // When a body exceeds post_max_size PHP silently drops all fields and files.
+        $length = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
+        $tooLarge = ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && $length > 0 && $_POST === [] && $_FILES === [];
+
         $uri = (string) ($_SERVER['REQUEST_URI'] ?? '/');
         $path = parse_url($uri, PHP_URL_PATH);
 
@@ -57,6 +70,8 @@ final class Request
             cookies: array_map('strval', $_COOKIE),
             clientIp: (string) ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'),
             secure: ($_SERVER['HTTPS'] ?? '') !== '' && ($_SERVER['HTTPS'] ?? '') !== 'off',
+            files: $files,
+            bodyTooLarge: $tooLarge,
         );
     }
 
@@ -129,6 +144,17 @@ final class Request
         }
 
         return $clean;
+    }
+
+    /** @return list<UploadedFile> files actually chosen in this field (empty slots dropped) */
+    public function files(string $key): array
+    {
+        return array_values(array_filter($this->files[$key] ?? [], static fn (UploadedFile $f): bool => $f->wasSent()));
+    }
+
+    public function file(string $key): ?UploadedFile
+    {
+        return $this->files($key)[0] ?? null;
     }
 
     public function header(string $name): ?string

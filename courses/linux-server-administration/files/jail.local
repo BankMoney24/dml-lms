@@ -1,0 +1,14 @@
+# /etc/fail2ban/jail.local
+# Temporarily blocks addresses that keep failing to log in over SSH.
+#   sudo systemctl enable --now fail2ban
+#   sudo fail2ban-client status sshd
+
+[DEFAULT]
+bantime = 1h
+findtime = 10m
+maxretry = 5
+# Never ban yourself: add your office or home address here (space-separated).
+ignoreip = 127.0.0.1/8 ::1
+
+[sshd]
+enabled = true

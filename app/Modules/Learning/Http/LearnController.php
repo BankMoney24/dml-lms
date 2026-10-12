@@ -20,6 +20,8 @@ use App\Modules\Courses\Course;
 use App\Modules\Courses\CourseRepository;
 use App\Modules\Courses\Lesson;
 use App\Modules\Courses\LessonRepository;
+use App\Modules\Files\FileRepository;
+use App\Modules\Files\FileService;
 use App\Modules\Learning\LearningService;
 
 final class LearnController
@@ -34,6 +36,8 @@ final class LearnController
         private readonly AttemptRepository $attempts,
         private readonly AssignmentService $assignments,
         private readonly SubmissionRepository $submissions,
+        private readonly FileRepository $files,
+        private readonly FileService $fileService,
     ) {
     }
 
@@ -65,7 +69,7 @@ final class LearnController
         $answer = $request->input('answer', '') ?? '';
         $link = $request->input('link', '') ?? '';
         try {
-            $this->assignments->submit($enrolment, $lesson, $answer, $link, $request->clientIp);
+            $this->assignments->submit($enrolment, $lesson, $answer, $link, $request->clientIp, $request->files('attachments'));
         } catch (ValidationException $e) {
             return $this->renderLesson($request, $course, $lesson, $e->errors, ['answer' => $answer, 'link' => $link], 422);
         }
@@ -107,6 +111,7 @@ final class LearnController
         }
 
         $completedIds = $this->learning->completedLessonIds($enrolment);
+        $submissions = $lesson->isAssignment() ? $this->submissions->history($course->tenantId, $enrolment->id, $lesson->id) : [];
 
         return Response::html($this->view->render('learn/lesson', [
             'pageTitle' => $lesson->title,
@@ -120,7 +125,10 @@ final class LearnController
             'outline' => $this->lessons->outline($course->tenantId, $course->id),
             'completedIds' => $completedIds,
             'quiz' => $quiz,
-            'submissions' => $lesson->isAssignment() ? $this->submissions->history($course->tenantId, $enrolment->id, $lesson->id) : [],
+            'submissions' => $submissions,
+            'submissionFiles' => $this->files->forSubmissions($course->tenantId, array_map(static fn ($s): int => $s->id, $submissions)),
+            'lessonFiles' => $this->files->forLesson($course->tenantId, $lesson->id),
+            'policy' => $this->fileService->policy(),
             'errors' => $errors,
             'old' => $old,
         ]), $status);

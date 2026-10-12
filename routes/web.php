@@ -11,6 +11,7 @@ use App\Modules\Certificates\Http\CertificateController;
 use App\Modules\Courses\Http\CatalogueController;
 use App\Modules\Courses\Http\LessonEditorController;
 use App\Modules\Courses\Http\TeachController;
+use App\Modules\Files\Http\FileController;
 use App\Modules\Identity\Http\AccountController;
 use App\Modules\Identity\Http\LoginController;
 use App\Modules\Identity\Http\PasswordResetController;
@@ -54,6 +55,7 @@ return static function (Router $r): void {
     $r->get('/courses/{slug}/lessons/{lesson:int}/attempts/{attempt:int}', [AttemptController::class, 'result'], $learn);
     $r->post('/courses/{slug}/lessons/{lesson:int}/submissions', [LearnController::class, 'submitAssignment'], $learn);
 
+    $r->get('/files/{file:int}', [FileController::class, 'download'], ['tenant', 'auth']);
     $r->get('/certificates/{code:code}', [CertificateController::class, 'show'], ['tenant', 'auth']);
     $r->get('/verify', [CertificateController::class, 'verify'], ['tenant']);
     $r->get('/verify/{code:code}', [CertificateController::class, 'verify'], ['tenant']);
@@ -80,6 +82,8 @@ return static function (Router $r): void {
     $r->post('/teach/courses/{course:int}/lessons/{lesson:int}/questions', [LessonEditorController::class, 'addQuestion'], $teach);
     $r->post('/teach/courses/{course:int}/lessons/{lesson:int}/questions/{question:int}/delete', [LessonEditorController::class, 'deleteQuestion'], $teach);
     $r->post('/teach/courses/{course:int}/lessons/{lesson:int}/questions/{question:int}/explanation', [LessonEditorController::class, 'updateExplanation'], $teach);
+    $r->post('/teach/courses/{course:int}/lessons/{lesson:int}/files', [LessonEditorController::class, 'uploadFile'], $teach);
+    $r->post('/teach/courses/{course:int}/lessons/{lesson:int}/files/{file:int}/delete', [LessonEditorController::class, 'removeFile'], $teach);
     $r->get('/teach/reviews', [ReviewController::class, 'index'], $teach);
     $r->get('/teach/reviews/{submission:int}', [ReviewController::class, 'show'], $teach);
     $r->post('/teach/reviews/{submission:int}', [ReviewController::class, 'decide'], $teach);
