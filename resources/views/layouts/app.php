@@ -3,13 +3,15 @@
 /** @var string $content */
 $tenant = $v->shared('tenant');
 $user = $v->shared('user');
+$role = $v->shared('role');
 $siteName = $tenant?->name ?? 'DML Learning Platform';
+$title = ($pageTitle ?? '') !== '' && ($pageTitle ?? '') !== $siteName ? $pageTitle . ' – ' . $siteName : $siteName;
 ?><!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title><?= $v->e(($pageTitle ?? '') !== '' && ($pageTitle ?? '') !== $siteName ? $pageTitle . ' – ' . $siteName : $siteName) ?></title>
+<title><?= $v->e($title) ?></title>
 <meta name="theme-color" content="#0B7A6B">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
@@ -25,18 +27,27 @@ $siteName = $tenant?->name ?? 'DML Learning Platform';
       <span><?= $v->e($siteName) ?></span>
     </a>
     <?php if ($tenant !== null): ?>
-    <nav class="nav" aria-label="Main">
-      <a href="/courses">Courses</a>
-      <?php if ($v->can('course.manage')): ?><a href="/teach">Teaching</a><?php endif; ?>
       <?php if ($user !== null): ?>
+      <nav class="nav" aria-label="Main">
+        <?= $v->navLink('/', 'Home') ?>
+        <?= $v->navLink('/courses', 'Courses') ?>
+        <?php if ($v->can('course.manage')): ?><?= $v->navLink('/teach', 'Teaching') ?><?php endif; ?>
+        <?php if ($v->can('members.manage')): ?><?= $v->navLink('/people', 'People') ?><?php endif; ?>
+        <?php if ($v->can('audit.view')): ?><?= $v->navLink('/activity', 'Activity') ?><?php endif; ?>
+      </nav>
+      <div class="account">
+        <a href="/account"<?= $v->shared('path') === '/account' ? ' aria-current="page"' : '' ?>>
+          <?= $v->e($user->displayName) ?><?php if ($role !== null): ?> <span class="role">· <?= $v->e($role->label()) ?></span><?php endif; ?>
+        </a>
         <form method="post" action="/logout" class="inline">
           <?= $v->csrfField() ?>
           <button type="submit" class="linklike">Sign out</button>
         </form>
+      </div>
       <?php else: ?>
-        <a href="/login" class="nav-cta">Sign in</a>
+      <nav class="nav" aria-label="Main"><?= $v->navLink('/courses', 'Courses') ?></nav>
+      <div class="account"><a class="button button-small" href="/login">Sign in</a></div>
       <?php endif; ?>
-    </nav>
     <?php endif; ?>
   </div>
 </header>
@@ -46,8 +57,8 @@ $siteName = $tenant?->name ?? 'DML Learning Platform';
   <?php if ($msg = $v->shared('flash_error')): ?><p class="notice notice-err" role="alert"><?= $v->e($msg) ?></p><?php endif; ?>
   <?= $content ?>
 </main>
-<footer class="footer wrap">
-  <p><?= $v->e($siteName) ?><?php if ($user !== null): ?> · Signed in as <?= $v->e($user->displayName) ?><?php endif; ?></p>
+<footer class="footer">
+  <div class="wrap"><?= $v->e($siteName) ?> · Learn it. Practise it. Prove it.</div>
 </footer>
 </body>
 </html>

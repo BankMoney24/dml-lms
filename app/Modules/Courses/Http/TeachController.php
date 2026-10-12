@@ -16,8 +16,9 @@ use App\Modules\Courses\Course;
 use App\Modules\Courses\CourseAuthoring;
 use App\Modules\Courses\CourseRepository;
 use App\Modules\Courses\LessonRepository;
+use App\Modules\Learning\ProgressReport;
 
-/** Educator workspace: create a course, build its outline, add quiz questions, publish. */
+/** Educator workspace at course level: create, outline, modules, publish, progress. */
 final class TeachController
 {
     public function __construct(
@@ -27,6 +28,7 @@ final class TeachController
         private readonly LessonRepository $lessons,
         private readonly AssessmentRepository $assessments,
         private readonly CourseAuthoring $authoring,
+        private readonly ProgressReport $progress,
     ) {
     }
 
@@ -64,6 +66,20 @@ final class TeachController
         return $this->renderEdit($this->course($request));
     }
 
+    public function updateDetails(Request $request): Response
+    {
+        $course = $this->course($request);
+        $old = ['title' => $request->input('title', '') ?? '', 'summary' => $request->input('summary', '') ?? ''];
+        try {
+            $this->authoring->updateDetails($course, RequestContext::user($request), $old['title'], $old['summary']);
+        } catch (ValidationException $e) {
+            return $this->renderEdit($course, $e->errors, $old + ['details_open' => '1'], 422);
+        }
+        $this->session->flash('success', 'Course details saved.');
+
+        return Response::redirect('/teach/courses/' . $course->id);
+    }
+
     public function addModule(Request $request): Response
     {
         $course = $this->course($request);
@@ -77,11 +93,37 @@ final class TeachController
         return Response::redirect('/teach/courses/' . $course->id);
     }
 
+    public function renameModule(Request $request): Response
+    {
+        $course = $this->course($request);
+        try {
+            $this->authoring->renameModule($course, RequestContext::user($request), $request->routeInt('module'), $request->input('module_title', '') ?? '');
+            $this->session->flash('success', 'Module renamed.');
+        } catch (ValidationException $e) {
+            $this->session->flash('error', implode(' ', $e->errors));
+        }
+
+        return Response::redirect('/teach/courses/' . $course->id);
+    }
+
+    public function deleteModule(Request $request): Response
+    {
+        $course = $this->course($request);
+        try {
+            $this->authoring->deleteModule($course, RequestContext::user($request), $request->routeInt('module'));
+            $this->session->flash('success', 'Module deleted.');
+        } catch (ValidationException $e) {
+            $this->session->flash('error', implode(' ', $e->errors));
+        }
+
+        return Response::redirect('/teach/courses/' . $course->id);
+    }
+
     public function addLesson(Request $request): Response
     {
         $course = $this->course($request);
         try {
-            $this->authoring->addLesson($course, RequestContext::user($request), (int) ($request->input('module_id', '0') ?? '0'), [
+            $lessonId = $this->authoring->addLesson($course, RequestContext::user($request), (int) ($request->input('module_id', '0') ?? '0'), [
                 'type' => $request->input('type', '') ?? '',
                 'title' => $request->input('lesson_title', '') ?? '',
                 'body' => $request->input('body', '') ?? '',
@@ -92,27 +134,6 @@ final class TeachController
             return $this->renderEdit($course, $e->errors, $this->old($request), 422);
         }
         $this->session->flash('success', 'Lesson added.');
-
-        return Response::redirect('/teach/courses/' . $course->id);
-    }
-
-    public function addQuestion(Request $request): Response
-    {
-        $course = $this->course($request);
-        $lessonId = $request->routeInt('lesson');
-        try {
-            $this->authoring->addQuestion(
-                $course,
-                RequestContext::user($request),
-                $lessonId,
-                $request->input('prompt', '') ?? '',
-                array_values($request->inputArray('options')),
-                $request->input('correct', '') ?? '',
-            );
-        } catch (ValidationException $e) {
-            return $this->renderEdit($course, $e->errors, $this->old($request) + ['question_lesson' => (string) $lessonId], 422);
-        }
-        $this->session->flash('success', 'Question added.');
 
         return Response::redirect('/teach/courses/' . $course->id . '#lesson-' . $lessonId);
     }
@@ -130,26 +151,39 @@ final class TeachController
         return Response::redirect('/teach/courses/' . $course->id);
     }
 
+    public function unpublish(Request $request): Response
+    {
+        $course = $this->course($request);
+        $this->authoring->unpublish($course, RequestContext::user($request));
+        $this->session->flash('success', 'Course unpublished. It is hidden from learners until you publish it again; their progress is kept.');
+
+        return Response::redirect('/teach/courses/' . $course->id);
+    }
+
+    public function progress(Request $request): Response
+    {
+        $course = $this->course($request);
+
+        return Response::html($this->view->render('teach/progress', [
+            'pageTitle' => 'Progress: ' . $course->title,
+            'course' => $course,
+            'report' => $this->progress->forCourse($course->tenantId, $course->id),
+        ]));
+    }
+
     private function course(Request $request): Course
     {
         $tenant = RequestContext::tenant($request);
-        $course = $this->courses->findById($tenant->id, $request->routeInt('course'));
-        if ($course === null) {
-            throw HttpException::notFound();
-        }
 
-        return $course;
+        return $this->courses->findById($tenant->id, $request->routeInt('course')) ?? throw HttpException::notFound();
     }
 
     /** @return array<string, string> */
     private function old(Request $request): array
     {
         $old = [];
-        foreach (['module_title', 'module_id', 'type', 'lesson_title', 'body', 'pass_threshold', 'max_attempts', 'prompt', 'correct'] as $key) {
+        foreach (['module_title', 'module_id', 'type', 'lesson_title', 'body', 'pass_threshold', 'max_attempts'] as $key) {
             $old[$key] = $request->input($key, '') ?? '';
-        }
-        foreach (array_values($request->inputArray('options')) as $i => $label) {
-            $old['option_' . $i] = $label;
         }
 
         return $old;
@@ -174,24 +208,20 @@ final class TeachController
      */
     private function renderEdit(Course $course, array $errors = [], array $old = [], int $status = 200): Response
     {
+        $course = $this->courses->findById($course->tenantId, $course->id) ?? $course;
         $outline = $this->lessons->outline($course->tenantId, $course->id);
         $questionCounts = [];
         foreach ($outline as $module) {
             foreach ($module['lessons'] as $lesson) {
                 if ($lesson->isQuiz()) {
                     $assessment = $this->assessments->findForLesson($course->tenantId, $lesson->id);
-                    $questionCounts[$lesson->id] = $assessment === null
-                        ? 0
-                        : $this->assessments->questionCount($course->tenantId, $assessment['id']);
+                    $questionCounts[$lesson->id] = $assessment === null ? 0 : $this->assessments->questionCount($course->tenantId, $assessment['id']);
                 }
             }
         }
 
-        // Re-read the course so status reflects any publish in this request.
-        $course = $this->courses->findById($course->tenantId, $course->id) ?? $course;
-
         return Response::html($this->view->render('teach/edit', [
-            'pageTitle' => 'Edit ' . $course->title,
+            'pageTitle' => $course->title,
             'course' => $course,
             'outline' => $outline,
             'questionCounts' => $questionCounts,

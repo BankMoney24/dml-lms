@@ -5,12 +5,16 @@ declare(strict_types=1);
 use App\Core\Http\Kernel;
 use App\Core\Http\Router;
 use App\Modules\Assessments\Http\AttemptController;
+use App\Modules\Audit\Http\ActivityController;
 use App\Modules\Courses\Http\CatalogueController;
+use App\Modules\Courses\Http\LessonEditorController;
 use App\Modules\Courses\Http\TeachController;
+use App\Modules\Identity\Http\AccountController;
 use App\Modules\Identity\Http\LoginController;
 use App\Modules\Learning\Http\LearnController;
 use App\Modules\Platform\HealthController;
 use App\Modules\Platform\HomeController;
+use App\Modules\Tenancy\Http\PeopleController;
 
 /*
  * Route middleware:
@@ -44,8 +48,33 @@ return static function (Router $r): void {
     $r->get('/teach/courses/new', [TeachController::class, 'create'], $teach);
     $r->post('/teach/courses', [TeachController::class, 'store'], $teach);
     $r->get('/teach/courses/{course:int}', [TeachController::class, 'edit'], $teach);
+    $r->post('/teach/courses/{course:int}/details', [TeachController::class, 'updateDetails'], $teach);
     $r->post('/teach/courses/{course:int}/modules', [TeachController::class, 'addModule'], $teach);
+    $r->post('/teach/courses/{course:int}/modules/{module:int}', [TeachController::class, 'renameModule'], $teach);
+    $r->post('/teach/courses/{course:int}/modules/{module:int}/delete', [TeachController::class, 'deleteModule'], $teach);
     $r->post('/teach/courses/{course:int}/lessons', [TeachController::class, 'addLesson'], $teach);
-    $r->post('/teach/courses/{course:int}/lessons/{lesson:int}/questions', [TeachController::class, 'addQuestion'], $teach);
     $r->post('/teach/courses/{course:int}/publish', [TeachController::class, 'publish'], $teach);
+    $r->post('/teach/courses/{course:int}/unpublish', [TeachController::class, 'unpublish'], $teach);
+    $r->get('/teach/courses/{course:int}/progress', [TeachController::class, 'progress'], ['tenant', 'auth', 'can:reports.view']);
+
+    $r->get('/teach/courses/{course:int}/lessons/{lesson:int}', [LessonEditorController::class, 'edit'], $teach);
+    $r->post('/teach/courses/{course:int}/lessons/{lesson:int}', [LessonEditorController::class, 'update'], $teach);
+    $r->post('/teach/courses/{course:int}/lessons/{lesson:int}/move', [LessonEditorController::class, 'move'], $teach);
+    $r->post('/teach/courses/{course:int}/lessons/{lesson:int}/delete', [LessonEditorController::class, 'delete'], $teach);
+    $r->get('/teach/courses/{course:int}/lessons/{lesson:int}/preview', [LessonEditorController::class, 'preview'], $teach);
+    $r->post('/teach/courses/{course:int}/lessons/{lesson:int}/questions', [LessonEditorController::class, 'addQuestion'], $teach);
+    $r->post('/teach/courses/{course:int}/lessons/{lesson:int}/questions/{question:int}/delete', [LessonEditorController::class, 'deleteQuestion'], $teach);
+
+    $signedIn = ['tenant', 'auth'];
+    $r->get('/account', [AccountController::class, 'show'], $signedIn);
+    $r->post('/account', [AccountController::class, 'updateName'], $signedIn);
+    $r->post('/account/password', [AccountController::class, 'updatePassword'], $signedIn);
+
+    $people = ['tenant', 'auth', 'can:members.manage'];
+    $r->get('/people', [PeopleController::class, 'index'], $people);
+    $r->post('/people', [PeopleController::class, 'store'], $people);
+    $r->post('/people/{user:int}/role', [PeopleController::class, 'updateRole'], $people);
+    $r->post('/people/{user:int}/remove', [PeopleController::class, 'remove'], $people);
+
+    $r->get('/activity', [ActivityController::class, 'index'], ['tenant', 'auth', 'can:audit.view']);
 };

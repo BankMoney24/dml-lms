@@ -104,4 +104,29 @@ final class AssessmentRepository
             [$tenantId, $assessmentId],
         );
     }
+
+    public function updateSettings(int $tenantId, int $assessmentId, int $passThreshold, ?int $maxAttempts): void
+    {
+        $this->db->execute(
+            'UPDATE assessments SET pass_threshold = ?, max_attempts = ?, updated_at = ? WHERE tenant_id = ? AND id = ?',
+            [$passThreshold, $maxAttempts, $this->clock->sqlNow(), $tenantId, $assessmentId],
+        );
+    }
+
+    public function attemptCount(int $tenantId, int $assessmentId): int
+    {
+        return (int) $this->db->fetchValue(
+            'SELECT COUNT(*) FROM quiz_attempts WHERE tenant_id = ? AND assessment_id = ?',
+            [$tenantId, $assessmentId],
+        );
+    }
+
+    /** @return bool whether a question was deleted */
+    public function deleteQuestion(int $tenantId, int $assessmentId, int $questionId): bool
+    {
+        return $this->db->execute(
+            'DELETE FROM questions WHERE tenant_id = ? AND assessment_id = ? AND id = ?',
+            [$tenantId, $assessmentId, $questionId],
+        ) > 0;
+    }
 }

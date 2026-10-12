@@ -9,8 +9,8 @@ $tenant = $v->shared('tenant');
   <p class="actions"><a class="button" href="/login">Sign in</a> <a class="button button-quiet" href="/courses">Browse courses</a></p>
 </section>
 <?php if ($courses !== []): ?>
-<section>
-  <h2>Courses</h2>
+<section class="section" aria-labelledby="latest">
+  <h2 id="latest">Latest courses</h2>
   <?php include __DIR__ . '/../courses/_list.php'; ?>
 </section>
 <?php endif; ?>

@@ -4,11 +4,7 @@
 /** @var \App\Modules\Courses\Lesson $lesson */
 $base = '/courses/' . $v->e($course->slug);
 ?>
-<nav class="crumbs" aria-label="Breadcrumb">
-  <a href="<?= $base ?>"><?= $v->e($course->title) ?></a>
-  <span aria-hidden="true">/</span>
-  <span>Lesson <?= $position ?> of <?= $total ?></span>
-</nav>
+<?= $v->breadcrumbs([$course->title => '/courses/' . $course->slug, 'Lesson ' . $position . ' of ' . $total => null]) ?>
 
 <div class="lesson-layout">
 <article class="lesson">

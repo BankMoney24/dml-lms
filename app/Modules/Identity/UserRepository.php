@@ -34,18 +34,31 @@ final class UserRepository
         return is_string($hash) ? $hash : null;
     }
 
-    public function create(string $email, string $displayName, string $passwordHash, bool $platformAdmin = false): User
-    {
+    public function create(
+        string $email,
+        string $displayName,
+        string $passwordHash,
+        bool $platformAdmin = false,
+        bool $mustChangePassword = false,
+    ): User {
         $now = $this->clock->sqlNow();
         $email = self::normaliseEmail($email);
         $id = $this->db->insert(
             'INSERT INTO users (email, display_name, password_hash, status, is_platform_admin, session_version,
-                                password_changed_at, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)',
-            [$email, $displayName, $passwordHash, User::STATUS_ACTIVE, $platformAdmin ? 1 : 0, $now, $now, $now],
+                                password_changed_at, must_change_password, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?)',
+            [$email, $displayName, $passwordHash, User::STATUS_ACTIVE, $platformAdmin ? 1 : 0, $now, $mustChangePassword ? 1 : 0, $now, $now],
         );
 
-        return new User($id, $email, $displayName, User::STATUS_ACTIVE, $platformAdmin, 1);
+        return new User($id, $email, $displayName, User::STATUS_ACTIVE, $platformAdmin, 1, $mustChangePassword);
+    }
+
+    public function updateDisplayName(int $userId, string $displayName): void
+    {
+        $this->db->execute(
+            'UPDATE users SET display_name = ?, updated_at = ? WHERE id = ?',
+            [$displayName, $this->clock->sqlNow(), $userId],
+        );
     }
 
     /** Changing the password bumps the session version, signing out every other session (IAM-006). */
@@ -54,7 +67,7 @@ final class UserRepository
         $now = $this->clock->sqlNow();
         $this->db->execute(
             'UPDATE users SET password_hash = ?, password_changed_at = ?, session_version = session_version + 1,
-                              updated_at = ? WHERE id = ?',
+                              must_change_password = 0, updated_at = ? WHERE id = ?',
             [$passwordHash, $now, $now, $userId],
         );
     }

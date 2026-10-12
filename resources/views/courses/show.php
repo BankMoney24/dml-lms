@@ -17,7 +17,8 @@ foreach ($outline as $module) {
   <section class="course-intro">
     <h1><?= $v->e($course->title) ?></h1>
     <?= $v->paragraphs($course->summary) ?>
-    <p class="muted"><?= $lessonCount ?> <?= $lessonCount === 1 ? 'lesson' : 'lessons' ?></p>
+    <p class="page-head-meta"><?= $v->badge($v->plural($lessonCount, 'lesson')) ?>
+      <?php if ($v->can('course.manage')): ?><a href="/teach/courses/<?= $course->id ?>">Edit this course</a><?php endif; ?></p>
 
     <?php if ($enrolment !== null && $enrolment->isCompleted()): ?>
       <p class="notice notice-done">You have completed this course.</p>

@@ -61,6 +61,13 @@ abstract class AppTestCase extends TestCase
         $this->app = $this->freshApp($this->session);
     }
 
+    /** Switches back to an earlier "browser" (its session and form token). */
+    protected function useBrowser(ArraySession $session): void
+    {
+        $this->session = $session;
+        $this->app = $this->freshApp($session);
+    }
+
     protected function db(): Connection
     {
         return TestDatabase::connection();
@@ -162,9 +169,9 @@ abstract class AppTestCase extends TestCase
         return $answers;
     }
 
-    protected function assertRedirectTo(string $location, Response $response): void
+    protected function assertRedirectTo(string $location, Response $response, string $message = ''): void
     {
-        $this->assertContains($response->status, [301, 302, 303], 'Expected a redirect, got ' . $response->status);
-        $this->assertSame($location, $response->header('Location'));
+        $this->assertContains($response->status, [301, 302, 303], trim($message . ' Expected a redirect, got ' . $response->status));
+        $this->assertSame($location, $response->header('Location'), $message);
     }
 }

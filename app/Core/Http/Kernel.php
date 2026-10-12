@@ -40,6 +40,7 @@ final class Kernel
         $request = $request->withAttribute('request_id', $requestId);
         $this->view->resetShared();
         $this->view->share('request_id', $requestId);
+        $this->view->share('path', $request->path);
 
         try {
             [$route, $params] = $this->router->match($request->method, $request->path);

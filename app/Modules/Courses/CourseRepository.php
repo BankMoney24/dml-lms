@@ -87,4 +87,20 @@ final class CourseRepository
             [$this->clock->sqlNow(), $tenantId, $courseId],
         );
     }
+
+    public function updateDetails(int $tenantId, int $courseId, string $title, string $summary): void
+    {
+        $this->db->execute(
+            'UPDATE courses SET title = ?, summary = ?, updated_at = ? WHERE tenant_id = ? AND id = ?',
+            [$title, $summary, $this->clock->sqlNow(), $tenantId, $courseId],
+        );
+    }
+
+    public function markDraft(int $tenantId, int $courseId): void
+    {
+        $this->db->execute(
+            'UPDATE courses SET status = ?, updated_at = ? WHERE tenant_id = ? AND id = ?',
+            [Course::STATUS_DRAFT, $this->clock->sqlNow(), $tenantId, $courseId],
+        );
+    }
 }

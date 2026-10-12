@@ -12,7 +12,13 @@ use App\Modules\Audit\AuditLog;
 use App\Modules\Identity\CurrentUser;
 use App\Modules\Identity\Permission;
 
-/** Educator use cases for building and publishing a course. */
+/**
+ * Educator use cases for building, editing and publishing a course.
+ *
+ * Editing rule: anything learners have already used (opened lessons, quiz
+ * attempts) is never deleted, because that would silently rewrite their
+ * history. Text can always be corrected.
+ */
 final class CourseAuthoring
 {
     public function __construct(
@@ -27,36 +33,47 @@ final class CourseAuthoring
     public function createCourse(int $tenantId, CurrentUser $author, string $title, string $summary): Course
     {
         $author->authorise(Permission::CourseManage);
-        $title = self::clean($title);
-        $summary = trim($summary);
-        $errors = [];
-        if (mb_strlen($title) < 3 || mb_strlen($title) > 190) {
-            $errors['title'] = 'Give the course a title between 3 and 190 characters.';
-        }
-        if (mb_strlen($summary) > 2000) {
-            $errors['summary'] = 'Keep the summary under 2,000 characters.';
-        }
-        if ($errors !== []) {
-            throw new ValidationException($errors);
-        }
-
+        [$title, $summary] = $this->validDetails($title, $summary);
         $course = $this->courses->create($tenantId, $author->user->id, $this->uniqueSlug($tenantId, $title), $title, $summary);
         $this->audit->record($tenantId, $author->user->id, 'course.created', 'course', $course->id);
 
         return $course;
     }
 
+    public function updateDetails(Course $course, CurrentUser $author, string $title, string $summary): void
+    {
+        $this->authoriseFor($course, $author);
+        [$title, $summary] = $this->validDetails($title, $summary);
+        $this->courses->updateDetails($course->tenantId, $course->id, $title, $summary);
+        $this->audit->record($course->tenantId, $author->user->id, 'course.updated', 'course', $course->id);
+    }
+
     public function addModule(Course $course, CurrentUser $author, string $title): int
     {
         $this->authoriseFor($course, $author);
-        $title = self::clean($title);
-        if (mb_strlen($title) < 2 || mb_strlen($title) > 190) {
-            throw ValidationException::single('module_title', 'Give the module a title between 2 and 190 characters.');
-        }
-        $id = $this->lessons->addModule($course->tenantId, $course->id, $title);
+        $id = $this->lessons->addModule($course->tenantId, $course->id, $this->validModuleTitle($title));
         $this->courses->touch($course->tenantId, $course->id);
 
         return $id;
+    }
+
+    public function renameModule(Course $course, CurrentUser $author, int $moduleId, string $title): void
+    {
+        $this->authoriseFor($course, $author);
+        $this->requireModule($course, $moduleId);
+        $this->lessons->renameModule($course->tenantId, $course->id, $moduleId, $this->validModuleTitle($title));
+        $this->courses->touch($course->tenantId, $course->id);
+    }
+
+    public function deleteModule(Course $course, CurrentUser $author, int $moduleId): void
+    {
+        $this->authoriseFor($course, $author);
+        $this->requireModule($course, $moduleId);
+        if ($this->lessons->lessonCountInModule($course->tenantId, $moduleId) > 0) {
+            throw ValidationException::single('module', 'Move or delete the lessons in this module first.');
+        }
+        $this->lessons->deleteModule($course->tenantId, $course->id, $moduleId);
+        $this->courses->touch($course->tenantId, $course->id);
     }
 
     /**
@@ -68,50 +85,16 @@ final class CourseAuthoring
         if (!$this->lessons->moduleBelongsToCourse($course->tenantId, $course->id, $moduleId)) {
             throw ValidationException::single('module_id', 'Choose a module from this course.');
         }
-
         $type = $input['type'];
-        $title = self::clean($input['title']);
-        $body = trim($input['body']);
-        $errors = [];
         if (!in_array($type, [Lesson::TYPE_TEXT, Lesson::TYPE_QUIZ], true)) {
-            $errors['type'] = 'Choose a lesson type.';
+            throw ValidationException::single('type', 'Choose a lesson type.');
         }
-        if (mb_strlen($title) < 2 || mb_strlen($title) > 190) {
-            $errors['lesson_title'] = 'Give the lesson a title between 2 and 190 characters.';
-        }
-        if ($type === Lesson::TYPE_TEXT && $body === '') {
-            $errors['body'] = 'Add the lesson text learners will read.';
-        }
-        if (mb_strlen($body) > 50000) {
-            $errors['body'] = 'Keep lesson text under 50,000 characters; split longer material into several lessons.';
-        }
+        $valid = $this->validLesson($type, $input);
 
-        $threshold = 70;
-        $maxAttempts = null;
-        if ($type === Lesson::TYPE_QUIZ) {
-            $rawThreshold = trim($input['pass_threshold'] ?? '70');
-            if (!ctype_digit($rawThreshold) || (int) $rawThreshold > 100) {
-                $errors['pass_threshold'] = 'Enter a pass mark from 0 to 100.';
-            } else {
-                $threshold = (int) $rawThreshold;
-            }
-            $rawAttempts = trim($input['max_attempts'] ?? '');
-            if ($rawAttempts !== '') {
-                if (!ctype_digit($rawAttempts) || (int) $rawAttempts < 1 || (int) $rawAttempts > 20) {
-                    $errors['max_attempts'] = 'Leave blank for unlimited, or enter 1 to 20 attempts.';
-                } else {
-                    $maxAttempts = (int) $rawAttempts;
-                }
-            }
-        }
-        if ($errors !== []) {
-            throw new ValidationException($errors);
-        }
-
-        return $this->db->transaction(function () use ($course, $moduleId, $type, $title, $body, $threshold, $maxAttempts): int {
-            $lessonId = $this->lessons->addLesson($course->tenantId, $course->id, $moduleId, $type, $title, $body);
+        return $this->db->transaction(function () use ($course, $moduleId, $type, $valid): int {
+            $lessonId = $this->lessons->addLesson($course->tenantId, $course->id, $moduleId, $type, $valid['title'], $valid['body']);
             if ($type === Lesson::TYPE_QUIZ) {
-                $this->assessments->create($course->tenantId, $lessonId, $threshold, $maxAttempts);
+                $this->assessments->create($course->tenantId, $lessonId, $valid['threshold'], $valid['max_attempts']);
             }
             $this->courses->touch($course->tenantId, $course->id);
 
@@ -119,15 +102,62 @@ final class CourseAuthoring
         });
     }
 
+    /**
+     * @param array{title: string, body: string, pass_threshold?: string, max_attempts?: string} $input
+     */
+    public function updateLesson(Course $course, CurrentUser $author, int $lessonId, array $input): void
+    {
+        $this->authoriseFor($course, $author);
+        $lesson = $this->requireLesson($course, $lessonId);
+        $valid = $this->validLesson($lesson->type, $input + ['type' => $lesson->type]);
+
+        $this->db->transaction(function () use ($course, $lesson, $valid, $author): void {
+            $this->lessons->updateLesson($course->tenantId, $course->id, $lesson->id, $valid['title'], $valid['body']);
+            if ($lesson->isQuiz()) {
+                $assessment = $this->assessments->findForLesson($course->tenantId, $lesson->id);
+                if ($assessment !== null) {
+                    $this->assessments->updateSettings($course->tenantId, $assessment['id'], $valid['threshold'], $valid['max_attempts']);
+                }
+            }
+            $this->courses->touch($course->tenantId, $course->id);
+            $this->audit->record($course->tenantId, $author->user->id, 'lesson.updated', 'lesson', $lesson->id);
+        });
+    }
+
+    public function moveLesson(Course $course, CurrentUser $author, int $lessonId, string $direction): void
+    {
+        $this->authoriseFor($course, $author);
+        if (!in_array($direction, ['up', 'down'], true)) {
+            throw HttpException::badRequest();
+        }
+        $this->db->transaction(function () use ($course, $lessonId, $direction): void {
+            $lesson = $this->requireLesson($course, $lessonId);
+            $this->lessons->move($course->tenantId, $lesson, $direction);
+            $this->courses->touch($course->tenantId, $course->id);
+        });
+    }
+
+    public function deleteLesson(Course $course, CurrentUser $author, int $lessonId): void
+    {
+        $this->authoriseFor($course, $author);
+        $lesson = $this->requireLesson($course, $lessonId);
+        $assessment = $lesson->isQuiz() ? $this->assessments->findForLesson($course->tenantId, $lesson->id) : null;
+        if (
+            $this->lessons->hasLearnerActivity($course->tenantId, $lesson->id)
+            || ($assessment !== null && $this->assessments->attemptCount($course->tenantId, $assessment['id']) > 0)
+        ) {
+            throw ValidationException::single('lesson', 'Learners have already used this lesson, so it cannot be deleted. You can still edit its text.');
+        }
+        $this->lessons->deleteLesson($course->tenantId, $course->id, $lesson->id);
+        $this->courses->touch($course->tenantId, $course->id);
+        $this->audit->record($course->tenantId, $author->user->id, 'lesson.deleted', 'lesson', $lesson->id);
+    }
+
     /** @param list<string> $options */
     public function addQuestion(Course $course, CurrentUser $author, int $lessonId, string $prompt, array $options, string $correct): int
     {
         $this->authoriseFor($course, $author);
-        $lesson = $this->lessons->findInCourse($course->tenantId, $course->id, $lessonId);
-        $assessment = $lesson === null ? null : $this->assessments->findForLesson($course->tenantId, $lesson->id);
-        if ($assessment === null) {
-            throw HttpException::notFound();
-        }
+        $assessment = $this->assessmentFor($course, $lessonId);
 
         $prompt = trim($prompt);
         $labels = [];
@@ -167,6 +197,19 @@ final class CourseAuthoring
         return $id;
     }
 
+    public function deleteQuestion(Course $course, CurrentUser $author, int $lessonId, int $questionId): void
+    {
+        $this->authoriseFor($course, $author);
+        $assessment = $this->assessmentFor($course, $lessonId);
+        if ($this->assessments->attemptCount($course->tenantId, $assessment['id']) > 0) {
+            throw ValidationException::single('question', 'Learners have already answered this quiz, so its questions cannot be removed.');
+        }
+        if (!$this->assessments->deleteQuestion($course->tenantId, $assessment['id'], $questionId)) {
+            throw HttpException::notFound();
+        }
+        $this->courses->touch($course->tenantId, $course->id);
+    }
+
     /** @return list<string> reasons the course cannot be published yet */
     public function publishProblems(Course $course): array
     {
@@ -199,12 +242,113 @@ final class CourseAuthoring
         $this->audit->record($course->tenantId, $author->user->id, 'course.published', 'course', $course->id);
     }
 
+    /** Hides the course from the catalogue and from enrolled learners until it is published again. */
+    public function unpublish(Course $course, CurrentUser $author): void
+    {
+        $this->authoriseFor($course, $author);
+        $this->courses->markDraft($course->tenantId, $course->id);
+        $this->audit->record($course->tenantId, $author->user->id, 'course.unpublished', 'course', $course->id);
+    }
+
     private function authoriseFor(Course $course, CurrentUser $author): void
     {
         $author->authorise(Permission::CourseManage);
         if ($author->membership === null || $author->membership->tenantId !== $course->tenantId) {
             throw HttpException::forbidden();
         }
+    }
+
+    private function requireLesson(Course $course, int $lessonId): Lesson
+    {
+        return $this->lessons->findInCourse($course->tenantId, $course->id, $lessonId) ?? throw HttpException::notFound();
+    }
+
+    private function requireModule(Course $course, int $moduleId): void
+    {
+        if ($this->lessons->findModule($course->tenantId, $course->id, $moduleId) === null) {
+            throw HttpException::notFound();
+        }
+    }
+
+    /** @return array{id: int, pass_threshold: int, max_attempts: ?int} */
+    private function assessmentFor(Course $course, int $lessonId): array
+    {
+        $lesson = $this->requireLesson($course, $lessonId);
+
+        return $this->assessments->findForLesson($course->tenantId, $lesson->id) ?? throw HttpException::notFound();
+    }
+
+    /** @return array{0: string, 1: string} */
+    private function validDetails(string $title, string $summary): array
+    {
+        $title = self::clean($title);
+        $summary = trim($summary);
+        $errors = [];
+        if (mb_strlen($title) < 3 || mb_strlen($title) > 190) {
+            $errors['title'] = 'Give the course a title between 3 and 190 characters.';
+        }
+        if (mb_strlen($summary) > 2000) {
+            $errors['summary'] = 'Keep the summary under 2,000 characters.';
+        }
+        if ($errors !== []) {
+            throw new ValidationException($errors);
+        }
+
+        return [$title, $summary];
+    }
+
+    private function validModuleTitle(string $title): string
+    {
+        $title = self::clean($title);
+        if (mb_strlen($title) < 2 || mb_strlen($title) > 190) {
+            throw ValidationException::single('module_title', 'Give the module a title between 2 and 190 characters.');
+        }
+
+        return $title;
+    }
+
+    /**
+     * @param array{type: string, title: string, body: string, pass_threshold?: string, max_attempts?: string} $input
+     * @return array{title: string, body: string, threshold: int, max_attempts: ?int}
+     */
+    private function validLesson(string $type, array $input): array
+    {
+        $title = self::clean($input['title']);
+        $body = trim($input['body']);
+        $errors = [];
+        if (mb_strlen($title) < 2 || mb_strlen($title) > 190) {
+            $errors['lesson_title'] = 'Give the lesson a title between 2 and 190 characters.';
+        }
+        if ($type === Lesson::TYPE_TEXT && $body === '') {
+            $errors['body'] = 'Add the lesson text learners will read.';
+        }
+        if (mb_strlen($body) > 50000) {
+            $errors['body'] = 'Keep lesson text under 50,000 characters; split longer material into several lessons.';
+        }
+
+        $threshold = 70;
+        $maxAttempts = null;
+        if ($type === Lesson::TYPE_QUIZ) {
+            $rawThreshold = trim($input['pass_threshold'] ?? '70');
+            if (!ctype_digit($rawThreshold) || (int) $rawThreshold > 100) {
+                $errors['pass_threshold'] = 'Enter a pass mark from 0 to 100.';
+            } else {
+                $threshold = (int) $rawThreshold;
+            }
+            $rawAttempts = trim($input['max_attempts'] ?? '');
+            if ($rawAttempts !== '') {
+                if (!ctype_digit($rawAttempts) || (int) $rawAttempts < 1 || (int) $rawAttempts > 20) {
+                    $errors['max_attempts'] = 'Leave blank for unlimited, or enter 1 to 20 attempts.';
+                } else {
+                    $maxAttempts = (int) $rawAttempts;
+                }
+            }
+        }
+        if ($errors !== []) {
+            throw new ValidationException($errors);
+        }
+
+        return ['title' => $title, 'body' => $body, 'threshold' => $threshold, 'max_attempts' => $maxAttempts];
     }
 
     private function uniqueSlug(int $tenantId, string $title): string

@@ -28,14 +28,14 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 | TEN-003 server-side membership checks | Built | Route gate + use-case checks + repository scoping |
 | TEN-004 branding, locale, terminology | Partial | Name, locale, timezone stored; branding/terminology next |
 | TEN-005 tenant in jobs/cache/storage/audit | Partial | Audit ✔; no jobs/cache/uploads exist yet |
-| IAM-001 sign-in/out, reset, invitation | Partial | Sign-in/out ✔; reset and invitations next (admin creates accounts via console) |
+| IAM-001 sign-in/out, reset, invitation | Partial | Sign-in/out ✔; owners/admins add people on the **People** page with a one-time password the person must replace at first sign-in; self-service change password ✔. Email reset and email invitations need an email provider (next) |
 | IAM-002 secure server sessions + CSRF | Built | ADR 0002 |
 | IAM-003 password hashing | Built | |
 | IAM-004 roles as tenant memberships | Built | One role per membership (ADR 0001) |
 | IAM-005 MFA for privileged admins | **Next (P0)** | |
 | IAM-006 invalidate sessions on credential/membership change | Built | session_version |
 | IAM-007 generic auth errors | Built | Constant-time path for unknown accounts |
-| CRS-001/002 courses, modules, ordered lessons | Partial | Text and quiz lessons; video/PDF/link/lab types next; no prerequisites/price yet |
+| CRS-001/002 courses, modules, ordered lessons | Partial | Text and quiz lessons with edit, reorder, delete-when-unused, module rename/delete, course details edit, teacher preview, unpublish. Video/PDF/link/lab types next; no prerequisites/price yet |
 | CRS-003 preview/gated content | Partial | Enrolment gate ✔; preview lessons next |
 | CRS-004 progress and resume | Built | "Continue" goes to the first incomplete lesson |
 | ASM-001 MCQ, server scoring, thresholds | Built | Floor rounding; answers never sent to the browser |
@@ -46,8 +46,8 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 | LAB-001…007 virtual labs | Next | Separate service per PRD §10.1; not in this slice |
 | PAY-001…005 payments (Paystack) | Next | |
 | PAR-* guardians | Next | Guardian role exists with no permissions |
-| ADM-001 tenant reports | Next | |
-| ADM-002 audit events | Partial | Recorded for sign-in, course create/publish, enrol, attempts, completion; no viewer UI yet |
+| ADM-001 tenant reports | Partial | Per-course learner progress (lessons done, best quiz score per quiz, last activity). Tenant-wide reports and export next |
+| ADM-002 audit events | Built | Recorded for sign-in, people changes, course and lesson changes, enrolment, attempts, completion; readable **Activity** page for owners/admins |
 | NTF-*, SUP-001 | Next | |
 | §8 offline | Partial | Offline banner, static-asset service worker, quiz drafts on device until server confirms, idempotent submit. IndexedDB outbox and conflict handling next |
 | §9 public API v1 | Next | |
@@ -57,10 +57,14 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 
 Parameterised SQL everywhere · contextual output escaping · CSRF on all state changes · `__Host-` secure session cookie, rotation on login/logout · login throttling · strict CSP with no inline code · `X-Frame-Options: DENY`, `nosniff`, referrer and permissions policies, HSTS on HTTPS · `Cache-Control: no-store` on pages · user-facing errors carry a request id, never internals · IPs in audit stored as keyed hashes · composite foreign keys against cross-tenant writes · secrets only in `shared/.env` · forced-command deploy key · actions pinned to SHAs.
 
+## Interface
+
+Shared components rendered by `ViewHelpers` (labelled fields with inline errors, error summary linking to fields, badges, empty states, breadcrumbs), role-aware navigation with the current section marked, the same page-header pattern on every screen, two-step confirmation for destructive actions, and course tabs (Outline / Learner progress) in the teaching workspace.
+
 ## Recommended next slice
 
 1. Run `inspect.sh`, set up staging, complete the backup/restore drill (closes Phase 0).
-2. MFA for owners/admins, password reset by email, invitations (IAM P0 gaps).
+2. Email provider adapter, then password reset by email and email invitations; MFA for owners/admins (IAM P0 gaps).
 3. Institution onboarding wizard on a reusable wizard engine (PRD §6.3–6.4).
 4. Paystack adapter with verified, idempotent webhooks.
 5. First lab provider behind the lab-session contract.

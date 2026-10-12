@@ -25,13 +25,18 @@ use App\Modules\Assessments\AttemptRepository;
 use App\Modules\Assessments\AttemptService;
 use App\Modules\Assessments\Http\AttemptController;
 use App\Modules\Assessments\QuizScorer;
+use App\Modules\Audit\ActivityDescriber;
 use App\Modules\Audit\AuditLog;
+use App\Modules\Audit\Http\ActivityController;
 use App\Modules\Courses\CourseAuthoring;
 use App\Modules\Courses\CourseRepository;
 use App\Modules\Courses\Http\CatalogueController;
+use App\Modules\Courses\Http\LessonEditorController;
 use App\Modules\Courses\Http\TeachController;
 use App\Modules\Courses\LessonRepository;
+use App\Modules\Identity\AccountService;
 use App\Modules\Identity\AuthService;
+use App\Modules\Identity\Http\AccountController;
 use App\Modules\Identity\Http\LoginController;
 use App\Modules\Identity\LoginThrottle;
 use App\Modules\Identity\Middleware\AuthenticateSession;
@@ -43,9 +48,12 @@ use App\Modules\Learning\CompletionRule;
 use App\Modules\Learning\EnrolmentRepository;
 use App\Modules\Learning\Http\LearnController;
 use App\Modules\Learning\LearningService;
+use App\Modules\Learning\ProgressReport;
 use App\Modules\Learning\ProgressRepository;
 use App\Modules\Platform\HealthController;
 use App\Modules\Platform\HomeController;
+use App\Modules\Tenancy\Http\PeopleController;
+use App\Modules\Tenancy\MemberService;
 use App\Modules\Tenancy\MembershipRepository;
 use App\Modules\Tenancy\RequireTenant;
 use App\Modules\Tenancy\ResolveTenant;
@@ -198,6 +206,42 @@ final class Application
             $c->get(LessonRepository::class),
             $c->get(AssessmentRepository::class),
             $c->get(CourseAuthoring::class),
+            new ProgressReport($c->get(Connection::class)),
+        ));
+        $c->set(LessonEditorController::class, static fn (Container $c) => new LessonEditorController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(CourseRepository::class),
+            $c->get(LessonRepository::class),
+            $c->get(AssessmentRepository::class),
+            $c->get(CourseAuthoring::class),
+        ));
+        $c->set(AccountService::class, static fn (Container $c) => new AccountService(
+            $c->get(UserRepository::class),
+            $c->get(Session::class),
+            $c->get(AuditLog::class),
+        ));
+        $c->set(AccountController::class, static fn (Container $c) => new AccountController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(AccountService::class),
+        ));
+        $c->set(MemberService::class, static fn (Container $c) => new MemberService(
+            $c->get(Connection::class),
+            $c->get(UserRepository::class),
+            $c->get(MembershipRepository::class),
+            $c->get(AuditLog::class),
+        ));
+        $c->set(PeopleController::class, static fn (Container $c) => new PeopleController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(MembershipRepository::class),
+            $c->get(MemberService::class),
+        ));
+        $c->set(ActivityController::class, static fn (Container $c) => new ActivityController(
+            $c->get(View::class),
+            $c->get(AuditLog::class),
+            new ActivityDescriber(),
         ));
 
         $c->set(Router::class, static function (): Router {

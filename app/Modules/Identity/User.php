@@ -16,6 +16,7 @@ final class User
         public readonly string $status,
         public readonly bool $isPlatformAdmin,
         public readonly int $sessionVersion,
+        public readonly bool $mustChangePassword = false,
     ) {
     }
 
@@ -29,6 +30,7 @@ final class User
             (string) $row['status'],
             (bool) $row['is_platform_admin'],
             (int) $row['session_version'],
+            (bool) ($row['must_change_password'] ?? false),
         );
     }
 

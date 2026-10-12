@@ -115,4 +115,93 @@ final class LessonRepository
 
         return array_map(static fn (array $r): int => (int) $r['id'], $rows);
     }
+
+    /** @return array{id: int, title: string}|null */
+    public function findModule(int $tenantId, int $courseId, int $moduleId): ?array
+    {
+        $row = $this->db->fetchOne(
+            'SELECT id, title FROM course_modules WHERE tenant_id = ? AND course_id = ? AND id = ?',
+            [$tenantId, $courseId, $moduleId],
+        );
+
+        return $row === null ? null : ['id' => (int) $row['id'], 'title' => (string) $row['title']];
+    }
+
+    public function renameModule(int $tenantId, int $courseId, int $moduleId, string $title): void
+    {
+        $this->db->execute(
+            'UPDATE course_modules SET title = ?, updated_at = ? WHERE tenant_id = ? AND course_id = ? AND id = ?',
+            [$title, $this->clock->sqlNow(), $tenantId, $courseId, $moduleId],
+        );
+    }
+
+    public function lessonCountInModule(int $tenantId, int $moduleId): int
+    {
+        return (int) $this->db->fetchValue(
+            'SELECT COUNT(*) FROM lessons WHERE tenant_id = ? AND module_id = ?',
+            [$tenantId, $moduleId],
+        );
+    }
+
+    public function deleteModule(int $tenantId, int $courseId, int $moduleId): void
+    {
+        $this->db->execute(
+            'DELETE FROM course_modules WHERE tenant_id = ? AND course_id = ? AND id = ?',
+            [$tenantId, $courseId, $moduleId],
+        );
+    }
+
+    public function updateLesson(int $tenantId, int $courseId, int $lessonId, string $title, string $body): void
+    {
+        $this->db->execute(
+            'UPDATE lessons SET title = ?, body = ?, updated_at = ? WHERE tenant_id = ? AND course_id = ? AND id = ?',
+            [$title, $body, $this->clock->sqlNow(), $tenantId, $courseId, $lessonId],
+        );
+    }
+
+    /**
+     * Swaps a lesson with its neighbour inside the same module.
+     *
+     * @return bool false when it is already first/last
+     */
+    public function move(int $tenantId, Lesson $lesson, string $direction): bool
+    {
+        $up = $direction === 'up';
+        $neighbour = $this->db->fetchOne(
+            'SELECT id, position FROM lessons WHERE tenant_id = ? AND module_id = ? AND position ' . ($up ? '<' : '>') . ' ?
+             ORDER BY position ' . ($up ? 'DESC' : 'ASC') . ' LIMIT 1 FOR UPDATE',
+            [$tenantId, $lesson->moduleId, $lesson->position],
+        );
+        if ($neighbour === null) {
+            return false;
+        }
+        $now = $this->clock->sqlNow();
+        $this->db->execute(
+            'UPDATE lessons SET position = ?, updated_at = ? WHERE tenant_id = ? AND id = ?',
+            [(int) $neighbour['position'], $now, $tenantId, $lesson->id],
+        );
+        $this->db->execute(
+            'UPDATE lessons SET position = ?, updated_at = ? WHERE tenant_id = ? AND id = ?',
+            [$lesson->position, $now, $tenantId, (int) $neighbour['id']],
+        );
+
+        return true;
+    }
+
+    /** Whether any learner has opened or completed this lesson. */
+    public function hasLearnerActivity(int $tenantId, int $lessonId): bool
+    {
+        return $this->db->fetchValue(
+            'SELECT 1 FROM lesson_progress WHERE tenant_id = ? AND lesson_id = ? LIMIT 1',
+            [$tenantId, $lessonId],
+        ) !== null;
+    }
+
+    public function deleteLesson(int $tenantId, int $courseId, int $lessonId): void
+    {
+        $this->db->execute(
+            'DELETE FROM lessons WHERE tenant_id = ? AND course_id = ? AND id = ?',
+            [$tenantId, $courseId, $lessonId],
+        );
+    }
 }

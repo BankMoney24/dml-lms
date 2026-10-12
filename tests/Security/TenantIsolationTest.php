@@ -132,6 +132,54 @@ final class TenantIsolationTest extends AppTestCase
         $this->assertSame(404, $this->get('alpha.test', $resultUrl)->status);
     }
 
+    public function testEditingEndpointsRefuseAnotherTenantsLessons(): void
+    {
+        $this->login('alpha.test', 'teacher@alpha.test', 'correct-horse-battery');
+        $alphaCourse = $this->alphaCourse['course']->id;
+        $betaLesson = $this->betaCourse['reading']->id;
+        $betaQuiz = $this->betaCourse['quiz']->id;
+        $betaQuestion = (int) $this->db()->fetchValue('SELECT id FROM questions WHERE tenant_id = ? LIMIT 1', [$this->beta->id]);
+
+        // Beta's ids under alpha's own course URL.
+        $this->assertSame(404, $this->get('alpha.test', "/teach/courses/$alphaCourse/lessons/$betaLesson")->status);
+        $this->assertSame(404, $this->get('alpha.test', "/teach/courses/$alphaCourse/lessons/$betaLesson/preview")->status);
+        $this->assertSame(404, $this->post('alpha.test', "/teach/courses/$alphaCourse/lessons/$betaLesson", ['lesson_title' => 'Hacked', 'body' => 'x'])->status);
+        $this->assertSame(404, $this->post('alpha.test', "/teach/courses/$alphaCourse/lessons/$betaLesson/delete")->status);
+        $this->assertSame(404, $this->post('alpha.test', "/teach/courses/$alphaCourse/lessons/$betaLesson/move", ['direction' => 'up'])->status);
+        // Alpha's quiz URL with beta's question id.
+        $alphaQuiz = $this->alphaCourse['quiz']->id;
+        $this->post('alpha.test', "/teach/courses/$alphaCourse/lessons/$alphaQuiz/questions/$betaQuestion/delete");
+        $this->assertSame(404, $this->get('alpha.test', '/teach/courses/' . $this->betaCourse['course']->id . '/progress')->status);
+
+        $this->assertSame(1, (int) $this->db()->fetchValue('SELECT COUNT(*) FROM questions WHERE id = ?', [$betaQuestion]));
+        $this->assertSame(0, (int) $this->db()->fetchValue("SELECT COUNT(*) FROM lessons WHERE title = 'Hacked'"));
+        $this->assertSame(1, (int) $this->db()->fetchValue('SELECT COUNT(*) FROM lessons WHERE id = ?', [$betaQuiz]));
+    }
+
+    public function testPeopleManagementCannotReachAnotherTenantsMembers(): void
+    {
+        $this->makeUser($this->alpha, 'owner@alpha.test', Role::Owner);
+        $this->login('alpha.test', 'owner@alpha.test', 'correct-horse-battery');
+        $betaTeacher = (int) $this->db()->fetchValue("SELECT id FROM users WHERE email = 'teacher@beta.test'");
+
+        $this->assertSame(404, $this->post('alpha.test', "/people/$betaTeacher/role", ['role' => 'learner'])->status);
+        $this->assertSame(404, $this->post('alpha.test', "/people/$betaTeacher/remove")->status);
+        $this->assertStringNotContainsString('teacher@beta.test', $this->get('alpha.test', '/people')->body);
+        $this->assertSame('educator', $this->db()->fetchValue('SELECT role FROM memberships WHERE tenant_id = ? AND user_id = ?', [$this->beta->id, $betaTeacher]));
+    }
+
+    public function testActivityLogShowsOnlyOwnTenantsEvents(): void
+    {
+        $this->login('beta.test', 'teacher@beta.test', 'correct-horse-battery');
+        $this->newBrowser();
+        $this->makeUser($this->alpha, 'owner@alpha.test', Role::Owner);
+        $this->login('alpha.test', 'owner@alpha.test', 'correct-horse-battery');
+
+        $body = $this->get('alpha.test', '/activity')->body;
+
+        $this->assertStringNotContainsString('Test Educator', $body);
+    }
+
     public function testRepositoriesNeverReturnAnotherTenantsRows(): void
     {
         $courses = $this->app->get(CourseRepository::class);
