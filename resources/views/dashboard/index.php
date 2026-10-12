@@ -1,36 +1,84 @@
 <?php
 /** @var \App\Core\View\ViewHelpers $v */
-/** @var list<array{course_id: int, slug: string, title: string, status: string, done: int, total: int}> $enrolments */
-/** @var list<\App\Modules\Courses\Course> $suggested */
+/** @var ?array{card: array<string, mixed>, next: ?\App\Modules\Courses\Lesson} $continue */
+/** @var list<array<string, mixed>> $myCards */
+/** @var list<array<string, mixed>> $suggestedCards */
 /** @var list<\App\Modules\Certificates\Certificate> $certificates */
+/** @var ?array{published: int, drafts: int, reviews: int, courses: list<array{course: \App\Modules\Courses\Course, lessons: int, enrolled: int, completed: int, active: int}>} $teaching */
 $user = $v->shared('user');
-$enrolledIds = array_column($enrolments, 'course_id');
-$suggested = array_values(array_filter($suggested, static fn ($c) => !in_array($c->id, $enrolledIds, true)));
 $firstName = explode(' ', trim($user->displayName))[0];
+$hasLearning = $continue !== null || $myCards !== [];
 ?>
 <header class="page-head">
   <h1>Hello, <?= $v->e($firstName) ?></h1>
-  <p class="lead"><?= $enrolments !== [] ? 'Pick up where you left off.' : ($v->can('course.manage') ? 'Here is what needs your attention.' : 'Choose a course to begin.') ?></p>
+  <?php if ($continue === null && $teaching === null): ?>
+    <p class="lead"><?= $hasLearning ? 'You have finished everything you started. Pick something new below.' : 'Choose a course to begin.' ?></p>
+  <?php endif; ?>
 </header>
 
-<?php if ($enrolments !== []): ?>
-<section aria-labelledby="my-learning">
-  <h2 id="my-learning" class="visually-hidden">My learning</h2>
-  <ul class="progress-list">
-    <?php foreach ($enrolments as $row):
-      $pct = $row['total'] === 0 ? 0 : intdiv($row['done'] * 100, $row['total']); ?>
-    <li>
-      <a href="/courses/<?= $v->e($row['slug']) ?>"><?= $v->e($row['title']) ?></a>
-      <progress class="meter" max="<?= max(1, $row['total']) ?>" value="<?= $row['done'] ?>" aria-label="<?= $v->e('Progress in ' . $row['title']) ?>"><?= $pct ?>%</progress>
-      <p class="small muted">
-        <?= $row['status'] === 'completed' ? $v->badge('Complete', 'done') : $v->e($row['done'] . ' of ' . $v->plural($row['total'], 'lesson') . ' done') ?>
-      </p>
-    </li>
-    <?php endforeach; ?>
-  </ul>
+<?php if ($continue !== null): $card = $continue['card']; $c = $card['course']; $pct = $card['lessons'] === 0 ? 0 : intdiv($card['done'] * 100, $card['lessons']); ?>
+<section class="continue" aria-labelledby="continue-h">
+  <p class="continue-kicker" id="continue-h">Continue where you stopped</p>
+  <h2 class="continue-title"><a href="/courses/<?= $v->e($c->slug) ?>"><?= $v->e($c->title) ?></a></h2>
+  <?php include __DIR__ . '/../courses/_board.php'; ?>
+  <p class="continue-progress"><?= $v->e($card['done'] . ' of ' . $v->plural($card['lessons'], 'lesson') . ' done') ?> (<?= $pct ?>%)</p>
+  <?php if ($continue['next'] !== null): $next = $continue['next']; ?>
+    <p class="continue-next">
+      <a class="button" href="/courses/<?= $v->e($c->slug) ?>/lessons/<?= $next->id ?>">Continue: <?= $v->e($next->title) ?></a>
+      <span class="muted small"><?= $v->e($next->typeLabel()) ?><?= $next->type === 'text' ? ', ' . $next->readingMinutes() . ' min read' : '' ?></span>
+    </p>
+  <?php endif; ?>
 </section>
-<?php elseif ($v->can('course.learn') && $suggested === []): ?>
-  <?= $v->emptyState('No courses yet', 'Your school has not published any courses. Check back soon, or ask your teacher which course to join.') ?>
+<?php endif; ?>
+
+<?php if ($teaching !== null): ?>
+<section class="section teaching-strip" aria-labelledby="teaching">
+  <h2 id="teaching">Teaching</h2>
+  <ul class="todo-list">
+    <?php if ($teaching['reviews'] > 0): ?>
+      <li class="todo-urgent"><a href="/teach/reviews"><?= $v->e($v->plural($teaching['reviews'], 'assignment')) ?> waiting for your review</a></li>
+    <?php endif; ?>
+    <li><a href="/teach"><?= $v->e($v->plural($teaching['published'], 'published course')) ?><?= $teaching['drafts'] > 0 ? ', ' . $v->e($v->plural($teaching['drafts'], 'draft')) : '' ?></a></li>
+    <li><a href="/teach/courses/new">Start a new course</a></li>
+    <?php if ($v->can('members.manage')): ?><li><a href="/people">Add people</a></li><?php endif; ?>
+  </ul>
+  <?php if ($teaching['courses'] !== []): ?>
+  <div class="table-wrap teaching-table">
+  <table class="table">
+    <caption class="visually-hidden">Learners in each course</caption>
+    <thead><tr>
+      <th scope="col">Course</th>
+      <th scope="col" class="num">Learners</th>
+      <th scope="col" class="num">Finished</th>
+      <th scope="col" class="num">Active this week</th>
+      <th scope="col"><span class="visually-hidden">Actions</span></th>
+    </tr></thead>
+    <tbody>
+    <?php foreach ($teaching['courses'] as $row): $tc = $row['course']; ?>
+      <tr>
+        <td>
+          <a href="/teach/courses/<?= $tc->id ?>"><?= $v->e($tc->title) ?></a>
+          <?php if (!$tc->isPublished()): ?> <?= $v->badge('Draft', 'draft') ?><?php endif; ?>
+          <span class="small muted teaching-lessons"><?= $v->e($v->plural($row['lessons'], 'lesson')) ?></span>
+        </td>
+        <td class="num"><?= $row['enrolled'] ?></td>
+        <td class="num"><?= $row['completed'] ?></td>
+        <td class="num"><?= $row['active'] ?></td>
+        <td class="num"><?php if ($row['enrolled'] > 0 && $v->can('reports.view')): ?><a href="/teach/courses/<?= $tc->id ?>/progress">Progress</a><?php endif; ?></td>
+      </tr>
+    <?php endforeach; ?>
+    </tbody>
+  </table>
+  </div>
+  <?php endif; ?>
+</section>
+<?php endif; ?>
+
+<?php if ($myCards !== []): ?>
+<section class="section" aria-labelledby="mine">
+  <h2 id="mine"><?= $continue !== null ? 'Your other courses' : 'Your courses' ?></h2>
+  <?php $cards = $myCards; include __DIR__ . '/../courses/_list.php'; ?>
+</section>
 <?php endif; ?>
 
 <?php if ($certificates !== []): ?>
@@ -40,30 +88,18 @@ $firstName = explode(' ', trim($user->displayName))[0];
     <?php foreach ($certificates as $cert): ?>
     <li>
       <a href="/certificates/<?= $v->e($cert->displayCode()) ?>"><?= $v->e($cert->courseTitle) ?></a>
-      <span class="small muted">Issued <?= $v->datetime($cert->issuedAt, 'j M Y') ?><?= $cert->isValid() ? '' : ' · revoked' ?></span>
+      <span class="small muted">Issued <?= $v->datetime($cert->issuedAt, 'j M Y') ?><?= $cert->isValid() ? '' : ', revoked' ?></span>
     </li>
     <?php endforeach; ?>
   </ul>
 </section>
 <?php endif; ?>
 
-<?php if ($v->can('course.manage')): ?>
-<section class="section" aria-labelledby="teaching">
-  <h2 id="teaching">Teaching</h2>
-  <?php if ($pendingReviews > 0): ?>
-    <p class="notice"><?= $v->e($v->plural((int) $pendingReviews, 'assignment')) ?> waiting for your review. <a href="/teach/reviews">Review now</a></p>
-  <?php endif; ?>
-  <p class="actions">
-    <a class="button" href="/teach">Your courses</a>
-    <a class="button button-quiet" href="/teach/courses/new">New course</a>
-    <?php if ($v->can('members.manage')): ?><a class="button button-quiet" href="/people">Add people</a><?php endif; ?>
-  </p>
-</section>
-<?php endif; ?>
-
-<?php if ($suggested !== []): ?>
+<?php if ($suggestedCards !== []): ?>
 <section class="section" aria-labelledby="join">
-  <h2 id="join"><?= $enrolments === [] ? 'Courses you can join' : 'More courses' ?></h2>
-  <?php $courses = $suggested; include __DIR__ . '/../courses/_list.php'; ?>
+  <h2 id="join"><?= $hasLearning ? 'More courses' : 'Courses you can join' ?></h2>
+  <?php $cards = $suggestedCards; include __DIR__ . '/../courses/_list.php'; ?>
 </section>
+<?php elseif (!$hasLearning && $teaching === null && $v->can('course.learn')): ?>
+  <?= $v->emptyState('No courses yet', 'Your school has not published any courses. Check back soon, or ask your teacher which course to join.') ?>
 <?php endif; ?>

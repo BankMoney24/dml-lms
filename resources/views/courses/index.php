@@ -3,7 +3,7 @@
   <h1>Courses</h1>
   <p class="lead">Everything <?= $v->e($v->shared('tenant')?->name) ?> has published.</p>
 </header>
-<?php if ($courses === []): ?>
+<?php if ($cards === []): ?>
   <?= $page > 1
       ? $v->emptyState('No more courses', 'You have reached the end of the list.', '/courses', 'Back to the first page')
       : $v->emptyState('No courses yet', 'Nothing has been published yet. Check back soon, or ask your teacher which course to join.') ?>

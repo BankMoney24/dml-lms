@@ -68,6 +68,7 @@ use App\Modules\Identity\TwoFactor\TwoFactorRepository;
 use App\Modules\Identity\TwoFactor\TwoFactorService;
 use App\Modules\Identity\UserRepository;
 use App\Modules\Learning\CompletionRule;
+use App\Modules\Learning\CourseCards;
 use App\Modules\Learning\EnrolmentRepository;
 use App\Modules\Learning\Http\LearnController;
 use App\Modules\Learning\LearningService;
@@ -184,6 +185,7 @@ final class Application
         $c->set(AssessmentRepository::class, static fn (Container $c) => new AssessmentRepository($c->get(Connection::class), $c->get(Clock::class)));
         $c->set(AttemptRepository::class, static fn (Container $c) => new AttemptRepository($c->get(Connection::class), $c->get(Clock::class)));
         $c->set(EnrolmentRepository::class, static fn (Container $c) => new EnrolmentRepository($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(CourseCards::class, static fn (Container $c) => new CourseCards($c->get(Connection::class)));
         $c->set(ProgressRepository::class, static fn (Container $c) => new ProgressRepository($c->get(Connection::class), $c->get(Clock::class)));
         $c->set(CourseAuthoring::class, static fn (Container $c) => new CourseAuthoring(
             $c->get(Connection::class),
@@ -291,6 +293,9 @@ final class Application
             $c->get(EnrolmentRepository::class),
             $c->get(CertificateService::class),
             $c->get(SubmissionRepository::class),
+            $c->get(CourseCards::class),
+            $c->get(LessonRepository::class),
+            $c->get(ProgressRepository::class),
         ));
         $c->set(LoginController::class, static fn (Container $c) => new LoginController(
             $c->get(View::class),
@@ -304,6 +309,7 @@ final class Application
             $c->get(EnrolmentRepository::class),
             $c->get(ProgressRepository::class),
             $c->get(CertificateService::class),
+            $c->get(CourseCards::class),
         ));
         $c->set(LearnController::class, static fn (Container $c) => new LearnController(
             $c->get(View::class),

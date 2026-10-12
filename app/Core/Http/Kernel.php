@@ -43,7 +43,11 @@ final class Kernel
         $this->view->share('path', $request->path);
 
         try {
-            [$route, $params] = $this->router->match($request->method, $request->path);
+            try {
+                [$route, $params] = $this->router->match($request->method, $request->path);
+            } catch (HttpException $e) {
+                return $this->unmatched($request, $e, $requestId);
+            }
             $request = $request->withAttribute('route.params', $params);
             $isBare = in_array(self::BARE, $route->middleware, true);
 
@@ -72,6 +76,32 @@ final class Kernel
                 : 'Something went wrong on our side. Please try again in a moment.';
             $response = $this->renderError(500, $message, $requestId);
         }
+
+        return (new SecurityHeaders($request->secure))->process($request, static fn () => $response)
+            ->withHeader('X-Request-Id', $requestId);
+    }
+
+    /**
+     * No route matched. For a page someone tried to open (GET or HEAD), run the
+     * global middleware first so the error page carries the school's name and
+     * the signed-in person's navigation instead of the bare platform frame.
+     */
+    private function unmatched(Request $request, HttpException $e, string $requestId): Response
+    {
+        $render = fn (): Response => $this->renderError($e->status, $e->getMessage(), $requestId);
+        $response = null;
+        if (in_array($request->method, ['GET', 'HEAD'], true)) {
+            try {
+                $stack = array_map(fn (string $id): object => $this->container->get($id), $this->globalMiddleware);
+                $response = $this->pipeline($stack, $request, static fn (Request $r): Response => $render());
+            } catch (Throwable) {
+                // Unknown host, database down, ...: fall back to the plain error page.
+                $this->view->resetShared();
+                $this->view->share('request_id', $requestId);
+                $this->view->share('path', $request->path);
+            }
+        }
+        $response ??= $render();
 
         return (new SecurityHeaders($request->secure))->process($request, static fn () => $response)
             ->withHeader('X-Request-Id', $requestId);

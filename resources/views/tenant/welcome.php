@@ -1,16 +1,51 @@
 <?php
 /** @var \App\Core\View\ViewHelpers $v */
-/** @var list<\App\Modules\Courses\Course> $courses */
+/** @var list<array<string, mixed>> $cards */
 $tenant = $v->shared('tenant');
 ?>
-<section class="hero">
-  <h1><?= $v->e($tenant->name) ?></h1>
-  <p class="lead">Learn it. Practise it. Prove it. Sign in to continue your courses, or look through what we teach.</p>
-  <p class="actions"><a class="button" href="/login">Sign in</a> <a class="button button-quiet" href="/courses">Browse courses</a></p>
+<section class="welcome" aria-labelledby="welcome-h">
+  <div class="welcome-text">
+    <h1 id="welcome-h"><?= $v->e($tenant->name) ?></h1>
+    <p class="lead">Courses in technology you can follow on a phone, on a slow connection, at your own pace. Your teachers see your progress and review your work.</p>
+    <p class="actions"><a class="button" href="/login">Sign in</a> <a class="button button-quiet" href="/courses">See the courses</a></p>
+  </div>
+  <ol class="promise" aria-label="How each course works">
+    <li class="promise-step">
+      <span class="promise-node" aria-hidden="true"></span>
+      <h2>Learn it</h2>
+      <p>Short readings and videos, with the commands and examples you need. Videos load only when you press play.</p>
+    </li>
+    <li class="promise-step">
+      <span class="promise-node" aria-hidden="true"></span>
+      <h2>Practise it</h2>
+      <p>Quizzes that explain every answer, and hands-on assignments a teacher reviews.</p>
+    </li>
+    <li class="promise-step">
+      <span class="promise-node" aria-hidden="true"></span>
+      <h2>Prove it</h2>
+      <p>Finish a course and get a certificate anyone can check online.</p>
+    </li>
+  </ol>
 </section>
-<?php if ($courses !== []): ?>
+
+<?php if ($cards !== []): ?>
 <section class="section" aria-labelledby="latest">
-  <h2 id="latest">Latest courses</h2>
+  <div class="section-head">
+    <h2 id="latest">Courses</h2>
+    <a href="/courses">All courses</a>
+  </div>
   <?php include __DIR__ . '/../courses/_list.php'; ?>
 </section>
 <?php endif; ?>
+
+<section class="section verify-strip" aria-labelledby="verify-h">
+  <div>
+    <h2 id="verify-h">Checking a certificate?</h2>
+    <p class="muted">Enter the number printed on it.</p>
+  </div>
+  <form method="get" action="/verify" class="verify-inline">
+    <label class="visually-hidden" for="verify-code">Certificate number</label>
+    <input id="verify-code" name="code" placeholder="ABCD-EFGH-JKLM" autocomplete="off" maxlength="20">
+    <button type="submit" class="button button-quiet">Check</button>
+  </form>
+</section>

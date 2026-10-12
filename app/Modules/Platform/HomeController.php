@@ -12,7 +12,10 @@ use App\Modules\Assignments\SubmissionRepository;
 use App\Modules\Certificates\CertificateService;
 use App\Modules\Courses\CourseRepository;
 use App\Modules\Identity\Permission;
+use App\Modules\Courses\LessonRepository;
+use App\Modules\Learning\CourseCards;
 use App\Modules\Learning\EnrolmentRepository;
+use App\Modules\Learning\ProgressRepository;
 use App\Modules\Tenancy\Tenant;
 
 /** "/" — platform landing on platform hosts; welcome or dashboard on tenant hosts. */
@@ -24,6 +27,9 @@ final class HomeController
         private readonly EnrolmentRepository $enrolments,
         private readonly CertificateService $certificates,
         private readonly SubmissionRepository $submissions,
+        private readonly CourseCards $cards,
+        private readonly LessonRepository $lessons,
+        private readonly ProgressRepository $progress,
     ) {
     }
 
@@ -38,7 +44,7 @@ final class HomeController
         if ($user === null) {
             return Response::html($this->view->render('tenant/welcome', [
                 'pageTitle' => $tenant->name,
-                'courses' => $this->courses->listPublished($tenant->id, 6),
+                'cards' => $this->cards->build($tenant->id, $this->courses->listPublished($tenant->id, 6)),
             ]));
         }
 
@@ -49,13 +55,58 @@ final class HomeController
                 $this->certificates->forEnrolment($this->enrolments->find($tenant->id, $row['course_id'], $user->user->id));
             }
         }
+        $enrolled = array_values(array_filter(
+            $this->courses->findMany($tenant->id, array_column($enrolments, 'course_id')),
+            static fn ($course): bool => $course->isPublished(),
+        ));
+        $myCards = $this->cards->build($tenant->id, $enrolled, $user->user->id);
+
+        // The course to continue: the most recently active one that is not finished.
+        $continue = null;
+        foreach ($myCards as $card) {
+            if (!$card['completed']) {
+                $enrolment = $this->enrolments->find($tenant->id, $card['course']->id, $user->user->id);
+                $done = $enrolment === null ? [] : $this->progress->completedLessonIds($tenant->id, $enrolment->id);
+                $next = null;
+                foreach ($this->lessons->orderedLessons($tenant->id, $card['course']->id) as $lesson) {
+                    if (!in_array($lesson->id, $done, true)) {
+                        $next = $lesson;
+                        break;
+                    }
+                }
+                $continue = ['card' => $card, 'next' => $next];
+                break;
+            }
+        }
+
+        $enrolledIds = array_map(static fn ($c): int => $c->id, $enrolled);
+        $suggested = $user->can(Permission::CourseLearn)
+            ? array_values(array_filter($this->courses->listPublished($tenant->id, 9), static fn ($c): bool => !in_array($c->id, $enrolledIds, true)))
+            : [];
+
+        $teaching = null;
+        if ($user->can(Permission::CourseManage)) {
+            $all = $this->courses->listAllWithCounts($tenant->id);
+            $stats = $this->enrolments->courseStats($tenant->id);
+            $none = ['enrolled' => 0, 'completed' => 0, 'active' => 0];
+            $teaching = [
+                'published' => count(array_filter($all, static fn (array $r): bool => $r['course']->isPublished())),
+                'drafts' => count(array_filter($all, static fn (array $r): bool => !$r['course']->isPublished())),
+                'reviews' => $this->submissions->pendingCount($tenant->id),
+                'courses' => array_map(
+                    static fn (array $r): array => ['course' => $r['course'], 'lessons' => $r['lesson_count']] + ($stats[$r['course']->id] ?? $none),
+                    array_slice($all, 0, 8),
+                ),
+            ];
+        }
 
         return Response::html($this->view->render('dashboard/index', [
             'pageTitle' => 'Home',
-            'enrolments' => $enrolments,
+            'continue' => $continue,
+            'myCards' => array_values(array_filter($myCards, static fn (array $c): bool => $continue === null || $c['course']->id !== $continue['card']['course']->id)),
+            'suggestedCards' => $this->cards->build($tenant->id, array_slice($suggested, 0, 6), $user->user->id),
             'certificates' => $this->certificates->forUser($tenant->id, $user->user->id),
-            'pendingReviews' => $user->can(Permission::CourseManage) ? $this->submissions->pendingCount($tenant->id) : 0,
-            'suggested' => $user->can(Permission::CourseLearn) ? $this->courses->listPublished($tenant->id, 6) : [],
+            'teaching' => $teaching,
         ]));
     }
 }

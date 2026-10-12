@@ -39,6 +39,29 @@ final class CourseRepository
         return array_map(Course::fromRow(...), $rows);
     }
 
+    /**
+     * Courses by id, in the order given; unknown ids are skipped.
+     *
+     * @param list<int> $ids
+     * @return list<Course>
+     */
+    public function findMany(int $tenantId, array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+        $rows = $this->db->fetchAll(
+            'SELECT * FROM courses WHERE tenant_id = ? AND id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')',
+            array_merge([$tenantId], $ids),
+        );
+        $byId = [];
+        foreach ($rows as $row) {
+            $byId[(int) $row['id']] = Course::fromRow($row);
+        }
+
+        return array_values(array_filter(array_map(static fn (int $id): ?Course => $byId[$id] ?? null, $ids)));
+    }
+
     /** @return list<array{course: Course, lesson_count: int}> */
     public function listAllWithCounts(int $tenantId): array
     {

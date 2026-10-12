@@ -12,7 +12,16 @@ $n = 0;
 <div class="trace">
   <?php foreach ($outline as $module): ?>
   <section class="trace-module">
-    <h3 class="trace-module-title"><?= $v->e($module['title']) ?></h3>
+    <?php
+      $moduleIds = array_map(static fn ($l) => $l->id, $module['lessons']);
+      $moduleDone = count(array_intersect($moduleIds, $completedIds));
+    ?>
+    <h3 class="trace-module-title">
+      <?= $v->e($module['title']) ?>
+      <?php if ($linkLessons && $moduleIds !== []): ?>
+        <span class="trace-module-count<?= $moduleDone === count($moduleIds) ? ' is-done' : '' ?>"><?= $moduleDone === count($moduleIds) ? 'All done' : $v->e($moduleDone . ' of ' . count($moduleIds)) ?></span>
+      <?php endif; ?>
+    </h3>
     <?php if ($module['lessons'] === []): ?>
       <p class="muted small">No lessons in this module yet.</p>
     <?php else: ?>

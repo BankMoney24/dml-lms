@@ -16,7 +16,7 @@ $latest = $submissions[0] ?? null;
 <article class="lesson">
   <header class="lesson-head">
     <p class="lesson-kind"><?= $v->e($lesson->typeLabel()) ?>
-      <?php if ($lesson->type === 'text'): ?> · <?= $lesson->readingMinutes() ?> min read<?php endif; ?></p>
+      <?php if ($lesson->type === 'text'): ?>, <?= $lesson->readingMinutes() ?> min read<?php endif; ?></p>
     <h1><?= $v->e($lesson->title) ?></h1>
   </header>
 
@@ -125,9 +125,9 @@ $latest = $submissions[0] ?? null;
     <?php if ($lesson->body !== ''): ?><div class="prose"><?= $v->markdown($lesson->body) ?></div><?php endif; ?>
     <?php include __DIR__ . '/_lesson_files.php'; ?>
     <p class="quiz-rules">
-      <?= $v->plural(count($quiz['questions']), 'question') ?> · pass mark <?= $quiz['pass_threshold'] ?>% ·
-      <?= $quiz['attempts_left'] === null ? 'as many tries as you need' : $v->e($v->plural($quiz['attempts_left'], 'attempt') . ' left') ?>
-      <?php if ($quiz['best'] !== null): ?> · your best so far: <?= $quiz['best'] ?>%<?php endif; ?>
+      <?= $v->e($v->plural(count($quiz['questions']), 'question')) ?>. Pass mark <?= $quiz['pass_threshold'] ?>%.
+      <?= $quiz['attempts_left'] === null ? 'As many tries as you need.' : $v->e($v->plural($quiz['attempts_left'], 'attempt') . ' left.') ?>
+      <?php if ($quiz['best'] !== null): ?> Your best so far: <strong><?= $quiz['best'] ?>%</strong>.<?php endif; ?>
     </p>
     <?php if ($completed): ?><p class="notice notice-done">You have passed this quiz. You can still practise.</p><?php endif; ?>
 

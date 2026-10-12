@@ -24,7 +24,7 @@ $name = $learner?->displayName ?? 'Former member';
 <div class="review-layout">
   <section aria-labelledby="work-h">
     <h2 id="work-h">Submitted work</h2>
-    <p class="small muted">Sent <?= $v->datetime($submission->submittedAt) ?><?= $history !== [] ? ' · attempt ' . (count($history) + 1) : '' ?></p>
+    <p class="small muted">Sent <?= $v->datetime($submission->submittedAt) ?><?= $history !== [] ? ', attempt ' . (count($history) + 1) : '' ?></p>
     <div class="submission-body prose"><?= $v->markdown($submission->body) ?></div>
     <?php if ($submission->linkUrl !== null): ?>
       <p>Link: <a href="<?= $v->e($submission->linkUrl) ?>" rel="noopener noreferrer nofollow" class="external"><?= $v->e($submission->linkUrl) ?></a></p>

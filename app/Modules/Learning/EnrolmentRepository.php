@@ -69,7 +69,9 @@ final class EnrolmentRepository
                       WHERE l2.tenant_id = c.tenant_id AND l2.course_id = c.id AND l2.is_mandatory = 1) AS total
              FROM enrolments e JOIN courses c ON c.tenant_id = e.tenant_id AND c.id = e.course_id
              WHERE e.tenant_id = ? AND e.user_id = ? AND e.status IN (\'active\', \'completed\')
-             ORDER BY e.enrolled_at DESC LIMIT 50',
+             ORDER BY COALESCE((SELECT MAX(p3.updated_at) FROM lesson_progress p3
+                                 WHERE p3.tenant_id = e.tenant_id AND p3.enrolment_id = e.id), e.enrolled_at) DESC, e.id DESC
+             LIMIT 50',
             [$tenantId, $userId],
         );
 
@@ -81,5 +83,38 @@ final class EnrolmentRepository
             'done' => (int) $r['done'],
             'total' => (int) $r['total'],
         ], $rows);
+    }
+
+    /**
+     * Per-course learner numbers for the teaching overview: everyone enrolled,
+     * how many finished, and how many did something in the last seven days.
+     *
+     * @return array<int, array{enrolled: int, completed: int, active: int}> keyed by course id
+     */
+    public function courseStats(int $tenantId): array
+    {
+        $since = $this->clock->now()->modify('-7 days')->format('Y-m-d H:i:s');
+        $stats = [];
+        foreach (
+            $this->db->fetchAll(
+                'SELECT e.course_id,
+                    COUNT(*) AS enrolled,
+                    SUM(e.status = \'completed\') AS completed,
+                    SUM(EXISTS (SELECT 1 FROM lesson_progress p
+                                 WHERE p.tenant_id = e.tenant_id AND p.enrolment_id = e.id AND p.updated_at >= ?)) AS active
+             FROM enrolments e
+             WHERE e.tenant_id = ? AND e.status IN (\'active\', \'completed\')
+             GROUP BY e.course_id',
+                [$since, $tenantId],
+            ) as $row
+        ) {
+            $stats[(int) $row['course_id']] = [
+                'enrolled' => (int) $row['enrolled'],
+                'completed' => (int) $row['completed'],
+                'active' => (int) $row['active'],
+            ];
+        }
+
+        return $stats;
     }
 }

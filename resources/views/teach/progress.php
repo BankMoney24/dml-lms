@@ -16,7 +16,7 @@ $completed = count(array_filter($rows, static fn ($r) => $r['status'] === 'compl
           : 'Publish the course so learners can find and enrol in it.',
   ) ?>
 <?php else: ?>
-<p class="lead"><?= $v->e($v->plural(count($rows), 'learner')) ?> enrolled · <?= $completed ?> completed</p>
+<p class="lead"><?= $v->e($v->plural(count($rows), 'learner')) ?> enrolled, <?= $completed ?> completed</p>
 <div class="table-wrap">
 <table class="table">
   <thead>

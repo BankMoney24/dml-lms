@@ -11,7 +11,7 @@ $crumb = 'Preview';
 <p class="notice">Preview: this is what learners see. Correct answers are marked here only, and nothing you do is recorded. <a href="<?= $url ?>">Back to editing</a></p>
 
 <article class="lesson">
-  <p class="lesson-kind"><?= $v->e($lesson->typeLabel()) ?><?php if ($lesson->type === 'text'): ?> · <?= $lesson->readingMinutes() ?> min read<?php endif; ?></p>
+  <p class="lesson-kind"><?= $v->e($lesson->typeLabel()) ?><?php if ($lesson->type === 'text'): ?>, <?= $lesson->readingMinutes() ?> min read<?php endif; ?></p>
   <h1><?= $v->e($lesson->title) ?></h1>
   <?php if ($lesson->isVideo()): $video = $lesson->video(); ?>
     <?php if ($video === null): ?>

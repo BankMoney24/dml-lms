@@ -67,6 +67,7 @@ $n = 0;
         <?php foreach ($module['lessons'] as $i => $lesson): $n++;
           $qCount = $questionCounts[$lesson->id] ?? 0; ?>
         <li id="lesson-<?= $lesson->id ?>" value="<?= $n ?>">
+         <div class="t-lesson-row">
           <div class="t-lesson-main">
             <a class="t-lesson-title" href="<?= $base ?>/lessons/<?= $lesson->id ?>"><?= $v->e($lesson->title) ?></a>
             <?= $v->badge($lesson->typeLabel(), 'type-' . $lesson->type) ?>
@@ -83,6 +84,7 @@ $n = 0;
             <a href="<?= $base ?>/lessons/<?= $lesson->id ?>">Edit<span class="visually-hidden"> <?= $v->e($lesson->title) ?></span></a>
             <a href="<?= $base ?>/lessons/<?= $lesson->id ?>/preview">Preview<span class="visually-hidden"> <?= $v->e($lesson->title) ?></span></a>
           </div>
+         </div>
         </li>
         <?php endforeach; ?>
       </ol>

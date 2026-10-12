@@ -12,6 +12,7 @@ use App\Core\View\View;
 use App\Modules\Certificates\CertificateService;
 use App\Modules\Courses\CourseRepository;
 use App\Modules\Courses\LessonRepository;
+use App\Modules\Learning\CourseCards;
 use App\Modules\Learning\EnrolmentRepository;
 use App\Modules\Learning\ProgressRepository;
 
@@ -26,6 +27,7 @@ final class CatalogueController
         private readonly EnrolmentRepository $enrolments,
         private readonly ProgressRepository $progress,
         private readonly CertificateService $certificates,
+        private readonly CourseCards $cards,
     ) {
     }
 
@@ -37,7 +39,7 @@ final class CatalogueController
 
         return Response::html($this->view->render('courses/index', [
             'pageTitle' => 'Courses',
-            'courses' => array_slice($courses, 0, self::PER_PAGE),
+            'cards' => $this->cards->build($tenant->id, array_slice($courses, 0, self::PER_PAGE), RequestContext::optionalUser($request)?->user->id),
             'page' => $page,
             'hasMore' => count($courses) > self::PER_PAGE,
         ]));

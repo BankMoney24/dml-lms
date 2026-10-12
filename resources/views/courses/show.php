@@ -34,7 +34,11 @@ $done = count(array_intersect($lessonIds, $completedIds));
     </p>
     <?= $v->paragraphs($course->summary) ?>
     <?php if ($counts !== []): ?>
-    <p class="small muted"><?= $v->e(implode(' · ', array_map(static fn ($label, $n) => $n . ' ' . strtolower($label) . ($n === 1 ? '' : 's'), array_keys($counts), $counts))) ?></p>
+    <?php
+      $parts = array_map(static fn ($label, $n) => $n . ' ' . strtolower($label) . ($n === 1 ? '' : (str_ends_with(strtolower($label), 'z') ? 'zes' : 's')), array_keys($counts), $counts);
+      $last = array_pop($parts);
+    ?>
+    <p class="small muted course-counts"><?= $v->e($parts === [] ? (string) $last : implode(', ', $parts) . ' and ' . $last) ?></p>
     <?php endif; ?>
 
     <?php if ($certificate !== null): ?>

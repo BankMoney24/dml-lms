@@ -47,7 +47,7 @@ $title = ($pageTitle ?? '') !== '' && ($pageTitle ?? '') !== $siteName ? $pageTi
       </div>
       <?php else: ?>
       <nav class="nav" aria-label="Main"><?= $v->navLink('/courses', 'Courses') ?></nav>
-      <div class="account"><a class="button button-small" href="/login">Sign in</a></div>
+      <div class="account"><?php if (!str_starts_with((string) $v->shared('path'), '/login')): ?><a class="button button-small" href="/login">Sign in</a><?php endif; ?></div>
       <?php endif; ?>
     <?php endif; ?>
   </div>
