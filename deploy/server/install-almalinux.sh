@@ -62,17 +62,15 @@ fi
 step "Database and configuration"
 if [ ! -f "$APP_ROOT/shared/.env" ]; then
   DB_PASS="Dm1-$(openssl rand -hex 20)-Lx"
-  # Prefer the Unix socket: no TCP, and no SELinux boolean change needed for PHP to reach MySQL.
-  DB_SOCKET=""
-  for s in /var/lib/mysql/mysql.sock /run/mysqld/mysqld.sock; do [ -S "$s" ] && { DB_SOCKET="$s"; break; }; done
-  if [ -z "$DB_SOCKET" ] && command -v setsebool >/dev/null && selinuxenabled; then
+  # TCP to 127.0.0.1: the MySQL socket directory is often not traversable by non-root users.
+  if command -v selinuxenabled >/dev/null && selinuxenabled; then
     setsebool -P httpd_can_network_connect_db on
   fi
   $MYSQL_CMD <<SQL
 CREATE DATABASE IF NOT EXISTS \`$DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS';
-ALTER USER '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS';
-GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'localhost';
+CREATE USER IF NOT EXISTS '$DB_USER'@'127.0.0.1' IDENTIFIED BY '$DB_PASS';
+ALTER USER '$DB_USER'@'127.0.0.1' IDENTIFIED BY '$DB_PASS';
+GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'127.0.0.1';
 SQL
   umask 077
   cat > "$APP_ROOT/shared/.env" <<ENV
@@ -80,7 +78,7 @@ APP_ENV=production
 APP_DEBUG=false
 APP_KEY=$(openssl rand -hex 32)
 PLATFORM_HOSTS=
-DB_SOCKET=$DB_SOCKET
+DB_SOCKET=
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=$DB_NAME
@@ -90,7 +88,7 @@ DB_PASSWORD=$DB_PASS
 SESSION_SECURE_COOKIE=false
 SESSION_IDLE_SECONDS=7200
 ENV
-  printf '[client]\nuser=%s\npassword=%s\n%s\n' "$DB_USER" "$DB_PASS" "${DB_SOCKET:+socket=$DB_SOCKET}" > "$DEPLOY_HOME/.my.cnf"
+  printf '[client]\nuser=%s\npassword=%s\nhost=127.0.0.1\n' "$DB_USER" "$DB_PASS" > "$DEPLOY_HOME/.my.cnf"
   umask 022
   chown "$DEPLOY_USER:$APP_USER" "$APP_ROOT/shared/.env"; chmod 640 "$APP_ROOT/shared/.env"
   chown "$DEPLOY_USER:$DEPLOY_USER" "$DEPLOY_HOME/.my.cnf"; chmod 600 "$DEPLOY_HOME/.my.cnf"

@@ -99,7 +99,14 @@ activate() {
   previous="$(current_release)"
   log "activating $id (previous: $previous)"
 
-  if (cd "$dest" && "$PHP_BIN" bin/console migrate:status | grep -q '^\[ \]'); then
+  local status
+  # A failure here means the database is unreachable; never treat that as "nothing to migrate".
+  if ! status="$(cd "$dest" && "$PHP_BIN" bin/console migrate:status 2>&1)"; then
+    log "cannot read migration status (${status##*$'\n'}); live release unchanged"
+    record activate "$id" db_unreachable
+    exit 7
+  fi
+  if grep -q '^\[ \]' <<< "$status"; then
     backup_db "$id"
     # Migrations must be backward compatible with the previous release (expand/contract),
     # so the old code keeps working if we have to switch back.
