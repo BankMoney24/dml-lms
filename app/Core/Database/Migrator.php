@@ -23,6 +23,10 @@ final class Migrator
         $this->ensureTable();
         $applied = $this->appliedChecksums();
         $ran = [];
+        if ($this->files() === []) {
+            // An empty migrations directory means a broken build or checkout, never "up to date".
+            throw new RuntimeException(sprintf('No migration files found in %s.', $this->directory));
+        }
 
         foreach ($this->files() as $name => $path) {
             $sql = (string) file_get_contents($path);

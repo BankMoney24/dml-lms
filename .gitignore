@@ -8,8 +8,10 @@
 /.phpunit.cache/
 /.phpunit.result.cache
 *.log
+# Database dumps must never be committed; schema migrations must be.
 *.sql
 *.sql.gz
+!/database/migrations/*.sql
 .DS_Store
 Thumbs.db
 /.idea/
