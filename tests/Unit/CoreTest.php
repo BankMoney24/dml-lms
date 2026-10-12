@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
+use App\Bootstrap\Application;
 use App\Core\Config;
 use App\Core\Database\Migrator;
 use App\Core\Http\Request;
@@ -61,6 +62,15 @@ final class CoreTest extends TestCase
         $this->assertNotContains(Permission::CourseLearn, Role::Educator->permissions());
         $this->assertSame([], Role::Guardian->permissions());
         $this->assertContains(Permission::AuditView, Role::Owner->permissions());
+    }
+
+    public function testDsnPrefersSocketOverHost(): void
+    {
+        $tcp = new Config(['DB_HOST' => 'db', 'DB_PORT' => '3307', 'DB_DATABASE' => 'lms']);
+        $socket = new Config(['DB_HOST' => 'db', 'DB_SOCKET' => '/var/lib/mysql/mysql.sock', 'DB_DATABASE' => 'lms']);
+
+        $this->assertSame('mysql:host=db;port=3307;dbname=lms;charset=utf8mb4', Application::dsn($tcp));
+        $this->assertSame('mysql:unix_socket=/var/lib/mysql/mysql.sock;dbname=lms;charset=utf8mb4', Application::dsn($socket));
     }
 
     public function testPasswordPolicy(): void

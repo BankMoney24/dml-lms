@@ -13,12 +13,13 @@
 #   incoming/           uploaded tarballs
 #   current -> releases/<id>
 set -euo pipefail
-umask 027
 
 CONF="${DML_DEPLOY_CONF:-$HOME/.dml-deploy.conf}"
 # shellcheck source=/dev/null
 . "$CONF"
 : "${APP_ROOT:?}" "${HEALTH_HOST:?}"
+# 027 keeps code private to the deploy group; 022 lets the web server read static files directly.
+umask "${UMASK:-027}"
 PHP_BIN="${PHP_BIN:-php}"
 KEEP_RELEASES="${KEEP_RELEASES:-5}"
 HEALTH_SCHEME="${HEALTH_SCHEME:-https}"
@@ -32,8 +33,11 @@ SHARED="$APP_ROOT/shared"
 LOG="$APP_ROOT/deploy.log"
 
 log() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*" | tee -a "$LOG" >&2; }
-record() { printf '{"ts":"%s","action":"%s","release":"%s","result":"%s","by":"%s"}\n' \
-  "$(date -u +%FT%TZ)" "$1" "$2" "$3" "${SSH_CLIENT%% *}" >> "$LOG"; }
+record() {
+  local by="${SSH_CLIENT:-local}"
+  printf '{"ts":"%s","action":"%s","release":"%s","result":"%s","by":"%s"}\n' \
+    "$(date -u +%FT%TZ)" "$1" "$2" "$3" "${by%% *}" >> "$LOG"
+}
 
 HISTORY="$APP_ROOT/.release-history" # releases that went live, oldest first
 
@@ -69,7 +73,7 @@ backup_db() {
   command -v mysqldump >/dev/null || { log "mysqldump not found; skipping pre-migration backup"; return 0; }
   mkdir -p "$SHARED/backups"
   # Credentials come from an option file (~/.my.cnf, mode 600), never the command line.
-  mysqldump --defaults-extra-file="$HOME/.my.cnf" --single-transaction --routines --no-tablespaces "${DB_NAME:?}" \
+  mysqldump --defaults-extra-file="$HOME/.my.cnf" --single-transaction --no-tablespaces "${DB_NAME:?}" \
     | gzip > "$SHARED/backups/pre-$id.sql.gz"
   chmod 600 "$SHARED/backups/pre-$id.sql.gz"
   ls -1t "$SHARED/backups"/pre-*.sql.gz | tail -n +11 | xargs -r rm -f

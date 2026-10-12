@@ -19,7 +19,54 @@ Nothing on the server runs as root during a deploy, and the deploy key cannot op
 
 ---
 
-## 0. Inspect the server first (once, read-only)
+## This server: 66.29.156.116 (AlmaLinux 9.7 · Apache 2.4.62 · PHP-FPM 8.3.33 · MySQL 8.0.45 · SELinux)
+
+Inspected 2026-10-12. Apache serves ~20 other domains from `/etc/httpd/conf.d/`; Nginx is installed but not listening. The LMS is added beside them without editing any existing file:
+
+| Piece | Where |
+|---|---|
+| Code, releases, shared config | `/var/www/dml-lms/` (`releases/`, `shared/.env`, `shared/storage/`, `current →`) |
+| Apache site | `/etc/httpd/conf.d/dml-lms.conf` (temporary: IP, port 8088) · later `dml-lms-domain.conf` |
+| PHP-FPM pool | `/etc/php-fpm.d/dml-lms.conf` → `/run/php-fpm/dml-lms.sock`, runs as `dmllms` |
+| Database | `dml_lms`, user `dml_lms@localhost`, via the MySQL Unix socket |
+| Deploy user | `dmldeploy` (owns releases; runs migrations; forced-command SSH key later) |
+| SELinux | `shared/storage` labelled `httpd_sys_rw_content_t`; port 8088 added to `http_port_t` |
+
+**First install** (as root): upload the release tarball, unpack only the installer, run it.
+
+```bash
+# on your Mac
+scp ~/Downloads/<release-id>.tar.gz root@66.29.156.116:/root/
+# on the server
+mkdir -p /root/dml-install && tar -xzf /root/<release-id>.tar.gz -C /root/dml-install ./deploy
+bash /root/dml-install/deploy/server/install-almalinux.sh /root/<release-id>.tar.gz
+```
+
+If MySQL root needs a password: `MYSQL_CMD="mysql -u root -p" bash …/install-almalinux.sh …`.
+
+**Later releases by hand** (until GitHub Actions is wired up): `scp` the new tarball to `/root/`, then
+```bash
+install -o dmldeploy -m 600 /root/<id>.tar.gz /var/www/dml-lms/incoming/
+sudo -u dmldeploy -H dml-deploy activate <id> $(sha256sum /root/<id>.tar.gz | cut -d' ' -f1)
+```
+
+**When `dmlschooloftechnology.com` points here** (A records for `@` and `www` → 66.29.156.116):
+```bash
+cp /var/www/dml-lms/current/deploy/apache/dml-lms-domain.conf /etc/httpd/conf.d/
+apachectl configtest && systemctl reload httpd
+certbot --apache -d dmlschooloftechnology.com -d www.dmlschooloftechnology.com
+sudo -u dmldeploy -H php /var/www/dml-lms/current/bin/console tenant:add-domain dml dmlschooloftechnology.com
+sudo -u dmldeploy -H php /var/www/dml-lms/current/bin/console tenant:add-domain dml www.dmlschooloftechnology.com
+sed -i 's/^SESSION_SECURE_COOKIE=false/SESSION_SECURE_COOKIE=true/' /var/www/dml-lms/shared/.env
+sed -i 's/^HEALTH_HOST=.*/HEALTH_HOST=dmlschooloftechnology.com/; s/^HEALTH_SCHEME=.*/HEALTH_SCHEME=https/; s/^HEALTH_PORT=.*/HEALTH_PORT=443/' ~dmldeploy/.dml-deploy.conf
+# then retire the temporary port
+rm /etc/httpd/conf.d/dml-lms.conf && apachectl configtest && systemctl reload httpd
+firewall-cmd --permanent --remove-port=8088/tcp && firewall-cmd --reload
+```
+
+---
+
+## 0. Inspect a server first (once, read-only)
 
 The PRD requires the real server to be inspected before automation is finalised (§16.5). As root:
 

@@ -79,12 +79,7 @@ final class Application
         $c->set(Clock::class, static fn () => new Clock());
         $c->set(Logger::class, static fn () => new Logger($storage . '/logs/app.log'));
         $c->set(Connection::class, static fn () => Connection::connect(
-            sprintf(
-                'mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4',
-                $config->get('DB_HOST', '127.0.0.1'),
-                $config->int('DB_PORT', 3306),
-                $config->require('DB_DATABASE'),
-            ),
+            self::dsn($config),
             $config->require('DB_USERNAME'),
             $config->get('DB_PASSWORD', '') ?? '',
         ));
@@ -245,6 +240,17 @@ final class Application
             return new RequirePermission($permission);
         }
         throw new HttpException(500, 'Server misconfiguration.');
+    }
+
+    /** DB_SOCKET (a Unix socket path) takes precedence over DB_HOST/DB_PORT. */
+    public static function dsn(Config $config): string
+    {
+        $socket = $config->get('DB_SOCKET');
+        $target = $socket !== null
+            ? 'unix_socket=' . $socket
+            : sprintf('host=%s;port=%d', $config->get('DB_HOST', '127.0.0.1'), $config->int('DB_PORT', 3306));
+
+        return sprintf('mysql:%s;dbname=%s;charset=utf8mb4', $target, $config->require('DB_DATABASE'));
     }
 
     /** Release identifier written by the deploy pipeline; "dev" locally. */

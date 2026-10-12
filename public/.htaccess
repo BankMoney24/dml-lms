@@ -1,13 +1,9 @@
-# Apache / LiteSpeed (e.g. cPanel). Nginx servers use deploy/nginx/dml-lms.conf instead.
+# Apache / LiteSpeed. Nginx servers use deploy/nginx/dml-lms.conf instead.
+# HTTP→HTTPS redirects live in the virtual host (deploy/apache/), not here.
 Options -Indexes +FollowSymLinks
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteCond %{HTTPS} !=on
-    RewriteCond %{HTTP:X-Forwarded-Proto} !=https
-    RewriteCond %{REQUEST_URI} !^/\.well-known/
-    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
-
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
