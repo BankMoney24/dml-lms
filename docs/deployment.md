@@ -47,7 +47,7 @@ If MySQL root needs a password: `MYSQL_CMD="mysql -u root -p" bash …/install-a
 **Later releases by hand** (until GitHub Actions is wired up): `scp` the new tarball to `/root/`, then
 ```bash
 install -o dmldeploy -m 600 /root/<id>.tar.gz /var/www/dml-lms/incoming/
-sudo -u dmldeploy -H dml-deploy activate <id> $(sha256sum /root/<id>.tar.gz | cut -d' ' -f1)
+sudo -u dmldeploy -H /usr/local/bin/dml-deploy activate <id> $(sha256sum /root/<id>.tar.gz | cut -d' ' -f1)
 ```
 
 **When `dmlschooloftechnology.com` points here** (A records for `@` and `www` → 66.29.156.116):

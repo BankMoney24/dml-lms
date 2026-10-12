@@ -73,7 +73,10 @@ backup_db() {
   command -v mysqldump >/dev/null || { log "mysqldump not found; skipping pre-migration backup"; return 0; }
   mkdir -p "$SHARED/backups"
   # Credentials come from an option file (~/.my.cnf, mode 600), never the command line.
-  mysqldump --defaults-extra-file="$HOME/.my.cnf" --single-transaction --no-tablespaces "${DB_NAME:?}" \
+  local gtid=()
+  # MySQL 8's mysqldump wants extra privileges for GTID info unless told not to; MariaDB lacks the flag.
+  mysqldump --help 2>/dev/null | grep -q -- '--set-gtid-purged' && gtid=(--set-gtid-purged=OFF)
+  mysqldump --defaults-extra-file="$HOME/.my.cnf" --single-transaction --no-tablespaces "${gtid[@]}" "${DB_NAME:?}" \
     | gzip > "$SHARED/backups/pre-$id.sql.gz"
   chmod 600 "$SHARED/backups/pre-$id.sql.gz"
   ls -1t "$SHARED/backups"/pre-*.sql.gz | tail -n +11 | xargs -r rm -f
