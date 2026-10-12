@@ -40,12 +40,73 @@ final class CourseAuthoring
         return $course;
     }
 
-    public function updateDetails(Course $course, CurrentUser $author, string $title, string $summary): void
+    /**
+     * @param array{title: string, summary: string, level?: string, duration_hours?: string, outcomes?: string, prerequisites?: string} $input
+     */
+    public function updateDetails(Course $course, CurrentUser $author, array $input): void
     {
         $this->authoriseFor($course, $author);
-        [$title, $summary] = $this->validDetails($title, $summary);
-        $this->courses->updateDetails($course->tenantId, $course->id, $title, $summary);
+        $errors = [];
+        try {
+            [$title, $summary] = $this->validDetails($input['title'], $input['summary']);
+        } catch (ValidationException $e) {
+            $errors = $e->errors;
+            $title = $summary = '';
+        }
+        try {
+            $profile = $this->validProfile($input);
+        } catch (ValidationException $e) {
+            $errors += $e->errors;
+            $profile = null;
+        }
+        if ($errors !== [] || $profile === null) {
+            throw new ValidationException($errors);
+        }
+        $this->db->transaction(function () use ($course, $title, $summary, $profile): void {
+            $this->courses->updateDetails($course->tenantId, $course->id, $title, $summary);
+            $this->courses->updateProfile($course->tenantId, $course->id, $profile['level'], $profile['hours'], $profile['outcomes'], $profile['prerequisites']);
+        });
         $this->audit->record($course->tenantId, $author->user->id, 'course.updated', 'course', $course->id);
+    }
+
+    /**
+     * @param array{level?: string, duration_hours?: string, outcomes?: string, prerequisites?: string} $input
+     * @return array{level: ?string, hours: ?int, outcomes: list<string>, prerequisites: string}
+     */
+    public function validProfile(array $input): array
+    {
+        $errors = [];
+        $level = trim($input['level'] ?? '');
+        if ($level !== '' && !isset(Course::LEVELS[$level])) {
+            $errors['level'] = 'Choose beginner, intermediate or advanced.';
+        }
+        $rawHours = trim($input['duration_hours'] ?? '');
+        $hours = null;
+        if ($rawHours !== '') {
+            if (!ctype_digit($rawHours) || (int) $rawHours < 1 || (int) $rawHours > 2000) {
+                $errors['duration_hours'] = 'Enter the expected hours as a whole number from 1 to 2,000, or leave it blank.';
+            } else {
+                $hours = (int) $rawHours;
+            }
+        }
+        $outcomes = Course::lines($input['outcomes'] ?? '');
+        if (count($outcomes) > 20) {
+            $errors['outcomes'] = 'List at most 20 outcomes.';
+        }
+        foreach ($outcomes as $outcome) {
+            if (mb_strlen($outcome) > 300) {
+                $errors['outcomes'] = 'Keep each outcome under 300 characters.';
+            }
+        }
+        $prerequisites = trim($input['prerequisites'] ?? '');
+        if (mb_strlen($prerequisites) > 2000) {
+            $errors['prerequisites'] = 'Keep the prerequisites under 2,000 characters.';
+        }
+        if ($errors !== []) {
+            throw new ValidationException($errors);
+        }
+
+        return ['level' => $level === '' ? null : $level, 'hours' => $hours, 'outcomes' => $outcomes, 'prerequisites' => $prerequisites];
     }
 
     public function addModule(Course $course, CurrentUser $author, string $title): int
@@ -77,7 +138,7 @@ final class CourseAuthoring
     }
 
     /**
-     * @param array{type: string, title: string, body: string, pass_threshold?: string, max_attempts?: string} $input
+     * @param array{type: string, title: string, body: string, media_url?: string, pass_threshold?: string, max_attempts?: string} $input
      */
     public function addLesson(Course $course, CurrentUser $author, int $moduleId, array $input): int
     {
@@ -86,13 +147,13 @@ final class CourseAuthoring
             throw ValidationException::single('module_id', 'Choose a module from this course.');
         }
         $type = $input['type'];
-        if (!in_array($type, [Lesson::TYPE_TEXT, Lesson::TYPE_QUIZ], true)) {
+        if (!isset(Lesson::TYPES[$type])) {
             throw ValidationException::single('type', 'Choose a lesson type.');
         }
         $valid = $this->validLesson($type, $input);
 
         return $this->db->transaction(function () use ($course, $moduleId, $type, $valid): int {
-            $lessonId = $this->lessons->addLesson($course->tenantId, $course->id, $moduleId, $type, $valid['title'], $valid['body']);
+            $lessonId = $this->lessons->addLesson($course->tenantId, $course->id, $moduleId, $type, $valid['title'], $valid['body'], $valid['media_url']);
             if ($type === Lesson::TYPE_QUIZ) {
                 $this->assessments->create($course->tenantId, $lessonId, $valid['threshold'], $valid['max_attempts']);
             }
@@ -103,7 +164,7 @@ final class CourseAuthoring
     }
 
     /**
-     * @param array{title: string, body: string, pass_threshold?: string, max_attempts?: string} $input
+     * @param array{title: string, body: string, media_url?: string, pass_threshold?: string, max_attempts?: string} $input
      */
     public function updateLesson(Course $course, CurrentUser $author, int $lessonId, array $input): void
     {
@@ -112,7 +173,7 @@ final class CourseAuthoring
         $valid = $this->validLesson($lesson->type, $input + ['type' => $lesson->type]);
 
         $this->db->transaction(function () use ($course, $lesson, $valid, $author): void {
-            $this->lessons->updateLesson($course->tenantId, $course->id, $lesson->id, $valid['title'], $valid['body']);
+            $this->lessons->updateLesson($course->tenantId, $course->id, $lesson->id, $valid['title'], $valid['body'], $valid['media_url']);
             if ($lesson->isQuiz()) {
                 $assessment = $this->assessments->findForLesson($course->tenantId, $lesson->id);
                 if ($assessment !== null) {
@@ -154,7 +215,7 @@ final class CourseAuthoring
     }
 
     /** @param list<string> $options */
-    public function addQuestion(Course $course, CurrentUser $author, int $lessonId, string $prompt, array $options, string $correct): int
+    public function addQuestion(Course $course, CurrentUser $author, int $lessonId, string $prompt, array $options, string $correct, string $explanation = ''): int
     {
         $this->authoriseFor($course, $author);
         $assessment = $this->assessmentFor($course, $lessonId);
@@ -177,6 +238,10 @@ final class CourseAuthoring
         if (mb_strlen($prompt) < 3 || mb_strlen($prompt) > 1000) {
             $errors['prompt'] = 'Write a question between 3 and 1,000 characters.';
         }
+        $explanation = trim($explanation);
+        if (mb_strlen($explanation) > 2000) {
+            $errors['explanation'] = 'Keep the explanation under 2,000 characters.';
+        }
         if (count($labels) < 2) {
             $errors['options'] = 'Add at least two answer options.';
         } elseif ($correctIndex === null) {
@@ -191,10 +256,29 @@ final class CourseAuthoring
             throw new ValidationException($errors);
         }
 
-        $id = $this->assessments->addQuestion($course->tenantId, $assessment['id'], $prompt, $labels, (int) $correctIndex);
+        $id = $this->assessments->addQuestion($course->tenantId, $assessment['id'], $prompt, $labels, (int) $correctIndex, $explanation);
         $this->courses->touch($course->tenantId, $course->id);
 
         return $id;
+    }
+
+    /** Explanations can be improved at any time: they do not change how attempts were scored. */
+    public function updateExplanation(Course $course, CurrentUser $author, int $lessonId, int $questionId, string $explanation): void
+    {
+        $this->authoriseFor($course, $author);
+        $assessment = $this->assessmentFor($course, $lessonId);
+        $explanation = trim($explanation);
+        if (mb_strlen($explanation) > 2000) {
+            throw ValidationException::single('explanation', 'Keep the explanation under 2,000 characters.');
+        }
+        if (!$this->assessments->updateExplanation($course->tenantId, $assessment['id'], $questionId, $explanation)) {
+            // Same text as before also reports 0 rows; check the question exists.
+            $exists = array_filter($this->assessments->questions($course->tenantId, $assessment['id']), static fn ($q): bool => $q->id === $questionId);
+            if ($exists === []) {
+                throw HttpException::notFound();
+            }
+        }
+        $this->courses->touch($course->tenantId, $course->id);
     }
 
     public function deleteQuestion(Course $course, CurrentUser $author, int $lessonId, int $questionId): void
@@ -219,6 +303,9 @@ final class CourseAuthoring
             $problems[] = 'Add at least one lesson.';
         }
         foreach ($lessons as $lesson) {
+            if ($lesson->isVideo() && $lesson->video() === null) {
+                $problems[] = sprintf('Add a YouTube or Vimeo link to the video lesson “%s”.', $lesson->title);
+            }
             if (!$lesson->isQuiz()) {
                 continue;
             }
@@ -308,8 +395,8 @@ final class CourseAuthoring
     }
 
     /**
-     * @param array{type: string, title: string, body: string, pass_threshold?: string, max_attempts?: string} $input
-     * @return array{title: string, body: string, threshold: int, max_attempts: ?int}
+     * @param array{type: string, title: string, body: string, media_url?: string, pass_threshold?: string, max_attempts?: string} $input
+     * @return array{title: string, body: string, media_url: ?string, threshold: int, max_attempts: ?int}
      */
     private function validLesson(string $type, array $input): array
     {
@@ -321,6 +408,19 @@ final class CourseAuthoring
         }
         if ($type === Lesson::TYPE_TEXT && $body === '') {
             $errors['body'] = 'Add the lesson text learners will read.';
+        }
+        if ($type === Lesson::TYPE_ASSIGNMENT && $body === '') {
+            $errors['body'] = 'Describe the task: what to do, what to submit, and how it will be judged.';
+        }
+        $mediaUrl = null;
+        if ($type === Lesson::TYPE_VIDEO) {
+            $raw = trim($input['media_url'] ?? '');
+            $video = $raw === '' || mb_strlen($raw) > 500 ? null : VideoLink::parse($raw);
+            if ($video === null) {
+                $errors['media_url'] = 'Paste a YouTube or Vimeo link, for example https://www.youtube.com/watch?v=… or https://vimeo.com/123456789.';
+            } else {
+                $mediaUrl = $video->canonical();
+            }
         }
         if (mb_strlen($body) > 50000) {
             $errors['body'] = 'Keep lesson text under 50,000 characters; split longer material into several lessons.';
@@ -348,7 +448,7 @@ final class CourseAuthoring
             throw new ValidationException($errors);
         }
 
-        return ['title' => $title, 'body' => $body, 'threshold' => $threshold, 'max_attempts' => $maxAttempts];
+        return ['title' => $title, 'body' => $body, 'media_url' => $mediaUrl, 'threshold' => $threshold, 'max_attempts' => $maxAttempts];
     }
 
     private function uniqueSlug(int $tenantId, string $title): string

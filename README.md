@@ -60,6 +60,10 @@ Tests need a disposable database whose name contains `test` (default `dml_lms_te
 | `deploy/` | server scripts, Nginx/PHP-FPM/Apache config |
 | `docs/` | architecture, ADRs, deployment runbook, status against the PRD |
 
+## Courses
+
+Ready-made course packages live in `courses/` (see `courses/README.md`). `bin/console course:import <tenant> linux-server-administration --publish` adds the advanced Linux Server Administration course.
+
 ## Deploying
 
 See **[docs/deployment.md](docs/deployment.md)**. In short: tag `vX.Y.Z` on `main`; GitHub Actions builds once, deploys to staging, waits for approval, deploys to production through a restricted SSH key, and rolls back automatically if the health check fails.

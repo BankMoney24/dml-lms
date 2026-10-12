@@ -21,7 +21,9 @@ final class SecurityHeaders implements Middleware
         $headers = [
             // Self-hosted assets only; no inline script. Inline styles are not used either.
             'Content-Security-Policy' => "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
-                . "font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; "
+                . "font-src 'self'; connect-src 'self'; "
+                // Video lessons: only the privacy-enhanced YouTube player and Vimeo.
+                . "frame-src https://www.youtube-nocookie.com https://player.vimeo.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; "
                 . "object-src 'none'",
             'X-Content-Type-Options' => 'nosniff',
             'X-Frame-Options' => 'DENY',

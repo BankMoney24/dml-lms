@@ -31,7 +31,7 @@ $n = 0;
           <?php else: ?>
             <?= $v->e($lesson->title) ?>
           <?php endif; ?>
-          <span class="trace-meta"><?= $lesson->isQuiz() ? 'Quiz' : 'Reading' ?><?= $done ? ', done' : '' ?></span>
+          <span class="trace-meta"><?= $v->e($lesson->typeLabel()) ?><?= $done ? ', done' : '' ?></span>
         </span>
       </li>
       <?php endforeach; ?>

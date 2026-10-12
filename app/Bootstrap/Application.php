@@ -29,10 +29,17 @@ use App\Modules\Assessments\AttemptRepository;
 use App\Modules\Assessments\AttemptService;
 use App\Modules\Assessments\Http\AttemptController;
 use App\Modules\Assessments\QuizScorer;
+use App\Modules\Assignments\AssignmentService;
+use App\Modules\Assignments\Http\ReviewController;
+use App\Modules\Assignments\SubmissionRepository;
 use App\Modules\Audit\ActivityDescriber;
 use App\Modules\Audit\AuditLog;
 use App\Modules\Audit\Http\ActivityController;
+use App\Modules\Certificates\CertificateRepository;
+use App\Modules\Certificates\CertificateService;
+use App\Modules\Certificates\Http\CertificateController;
 use App\Modules\Courses\CourseAuthoring;
+use App\Modules\Courses\CoursePackageImporter;
 use App\Modules\Courses\CourseRepository;
 use App\Modules\Courses\Http\CatalogueController;
 use App\Modules\Courses\Http\LessonEditorController;
@@ -177,6 +184,16 @@ final class Application
             $c->get(AssessmentRepository::class),
             $c->get(AuditLog::class),
         ));
+        $c->set(CoursePackageImporter::class, static fn (Container $c) => new CoursePackageImporter(
+            $c->get(Connection::class),
+            $c->get(CourseAuthoring::class),
+        ));
+        $c->set(CertificateService::class, static fn (Container $c) => new CertificateService(
+            new CertificateRepository($c->get(Connection::class), $c->get(Clock::class)),
+            $c->get(CourseRepository::class),
+            $c->get(UserRepository::class),
+            $c->get(AuditLog::class),
+        ));
         $c->set(LearningService::class, static fn (Container $c) => new LearningService(
             $c->get(Connection::class),
             $c->get(EnrolmentRepository::class),
@@ -184,6 +201,21 @@ final class Application
             $c->get(LessonRepository::class),
             new CompletionRule(),
             $c->get(AuditLog::class),
+            $c->get(CertificateService::class),
+        ));
+        $c->set(SubmissionRepository::class, static fn (Container $c) => new SubmissionRepository($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(AssignmentService::class, static fn (Container $c) => new AssignmentService(
+            $c->get(Connection::class),
+            $c->get(SubmissionRepository::class),
+            $c->get(LessonRepository::class),
+            $c->get(CourseRepository::class),
+            $c->get(EnrolmentRepository::class),
+            $c->get(LearningService::class),
+            $c->get(UserRepository::class),
+            $c->get(AuditLog::class),
+            $c->get(MailSettings::class),
+            $c->get(MailOutbox::class),
+            $c->get(EmailComposer::class),
         ));
         $c->set(AttemptService::class, static fn (Container $c) => new AttemptService(
             $c->get(Connection::class),
@@ -215,6 +247,8 @@ final class Application
             $c->get(View::class),
             $c->get(CourseRepository::class),
             $c->get(EnrolmentRepository::class),
+            $c->get(CertificateService::class),
+            $c->get(SubmissionRepository::class),
         ));
         $c->set(LoginController::class, static fn (Container $c) => new LoginController(
             $c->get(View::class),
@@ -227,6 +261,7 @@ final class Application
             $c->get(LessonRepository::class),
             $c->get(EnrolmentRepository::class),
             $c->get(ProgressRepository::class),
+            $c->get(CertificateService::class),
         ));
         $c->set(LearnController::class, static fn (Container $c) => new LearnController(
             $c->get(View::class),
@@ -236,6 +271,8 @@ final class Application
             $c->get(LearningService::class),
             $c->get(AssessmentRepository::class),
             $c->get(AttemptRepository::class),
+            $c->get(AssignmentService::class),
+            $c->get(SubmissionRepository::class),
         ));
         $c->set(AttemptController::class, static fn (Container $c) => new AttemptController(
             $c->get(View::class),
@@ -255,6 +292,21 @@ final class Application
             $c->get(AssessmentRepository::class),
             $c->get(CourseAuthoring::class),
             new ProgressReport($c->get(Connection::class)),
+            $c->get(SubmissionRepository::class),
+        ));
+        $c->set(ReviewController::class, static fn (Container $c) => new ReviewController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(SubmissionRepository::class),
+            $c->get(AssignmentService::class),
+            $c->get(LessonRepository::class),
+            $c->get(CourseRepository::class),
+            $c->get(UserRepository::class),
+        ));
+        $c->set(CertificateController::class, static fn (Container $c) => new CertificateController(
+            $c->get(View::class),
+            $c->get(CertificateService::class),
+            $c->get(CourseRepository::class),
         ));
         $c->set(LessonEditorController::class, static fn (Container $c) => new LessonEditorController(
             $c->get(View::class),

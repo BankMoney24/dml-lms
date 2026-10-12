@@ -5,7 +5,9 @@ declare(strict_types=1);
 use App\Core\Http\Kernel;
 use App\Core\Http\Router;
 use App\Modules\Assessments\Http\AttemptController;
+use App\Modules\Assignments\Http\ReviewController;
 use App\Modules\Audit\Http\ActivityController;
+use App\Modules\Certificates\Http\CertificateController;
 use App\Modules\Courses\Http\CatalogueController;
 use App\Modules\Courses\Http\LessonEditorController;
 use App\Modules\Courses\Http\TeachController;
@@ -50,6 +52,11 @@ return static function (Router $r): void {
     $r->post('/courses/{slug}/lessons/{lesson:int}/complete', [LearnController::class, 'complete'], $learn);
     $r->post('/courses/{slug}/lessons/{lesson:int}/attempts', [AttemptController::class, 'submit'], $learn);
     $r->get('/courses/{slug}/lessons/{lesson:int}/attempts/{attempt:int}', [AttemptController::class, 'result'], $learn);
+    $r->post('/courses/{slug}/lessons/{lesson:int}/submissions', [LearnController::class, 'submitAssignment'], $learn);
+
+    $r->get('/certificates/{code:code}', [CertificateController::class, 'show'], ['tenant', 'auth']);
+    $r->get('/verify', [CertificateController::class, 'verify'], ['tenant']);
+    $r->get('/verify/{code:code}', [CertificateController::class, 'verify'], ['tenant']);
 
     $teach = ['tenant', 'auth', 'can:course.manage'];
     $r->get('/teach', [TeachController::class, 'index'], $teach);
@@ -72,6 +79,10 @@ return static function (Router $r): void {
     $r->get('/teach/courses/{course:int}/lessons/{lesson:int}/preview', [LessonEditorController::class, 'preview'], $teach);
     $r->post('/teach/courses/{course:int}/lessons/{lesson:int}/questions', [LessonEditorController::class, 'addQuestion'], $teach);
     $r->post('/teach/courses/{course:int}/lessons/{lesson:int}/questions/{question:int}/delete', [LessonEditorController::class, 'deleteQuestion'], $teach);
+    $r->post('/teach/courses/{course:int}/lessons/{lesson:int}/questions/{question:int}/explanation', [LessonEditorController::class, 'updateExplanation'], $teach);
+    $r->get('/teach/reviews', [ReviewController::class, 'index'], $teach);
+    $r->get('/teach/reviews/{submission:int}', [ReviewController::class, 'show'], $teach);
+    $r->post('/teach/reviews/{submission:int}', [ReviewController::class, 'decide'], $teach);
 
     $signedIn = ['tenant', 'auth'];
     $r->get('/account', [AccountController::class, 'show'], $signedIn);

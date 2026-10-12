@@ -61,6 +61,15 @@ final class ViewHelpers
         return $html;
     }
 
+    /**
+     * Renders lesson text and learner answers written in the Markdown subset
+     * described in Markdown. Output contains only tags it builds itself.
+     */
+    public function markdown(string $text): string
+    {
+        return (new Markdown())->toHtml($text);
+    }
+
     public function can(string $permission): bool
     {
         $permissions = $this->shared['permissions'] ?? [];

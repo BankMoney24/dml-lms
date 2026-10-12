@@ -9,6 +9,7 @@ use App\Core\Http\Request;
 use App\Core\Http\RequestContext;
 use App\Core\Http\Response;
 use App\Core\View\View;
+use App\Modules\Certificates\CertificateService;
 use App\Modules\Courses\CourseRepository;
 use App\Modules\Courses\LessonRepository;
 use App\Modules\Learning\EnrolmentRepository;
@@ -24,6 +25,7 @@ final class CatalogueController
         private readonly LessonRepository $lessons,
         private readonly EnrolmentRepository $enrolments,
         private readonly ProgressRepository $progress,
+        private readonly CertificateService $certificates,
     ) {
     }
 
@@ -57,6 +59,7 @@ final class CatalogueController
             'course' => $course,
             'outline' => $this->lessons->outline($tenant->id, $course->id),
             'enrolment' => $enrolment,
+            'certificate' => $this->certificates->forEnrolment($enrolment),
             'completedIds' => $enrolment === null ? [] : $this->progress->completedLessonIds($tenant->id, $enrolment->id),
         ]));
     }

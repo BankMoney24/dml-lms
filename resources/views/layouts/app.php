@@ -58,7 +58,7 @@ $title = ($pageTitle ?? '') !== '' && ($pageTitle ?? '') !== $siteName ? $pageTi
   <?= $content ?>
 </main>
 <footer class="footer">
-  <div class="wrap"><?= $v->e($siteName) ?> · Learn it. Practise it. Prove it.</div>
+  <div class="wrap"><?= $v->e($siteName) ?> · Learn it. Practise it. Prove it.<?php if ($tenant !== null): ?> · <a href="/verify">Check a certificate</a><?php endif; ?></div>
 </footer>
 </body>
 </html>

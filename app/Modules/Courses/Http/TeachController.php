@@ -12,6 +12,7 @@ use App\Core\Session\Session;
 use App\Core\Validation\ValidationException;
 use App\Core\View\View;
 use App\Modules\Assessments\AssessmentRepository;
+use App\Modules\Assignments\SubmissionRepository;
 use App\Modules\Courses\Course;
 use App\Modules\Courses\CourseAuthoring;
 use App\Modules\Courses\CourseRepository;
@@ -29,6 +30,7 @@ final class TeachController
         private readonly AssessmentRepository $assessments,
         private readonly CourseAuthoring $authoring,
         private readonly ProgressReport $progress,
+        private readonly SubmissionRepository $pendingReviews,
     ) {
     }
 
@@ -39,6 +41,7 @@ final class TeachController
         return Response::html($this->view->render('teach/index', [
             'pageTitle' => 'Teaching',
             'rows' => $this->courses->listAllWithCounts($tenant->id),
+            'pendingReviews' => $this->pendingReviews->pendingCount($tenant->id),
         ]));
     }
 
@@ -69,9 +72,12 @@ final class TeachController
     public function updateDetails(Request $request): Response
     {
         $course = $this->course($request);
-        $old = ['title' => $request->input('title', '') ?? '', 'summary' => $request->input('summary', '') ?? ''];
+        $old = [];
+        foreach (['title', 'summary', 'level', 'duration_hours', 'outcomes', 'prerequisites'] as $key) {
+            $old[$key] = $request->input($key, '') ?? '';
+        }
         try {
-            $this->authoring->updateDetails($course, RequestContext::user($request), $old['title'], $old['summary']);
+            $this->authoring->updateDetails($course, RequestContext::user($request), $old);
         } catch (ValidationException $e) {
             return $this->renderEdit($course, $e->errors, $old + ['details_open' => '1'], 422);
         }
@@ -127,6 +133,7 @@ final class TeachController
                 'type' => $request->input('type', '') ?? '',
                 'title' => $request->input('lesson_title', '') ?? '',
                 'body' => $request->input('body', '') ?? '',
+                'media_url' => $request->input('media_url', '') ?? '',
                 'pass_threshold' => $request->input('pass_threshold', '70') ?? '70',
                 'max_attempts' => $request->input('max_attempts', '') ?? '',
             ]);
@@ -168,6 +175,7 @@ final class TeachController
             'pageTitle' => 'Progress: ' . $course->title,
             'course' => $course,
             'report' => $this->progress->forCourse($course->tenantId, $course->id),
+            'pendingReviews' => $this->pendingReviews->pendingCount($course->tenantId),
         ]));
     }
 
@@ -182,7 +190,7 @@ final class TeachController
     private function old(Request $request): array
     {
         $old = [];
-        foreach (['module_title', 'module_id', 'type', 'lesson_title', 'body', 'pass_threshold', 'max_attempts'] as $key) {
+        foreach (['module_title', 'module_id', 'type', 'lesson_title', 'body', 'media_url', 'pass_threshold', 'max_attempts'] as $key) {
             $old[$key] = $request->input($key, '') ?? '';
         }
 

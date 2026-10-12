@@ -44,6 +44,7 @@ final class LessonEditorController
         $input = [
             'title' => $request->input('lesson_title', '') ?? '',
             'body' => $request->input('body', '') ?? '',
+            'media_url' => $request->input('media_url', '') ?? '',
             'pass_threshold' => $request->input('pass_threshold', '70') ?? '70',
             'max_attempts' => $request->input('max_attempts', '') ?? '',
         ];
@@ -53,6 +54,7 @@ final class LessonEditorController
             return $this->render($course, $lesson, $e->errors, [
                 'lesson_title' => $input['title'],
                 'body' => $input['body'],
+                'media_url' => $input['media_url'],
                 'pass_threshold' => $input['pass_threshold'],
                 'max_attempts' => $input['max_attempts'],
             ], 422);
@@ -97,9 +99,14 @@ final class LessonEditorController
                 $request->input('prompt', '') ?? '',
                 $options,
                 $request->input('correct', '') ?? '',
+                $request->input('explanation', '') ?? '',
             );
         } catch (ValidationException $e) {
-            $old = ['prompt' => $request->input('prompt', '') ?? '', 'correct' => $request->input('correct', '') ?? ''];
+            $old = [
+                'prompt' => $request->input('prompt', '') ?? '',
+                'correct' => $request->input('correct', '') ?? '',
+                'explanation' => $request->input('explanation', '') ?? '',
+            ];
             foreach ($options as $i => $label) {
                 $old['option_' . $i] = $label;
             }
@@ -109,6 +116,19 @@ final class LessonEditorController
         $this->session->flash('success', 'Question added.');
 
         return Response::redirect($this->editUrl($course, $lesson) . '#questions');
+    }
+
+    public function updateExplanation(Request $request): Response
+    {
+        [$course, $lesson] = $this->load($request);
+        try {
+            $this->authoring->updateExplanation($course, RequestContext::user($request), $lesson->id, $request->routeInt('question'), $request->input('explanation', '') ?? '');
+            $this->session->flash('success', 'Explanation saved.');
+        } catch (ValidationException $e) {
+            $this->session->flash('error', implode(' ', $e->errors));
+        }
+
+        return Response::redirect($this->editUrl($course, $lesson) . '#question-' . $request->routeInt('question'));
     }
 
     public function deleteQuestion(Request $request): Response
@@ -175,6 +195,7 @@ final class LessonEditorController
             'old' => $old + [
                 'lesson_title' => $lesson->title,
                 'body' => $lesson->body,
+                'media_url' => $lesson->mediaUrl ?? '',
                 'pass_threshold' => (string) ($assessment['pass_threshold'] ?? 70),
                 'max_attempts' => $assessment === null || $assessment['max_attempts'] === null ? '' : (string) $assessment['max_attempts'],
             ],

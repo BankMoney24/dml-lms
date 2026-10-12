@@ -1,0 +1,981 @@
+{
+  "title": "Linux Server Administration",
+  "summary": "Run a real Linux server the way professionals do: secure remote access, users and permissions, services, firewalls, websites over HTTPS, databases, backups you can restore, monitoring and troubleshooting. Covers both AlmaLinux (Red Hat family) and Ubuntu. Includes graded assignments, a capstone project and a final exam.",
+  "level": "advanced",
+  "duration_hours": 40,
+  "outcomes": [
+    "Connect to servers securely with SSH keys and harden SSH against attack",
+    "Manage users, groups, sudo rights and file permissions on the principle of least privilege",
+    "Install, update and run software as systemd services, and read their logs",
+    "Configure firewalld and ufw so only the services you intend are reachable",
+    "Host websites with Nginx or Apache and secure them with free HTTPS certificates",
+    "Create databases and least-privilege database users, and keep them off the internet",
+    "Build automated backups and prove them with a restore test",
+    "Monitor a server, work with SELinux instead of disabling it, and troubleshoot failures methodically"
+  ],
+  "prerequisites": "You should be comfortable using a computer and typing commands carefully. No previous Linux experience is required, but this is a demanding course: plan about **5 hours a week for 8 weeks**.\n\nYou need a Linux server you are allowed to break: a virtual machine on your own computer (free), a small rented VPS, or a lab server from your school. The first lesson explains how to set one up.",
+  "modules": [
+    {
+      "title": "1. The server and the shell",
+      "lessons": [
+        {
+          "type": "text",
+          "title": "How Linux servers are run",
+          "file": "lessons/01-how-servers-are-run.md"
+        },
+        {
+          "type": "text",
+          "title": "Your first SSH session",
+          "file": "lessons/02-first-ssh-session.md"
+        },
+        {
+          "type": "text",
+          "title": "Finding your way around the filesystem",
+          "file": "lessons/03-filesystem.md"
+        },
+        {
+          "type": "quiz",
+          "title": "Module 1 quiz",
+          "intro": "Check what you have learned in this module. You need 70% to pass and you can try as many times as you need. After you pass, you will see an explanation for every question.",
+          "pass_threshold": 70,
+          "questions": [
+            {
+              "prompt": "Which command tells you which Linux distribution and version a server is running?",
+              "options": [
+                "cat /etc/os-release",
+                "uname -u",
+                "whoami",
+                "ls /etc/distro"
+              ],
+              "correct": 0,
+              "explanation": "`/etc/os-release` describes the distribution, for example AlmaLinux 9.4 or Ubuntu 24.04. `uname` reports the kernel, not the distribution."
+            },
+            {
+              "prompt": "You connect to a server you have used many times and SSH warns: REMOTE HOST IDENTIFICATION HAS CHANGED. What should you do?",
+              "options": [
+                "Delete the line from known_hosts and connect anyway",
+                "Stop and check with the server's administrator before connecting",
+                "Type yes to accept the new key",
+                "Connect as root instead"
+              ],
+              "correct": 1,
+              "explanation": "A changed host key means the server was reinstalled or someone may be intercepting the connection. Confirm which it is before you trust the new key."
+            },
+            {
+              "prompt": "Your prompt ends with # instead of $. What does that tell you?",
+              "options": [
+                "You are in your home folder",
+                "The last command failed",
+                "You are working as root",
+                "You are connected over SSH"
+              ],
+              "correct": 2,
+              "explanation": "By convention `#` marks the root account. Every command you type has full power over the system, so take extra care."
+            },
+            {
+              "prompt": "Which directory holds system and service configuration files?",
+              "options": [
+                "/var",
+                "/etc",
+                "/usr",
+                "/opt"
+              ],
+              "correct": 1,
+              "explanation": "`/etc` holds configuration, for example `/etc/ssh/sshd_config`. Changing data such as logs and websites lives under `/var`."
+            },
+            {
+              "prompt": "You are in /var/www/site. Which path refers to /var/www/site/public no matter which directory you run it from?",
+              "options": [
+                "public",
+                "./public",
+                "/var/www/site/public",
+                "../site/public"
+              ],
+              "correct": 2,
+              "explanation": "An absolute path starts with `/` and means the same thing from anywhere. The others are relative to the current directory."
+            },
+            {
+              "prompt": "How do you see hidden files such as .ssh in a directory listing?",
+              "options": [
+                "ls -h",
+                "ls -a",
+                "ls --hidden-only",
+                "show hidden"
+              ],
+              "correct": 1,
+              "explanation": "`-a` (all) includes names starting with a dot. `-h` only makes sizes human-readable."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "2. Files, users and permissions",
+      "lessons": [
+        {
+          "type": "text",
+          "title": "Working with files and text",
+          "file": "lessons/04-files-and-text.md"
+        },
+        {
+          "type": "text",
+          "title": "Users, groups and sudo",
+          "file": "lessons/05-users-groups-sudo.md"
+        },
+        {
+          "type": "text",
+          "title": "Permissions and ownership",
+          "file": "lessons/06-permissions.md"
+        },
+        {
+          "type": "quiz",
+          "title": "Module 2 quiz",
+          "intro": "Check what you have learned in this module. You need 70% to pass and you can try as many times as you need. After you pass, you will see an explanation for every question.",
+          "pass_threshold": 70,
+          "questions": [
+            {
+              "prompt": "Working as root, you type: echo 'Port 22' > /etc/ssh/sshd_config. What happens?",
+              "options": [
+                "The line is added to the end of the file",
+                "The file is replaced by that single line",
+                "Nothing, because echo cannot write files",
+                "SSH reloads with the new port"
+              ],
+              "correct": 1,
+              "explanation": "A single `>` replaces the whole file. `>>` appends. Make a backup copy before editing important files."
+            },
+            {
+              "prompt": "Which command adds the user tobi to the group developers without removing him from his other groups?",
+              "options": [
+                "usermod -G developers tobi",
+                "usermod -aG developers tobi",
+                "groupadd developers tobi",
+                "chgrp tobi developers"
+              ],
+              "correct": 1,
+              "explanation": "`-a` means append. Without it, `-G` replaces the list of extra groups and can remove someone's admin rights."
+            },
+            {
+              "prompt": "On AlmaLinux, which group's members can use sudo by default?",
+              "options": [
+                "sudo",
+                "admin",
+                "wheel",
+                "root"
+              ],
+              "correct": 2,
+              "explanation": "Red Hat-family systems use `wheel`; Ubuntu and Debian use `sudo`."
+            },
+            {
+              "prompt": "A file shows -rw-r----- ada webteam. Who can read it?",
+              "options": [
+                "Only ada",
+                "ada and members of webteam",
+                "Everyone",
+                "Only root"
+              ],
+              "correct": 1,
+              "explanation": "Owner `rw-`, group `r--`, others `---`: ada can read and write, webteam members can read, everyone else gets nothing."
+            },
+            {
+              "prompt": "What does chmod 750 give a directory?",
+              "options": [
+                "Owner full access; group can list and enter; others nothing",
+                "Everyone can read and enter",
+                "Owner read only; group write",
+                "Owner and group full access; others read"
+              ],
+              "correct": 0,
+              "explanation": "7 = rwx for the owner, 5 = r-x for the group (list and enter), 0 = nothing for others."
+            },
+            {
+              "prompt": "To read /srv/site/index.html, what does a user need on the directory /srv/site?",
+              "options": [
+                "w (write)",
+                "x (execute, to enter it)",
+                "Nothing; only the file's permission matters",
+                "Ownership of the directory"
+              ],
+              "correct": 1,
+              "explanation": "A user must be able to enter every directory on the path (`x`) and read the file itself (`r`)."
+            },
+            {
+              "prompt": "Several users share /srv/project. What makes new files inside it belong to the project group automatically?",
+              "options": [
+                "chmod 777 on the folder",
+                "The setgid bit on the folder (e.g. chmod 2770)",
+                "Adding the users to wheel",
+                "Setting umask 000"
+              ],
+              "correct": 1,
+              "explanation": "The setgid bit on a directory makes new files inherit its group. `777` would let every user on the server write there."
+            }
+          ]
+        },
+        {
+          "type": "assignment",
+          "title": "Assignment: a shared project folder",
+          "file": "lessons/07-assignment-shared-folder.md"
+        }
+      ]
+    },
+    {
+      "title": "3. Software, processes and services",
+      "lessons": [
+        {
+          "type": "text",
+          "title": "Installing and updating software",
+          "file": "lessons/08-installing-software.md"
+        },
+        {
+          "type": "text",
+          "title": "Processes, signals and resources",
+          "file": "lessons/09-processes.md"
+        },
+        {
+          "type": "text",
+          "title": "Services with systemd, and the journal",
+          "file": "lessons/10-systemd.md"
+        },
+        {
+          "type": "quiz",
+          "title": "Module 3 quiz",
+          "intro": "Check what you have learned in this module. You need 70% to pass and you can try as many times as you need. After you pass, you will see an explanation for every question.",
+          "pass_threshold": 70,
+          "questions": [
+            {
+              "prompt": "On Ubuntu, which command actually installs the available updates?",
+              "options": [
+                "apt update",
+                "apt upgrade",
+                "apt refresh",
+                "apt search --upgrade"
+              ],
+              "correct": 1,
+              "explanation": "`apt update` only refreshes the list of available packages. `apt upgrade` installs the updates."
+            },
+            {
+              "prompt": "The load average on a 2-core server stays around 6 for an hour. What does that suggest?",
+              "options": [
+                "The server is mostly idle",
+                "Work is queuing: there is more to do than the CPUs can handle",
+                "6 GB of memory is in use",
+                "Six users are logged in"
+              ],
+              "correct": 1,
+              "explanation": "Load counts processes running or waiting. Steadily above the number of cores means processes are waiting for CPU (or for disk)."
+            },
+            {
+              "prompt": "Which signal asks a process to finish its work and exit cleanly?",
+              "options": [
+                "KILL (9)",
+                "TERM (15)",
+                "STOP (19)",
+                "HUP (1)"
+              ],
+              "correct": 1,
+              "explanation": "`TERM` is the polite request and the default for `kill`. `KILL` gives the process no chance to clean up and should be a last resort."
+            },
+            {
+              "prompt": "You started nginx with systemctl start nginx. After a reboot it is not running. Why?",
+              "options": [
+                "Reboots always stop nginx",
+                "It was started but never enabled",
+                "The journal was full",
+                "nginx needs reload, not start"
+              ],
+              "correct": 1,
+              "explanation": "`start` runs it now; `enable` makes it start at boot. Use `systemctl enable --now` to do both."
+            },
+            {
+              "prompt": "How do you see the last 50 log messages from the nginx service?",
+              "options": [
+                "journalctl -u nginx -n 50",
+                "tail nginx 50",
+                "systemctl log nginx",
+                "cat /var/log/nginx.journal"
+              ],
+              "correct": 0,
+              "explanation": "`journalctl -u <unit>` filters the journal to one service; `-n 50` shows the last 50 lines and `-f` follows new ones."
+            },
+            {
+              "prompt": "You changed a unit file in /etc/systemd/system/. What must you run before restarting the service?",
+              "options": [
+                "systemctl daemon-reload",
+                "systemctl reset",
+                "journalctl --rotate",
+                "reboot"
+              ],
+              "correct": 0,
+              "explanation": "systemd caches unit files. `daemon-reload` makes it read your changes."
+            },
+            {
+              "prompt": "Free memory looks very low in free -h, but the available column is large. Should you worry?",
+              "options": [
+                "Yes, the server is about to run out of memory",
+                "No, Linux uses spare memory as cache and frees it when programs need it",
+                "Yes, swap is broken",
+                "No, because free -h is always wrong"
+              ],
+              "correct": 1,
+              "explanation": "Look at **available**. Cached memory counts as used but is handed back when needed."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "4. Networking and secure access",
+      "lessons": [
+        {
+          "type": "text",
+          "title": "Networking from the server's point of view",
+          "file": "lessons/11-networking.md"
+        },
+        {
+          "type": "text",
+          "title": "SSH keys and hardening",
+          "file": "lessons/12-ssh-keys-hardening.md"
+        },
+        {
+          "type": "text",
+          "title": "Firewalls with firewalld and ufw",
+          "file": "lessons/13-firewalls.md"
+        },
+        {
+          "type": "quiz",
+          "title": "Module 4 quiz",
+          "intro": "Check what you have learned in this module. You need 70% to pass and you can try as many times as you need. After you pass, you will see an explanation for every question.",
+          "pass_threshold": 70,
+          "questions": [
+            {
+              "prompt": "ss -tulpn shows a database listening on 127.0.0.1:3306. Who can connect to it?",
+              "options": [
+                "Anyone on the internet",
+                "Only programs on the same server",
+                "Only computers in the same building",
+                "Nobody"
+              ],
+              "correct": 1,
+              "explanation": "`127.0.0.1` is the loopback address: only the server itself. That is what you want for a database used by a local application."
+            },
+            {
+              "prompt": "Which file on the server lists the public keys allowed to log in to an account?",
+              "options": [
+                "~/.ssh/id_ed25519",
+                "~/.ssh/known_hosts",
+                "~/.ssh/authorized_keys",
+                "/etc/ssh/ssh_host_ed25519_key"
+              ],
+              "correct": 2,
+              "explanation": "`authorized_keys` holds trusted public keys. `id_ed25519` is a private key and must never be copied to servers."
+            },
+            {
+              "prompt": "Before reloading SSH after disabling password login, what is the most important precaution?",
+              "options": [
+                "Restart the server",
+                "Keep your current session open and test login in a second session",
+                "Delete known_hosts",
+                "Turn off the firewall"
+              ],
+              "correct": 1,
+              "explanation": "If the new settings lock you out, the session that is still open is your way back in to fix them."
+            },
+            {
+              "prompt": "With firewalld, you add a rule with --permanent but it has no effect yet. What is missing?",
+              "options": [
+                "firewall-cmd --reload",
+                "systemctl restart sshd",
+                "ufw enable",
+                "A reboot of the client"
+              ],
+              "correct": 0,
+              "explanation": "Permanent rules are saved to disk but applied only when firewalld reloads."
+            },
+            {
+              "prompt": "On Ubuntu, you are about to run ufw enable on a remote server. What must you do first?",
+              "options": [
+                "Allow OpenSSH",
+                "Disable IPv6",
+                "Allow port 3306",
+                "Run apt upgrade"
+              ],
+              "correct": 0,
+              "explanation": "With a default-deny policy, enabling ufw without allowing SSH would cut off your own session."
+            },
+            {
+              "prompt": "Which SSH setting stops anyone logging in with a password?",
+              "options": [
+                "PermitRootLogin no",
+                "PasswordAuthentication no",
+                "PubkeyAuthentication no",
+                "MaxAuthTries 0"
+              ],
+              "correct": 1,
+              "explanation": "`PasswordAuthentication no` (with `KbdInteractiveAuthentication no`) leaves keys as the only way in. `PubkeyAuthentication no` would do the opposite."
+            },
+            {
+              "prompt": "Which command shows the IP address that a domain name resolves to?",
+              "options": [
+                "dig +short example.org",
+                "ip a example.org",
+                "ss example.org",
+                "route example.org"
+              ],
+              "correct": 0,
+              "explanation": "`dig` asks DNS. `ip a` shows the server's own addresses."
+            }
+          ]
+        },
+        {
+          "type": "assignment",
+          "title": "Assignment: harden your server",
+          "file": "lessons/14-assignment-harden-ssh.md"
+        }
+      ]
+    },
+    {
+      "title": "5. Storage, backups and scheduling",
+      "lessons": [
+        {
+          "type": "text",
+          "title": "Disks and filesystems",
+          "file": "lessons/15-disks.md"
+        },
+        {
+          "type": "text",
+          "title": "Backups you can restore",
+          "file": "lessons/16-backups.md"
+        },
+        {
+          "type": "text",
+          "title": "Scheduling with cron and systemd timers",
+          "file": "lessons/17-scheduling.md"
+        },
+        {
+          "type": "quiz",
+          "title": "Module 5 quiz",
+          "intro": "Check what you have learned in this module. You need 70% to pass and you can try as many times as you need. After you pass, you will see an explanation for every question.",
+          "pass_threshold": 70,
+          "questions": [
+            {
+              "prompt": "What does the 3-2-1 backup rule say?",
+              "options": [
+                "Back up 3 times a day, keep 2 days, 1 copy",
+                "3 copies, on 2 kinds of storage, 1 of them off-site",
+                "3 servers, 2 databases, 1 disk",
+                "Restore every 3 months on 2 machines"
+              ],
+              "correct": 1,
+              "explanation": "Three copies, two storage types, one somewhere else, so a single disaster cannot destroy all of them."
+            },
+            {
+              "prompt": "What is the right way to back up a MySQL or MariaDB database that is in use?",
+              "options": [
+                "Copy /var/lib/mysql with cp",
+                "Use mysqldump --single-transaction",
+                "Zip the whole server",
+                "Take a screenshot of the tables"
+              ],
+              "correct": 1,
+              "explanation": "A dump with `--single-transaction` gives a consistent copy of InnoDB tables while the site keeps running. Copying the data folder live gives a broken copy."
+            },
+            {
+              "prompt": "Why should a backup be restored as a test regularly?",
+              "options": [
+                "Restoring makes the backup smaller",
+                "It is the only way to know the backup is complete and usable",
+                "Backup tools require it",
+                "It speeds up the server"
+              ],
+              "correct": 1,
+              "explanation": "Many backups fail silently: a missing folder, an empty dump, a wrong password. Only a restore proves it works, and tells you how long recovery takes."
+            },
+            {
+              "prompt": "In crontab, what does 30 2 * * * mean?",
+              "options": [
+                "Every 30 minutes for 2 hours",
+                "At 02:30 every day",
+                "On the 30th of February",
+                "Twice every 30 days"
+              ],
+              "correct": 1,
+              "explanation": "The fields are minute, hour, day of month, month, day of week: minute 30, hour 2, every day."
+            },
+            {
+              "prompt": "df -h shows 40% free space, but the server says No space left on device. What should you check next?",
+              "options": [
+                "df -i, for inode exhaustion",
+                "free -h",
+                "The firewall",
+                "uptime"
+              ],
+              "correct": 0,
+              "explanation": "Millions of small files can use up every inode while bytes remain. `df -i` shows it."
+            },
+            {
+              "prompt": "Why should /etc/fstab use UUID= rather than /dev/vdb1 for a data disk?",
+              "options": [
+                "UUIDs are faster",
+                "Device names can change between boots; UUIDs do not",
+                "fstab cannot read /dev paths",
+                "It encrypts the disk"
+              ],
+              "correct": 1,
+              "explanation": "The kernel can name disks in a different order after hardware changes. The filesystem UUID always identifies the same filesystem."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "6. Serving websites",
+      "lessons": [
+        {
+          "type": "text",
+          "title": "Web servers and virtual hosts",
+          "file": "lessons/18-web-servers.md"
+        },
+        {
+          "type": "text",
+          "title": "HTTPS with Let's Encrypt",
+          "file": "lessons/19-https.md"
+        },
+        {
+          "type": "text",
+          "title": "MySQL and MariaDB essentials",
+          "file": "lessons/20-databases.md"
+        },
+        {
+          "type": "quiz",
+          "title": "Module 6 quiz",
+          "intro": "Check what you have learned in this module. You need 70% to pass and you can try as many times as you need. After you pass, you will see an explanation for every question.",
+          "pass_threshold": 70,
+          "questions": [
+            {
+              "prompt": "After editing an Nginx site configuration, what should you run?",
+              "options": [
+                "sudo nginx -t && sudo systemctl reload nginx",
+                "sudo reboot",
+                "sudo systemctl stop nginx",
+                "sudo rm /var/log/nginx/*"
+              ],
+              "correct": 0,
+              "explanation": "Test first; reload only if the test passed. A broken configuration then never reaches the running server."
+            },
+            {
+              "prompt": "Nginx returns 502 Bad Gateway for PHP pages. What is the most likely cause?",
+              "options": [
+                "The file permissions are 644",
+                "PHP-FPM is not running or the socket path is wrong",
+                "The certificate expired",
+                "DNS is wrong"
+              ],
+              "correct": 1,
+              "explanation": "502 means Nginx could not get an answer from the backend it passes requests to."
+            },
+            {
+              "prompt": "What does Let's Encrypt need before it can issue a certificate for school.example.org?",
+              "options": [
+                "The domain's DNS points to your server and port 80 is reachable",
+                "A paid account",
+                "Port 3306 open",
+                "SELinux disabled"
+              ],
+              "correct": 0,
+              "explanation": "The usual HTTP challenge proves you control the domain by fetching a file from it over port 80."
+            },
+            {
+              "prompt": "How long are Let's Encrypt certificates valid?",
+              "options": [
+                "30 days",
+                "90 days",
+                "1 year",
+                "Forever"
+              ],
+              "correct": 1,
+              "explanation": "They last 90 days and are renewed automatically, usually about 30 days before they expire."
+            },
+            {
+              "prompt": "Which command proves automatic renewal will work, without changing anything?",
+              "options": [
+                "certbot renew --dry-run",
+                "certbot delete",
+                "openssl renew",
+                "systemctl renew certbot"
+              ],
+              "correct": 0,
+              "explanation": "`--dry-run` performs a full renewal against the test environment and reports problems."
+            },
+            {
+              "prompt": "Which account should a web application use to connect to its database?",
+              "options": [
+                "The database root account",
+                "A user with rights on that application's database only",
+                "The Linux root user",
+                "Any user, as long as it has a password"
+              ],
+              "correct": 1,
+              "explanation": "Least privilege: if the application is compromised, the attacker reaches only that database."
+            },
+            {
+              "prompt": "Which setting keeps MySQL/MariaDB from accepting connections from the internet?",
+              "options": [
+                "bind-address = 127.0.0.1",
+                "max_connections = 0",
+                "skip-grant-tables",
+                "port = 80"
+              ],
+              "correct": 0,
+              "explanation": "`bind-address = 127.0.0.1` makes the server listen on the loopback interface only. Never use `skip-grant-tables` on a running server: it disables passwords."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "7. Security, monitoring and troubleshooting",
+      "lessons": [
+        {
+          "type": "text",
+          "title": "Keeping a server secure, and SELinux",
+          "file": "lessons/21-security.md"
+        },
+        {
+          "type": "text",
+          "title": "Logs, monitoring and alerts",
+          "file": "lessons/22-logs-monitoring.md"
+        },
+        {
+          "type": "text",
+          "title": "When something breaks: a method",
+          "file": "lessons/23-troubleshooting.md"
+        },
+        {
+          "type": "quiz",
+          "title": "Module 7 quiz",
+          "intro": "Check what you have learned in this module. You need 70% to pass and you can try as many times as you need. After you pass, you will see an explanation for every question.",
+          "pass_threshold": 70,
+          "questions": [
+            {
+              "prompt": "A page under /var/www returns 403 on AlmaLinux even though permissions are correct. You moved the files from your home folder. What fixes it?",
+              "options": [
+                "sudo setenforce 0",
+                "sudo restorecon -Rv /var/www",
+                "chmod -R 777 /var/www",
+                "Reinstall nginx"
+              ],
+              "correct": 1,
+              "explanation": "Moved files keep their old SELinux label. `restorecon` gives them the label their location should have, with SELinux still enforcing."
+            },
+            {
+              "prompt": "Your web application must connect to a database on another server, and SELinux blocks it. What is the proper fix?",
+              "options": [
+                "Disable SELinux",
+                "sudo setsebool -P httpd_can_network_connect_db on",
+                "Run the web server as root",
+                "Open port 3306 to everyone"
+              ],
+              "correct": 1,
+              "explanation": "Booleans switch on specific permissions. `-P` keeps the change after a reboot."
+            },
+            {
+              "prompt": "Which command explains recent SELinux denials in plain language?",
+              "options": [
+                "ausearch -m AVC -ts recent | audit2why",
+                "getenforce --why",
+                "journalctl --selinux",
+                "ls -Z /var/log"
+              ],
+              "correct": 0,
+              "explanation": "`ausearch` finds the denials and `audit2why` explains each one, often naming the boolean or label that fixes it."
+            },
+            {
+              "prompt": "What does logrotate do?",
+              "options": [
+                "Deletes all logs every night",
+                "Renames, compresses and eventually removes old logs so they do not fill the disk",
+                "Sends logs to another server",
+                "Encrypts logs"
+              ],
+              "correct": 1,
+              "explanation": "It rotates logs on a schedule according to rules in `/etc/logrotate.d/`."
+            },
+            {
+              "prompt": "Why is an external uptime monitor needed in addition to a health-check script on the server?",
+              "options": [
+                "Scripts cannot check disk space",
+                "If the server is down, its own script cannot tell you",
+                "External monitors are required by Linux",
+                "It makes the site faster"
+              ],
+              "correct": 1,
+              "explanation": "A server that is off, or cut off from the network, cannot report anything. Something outside must notice the silence."
+            },
+            {
+              "prompt": "Users report the website is down. Following the troubleshooting method, what do you ask early on?",
+              "options": [
+                "What changed recently?",
+                "Which brand of server is it?",
+                "Can we buy more memory?",
+                "Should we reinstall?"
+              ],
+              "correct": 0,
+              "explanation": "Most failures follow a change: an update, an edit, a deploy, a full disk. Finding it narrows the search fast."
+            },
+            {
+              "prompt": "Why change only one thing at a time while fixing a problem?",
+              "options": [
+                "Linux allows only one change per hour",
+                "So you know which change fixed it and do not add new problems",
+                "Logs can record only one change",
+                "It is faster"
+              ],
+              "correct": 1,
+              "explanation": "If several changes are made together, you cannot tell which one mattered, and an unnecessary change may cause the next outage."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "8. Capstone and final exam",
+      "lessons": [
+        {
+          "type": "assignment",
+          "title": "Capstone: deploy and protect a website",
+          "file": "lessons/24-capstone.md"
+        },
+        {
+          "type": "quiz",
+          "title": "Final exam",
+          "intro": "Twenty questions from the whole course. You need **80%** to pass and you have **three attempts**, so revise the module quizzes first. Explanations appear after you pass or after your last attempt.",
+          "pass_threshold": 80,
+          "questions": [
+            {
+              "prompt": "Which command tells you which Linux distribution and version a server is running?",
+              "options": [
+                "cat /etc/os-release",
+                "uname -u",
+                "whoami",
+                "ls /etc/distro"
+              ],
+              "correct": 0,
+              "explanation": "`/etc/os-release` describes the distribution, for example AlmaLinux 9.4 or Ubuntu 24.04. `uname` reports the kernel, not the distribution."
+            },
+            {
+              "prompt": "Your prompt ends with # instead of $. What does that tell you?",
+              "options": [
+                "You are in your home folder",
+                "The last command failed",
+                "You are working as root",
+                "You are connected over SSH"
+              ],
+              "correct": 2,
+              "explanation": "By convention `#` marks the root account. Every command you type has full power over the system, so take extra care."
+            },
+            {
+              "prompt": "Which command adds the user tobi to the group developers without removing him from his other groups?",
+              "options": [
+                "usermod -G developers tobi",
+                "usermod -aG developers tobi",
+                "groupadd developers tobi",
+                "chgrp tobi developers"
+              ],
+              "correct": 1,
+              "explanation": "`-a` means append. Without it, `-G` replaces the list of extra groups and can remove someone's admin rights."
+            },
+            {
+              "prompt": "A file shows -rw-r----- ada webteam. Who can read it?",
+              "options": [
+                "Only ada",
+                "ada and members of webteam",
+                "Everyone",
+                "Only root"
+              ],
+              "correct": 1,
+              "explanation": "Owner `rw-`, group `r--`, others `---`: ada can read and write, webteam members can read, everyone else gets nothing."
+            },
+            {
+              "prompt": "Several users share /srv/project. What makes new files inside it belong to the project group automatically?",
+              "options": [
+                "chmod 777 on the folder",
+                "The setgid bit on the folder (e.g. chmod 2770)",
+                "Adding the users to wheel",
+                "Setting umask 000"
+              ],
+              "correct": 1,
+              "explanation": "The setgid bit on a directory makes new files inherit its group. `777` would let every user on the server write there."
+            },
+            {
+              "prompt": "On Ubuntu, which command actually installs the available updates?",
+              "options": [
+                "apt update",
+                "apt upgrade",
+                "apt refresh",
+                "apt search --upgrade"
+              ],
+              "correct": 1,
+              "explanation": "`apt update` only refreshes the list of available packages. `apt upgrade` installs the updates."
+            },
+            {
+              "prompt": "You started nginx with systemctl start nginx. After a reboot it is not running. Why?",
+              "options": [
+                "Reboots always stop nginx",
+                "It was started but never enabled",
+                "The journal was full",
+                "nginx needs reload, not start"
+              ],
+              "correct": 1,
+              "explanation": "`start` runs it now; `enable` makes it start at boot. Use `systemctl enable --now` to do both."
+            },
+            {
+              "prompt": "You changed a unit file in /etc/systemd/system/. What must you run before restarting the service?",
+              "options": [
+                "systemctl daemon-reload",
+                "systemctl reset",
+                "journalctl --rotate",
+                "reboot"
+              ],
+              "correct": 0,
+              "explanation": "systemd caches unit files. `daemon-reload` makes it read your changes."
+            },
+            {
+              "prompt": "ss -tulpn shows a database listening on 127.0.0.1:3306. Who can connect to it?",
+              "options": [
+                "Anyone on the internet",
+                "Only programs on the same server",
+                "Only computers in the same building",
+                "Nobody"
+              ],
+              "correct": 1,
+              "explanation": "`127.0.0.1` is the loopback address: only the server itself. That is what you want for a database used by a local application."
+            },
+            {
+              "prompt": "Before reloading SSH after disabling password login, what is the most important precaution?",
+              "options": [
+                "Restart the server",
+                "Keep your current session open and test login in a second session",
+                "Delete known_hosts",
+                "Turn off the firewall"
+              ],
+              "correct": 1,
+              "explanation": "If the new settings lock you out, the session that is still open is your way back in to fix them."
+            },
+            {
+              "prompt": "Which SSH setting stops anyone logging in with a password?",
+              "options": [
+                "PermitRootLogin no",
+                "PasswordAuthentication no",
+                "PubkeyAuthentication no",
+                "MaxAuthTries 0"
+              ],
+              "correct": 1,
+              "explanation": "`PasswordAuthentication no` (with `KbdInteractiveAuthentication no`) leaves keys as the only way in. `PubkeyAuthentication no` would do the opposite."
+            },
+            {
+              "prompt": "What is the right way to back up a MySQL or MariaDB database that is in use?",
+              "options": [
+                "Copy /var/lib/mysql with cp",
+                "Use mysqldump --single-transaction",
+                "Zip the whole server",
+                "Take a screenshot of the tables"
+              ],
+              "correct": 1,
+              "explanation": "A dump with `--single-transaction` gives a consistent copy of InnoDB tables while the site keeps running. Copying the data folder live gives a broken copy."
+            },
+            {
+              "prompt": "In crontab, what does 30 2 * * * mean?",
+              "options": [
+                "Every 30 minutes for 2 hours",
+                "At 02:30 every day",
+                "On the 30th of February",
+                "Twice every 30 days"
+              ],
+              "correct": 1,
+              "explanation": "The fields are minute, hour, day of month, month, day of week: minute 30, hour 2, every day."
+            },
+            {
+              "prompt": "Nginx returns 502 Bad Gateway for PHP pages. What is the most likely cause?",
+              "options": [
+                "The file permissions are 644",
+                "PHP-FPM is not running or the socket path is wrong",
+                "The certificate expired",
+                "DNS is wrong"
+              ],
+              "correct": 1,
+              "explanation": "502 means Nginx could not get an answer from the backend it passes requests to."
+            },
+            {
+              "prompt": "What does Let's Encrypt need before it can issue a certificate for school.example.org?",
+              "options": [
+                "The domain's DNS points to your server and port 80 is reachable",
+                "A paid account",
+                "Port 3306 open",
+                "SELinux disabled"
+              ],
+              "correct": 0,
+              "explanation": "The usual HTTP challenge proves you control the domain by fetching a file from it over port 80."
+            },
+            {
+              "prompt": "Which account should a web application use to connect to its database?",
+              "options": [
+                "The database root account",
+                "A user with rights on that application's database only",
+                "The Linux root user",
+                "Any user, as long as it has a password"
+              ],
+              "correct": 1,
+              "explanation": "Least privilege: if the application is compromised, the attacker reaches only that database."
+            },
+            {
+              "prompt": "A page under /var/www returns 403 on AlmaLinux even though permissions are correct. You moved the files from your home folder. What fixes it?",
+              "options": [
+                "sudo setenforce 0",
+                "sudo restorecon -Rv /var/www",
+                "chmod -R 777 /var/www",
+                "Reinstall nginx"
+              ],
+              "correct": 1,
+              "explanation": "Moved files keep their old SELinux label. `restorecon` gives them the label their location should have, with SELinux still enforcing."
+            },
+            {
+              "prompt": "Why is an external uptime monitor needed in addition to a health-check script on the server?",
+              "options": [
+                "Scripts cannot check disk space",
+                "If the server is down, its own script cannot tell you",
+                "External monitors are required by Linux",
+                "It makes the site faster"
+              ],
+              "correct": 1,
+              "explanation": "A server that is off, or cut off from the network, cannot report anything. Something outside must notice the silence."
+            },
+            {
+              "prompt": "A teammate says: 'The site works for root but not for the web server. Just chmod -R 777 it.' What is the right response?",
+              "options": [
+                "Agree; it is the quickest fix",
+                "Work out which user needs which access, and fix ownership, permissions or SELinux labels for exactly that",
+                "Run the web server as root",
+                "Delete the site and reinstall"
+              ],
+              "correct": 1,
+              "explanation": "777 makes the files writable by every process, including a compromised one. Grant only what the web server's user needs."
+            },
+            {
+              "prompt": "You must give a deploy user the right to restart one service only. Where and how?",
+              "options": [
+                "Add the user to wheel",
+                "A rule in /etc/sudoers.d/ edited with visudo, naming that exact command",
+                "Give them the root password",
+                "chmod 4755 /usr/bin/systemctl"
+              ],
+              "correct": 1,
+              "explanation": "A sudoers rule such as `deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart myapp` grants exactly that, and `visudo` checks the syntax before saving."
+            }
+          ],
+          "max_attempts": 3
+        }
+      ]
+    }
+  ]
+}

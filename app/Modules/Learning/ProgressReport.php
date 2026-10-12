@@ -16,9 +16,10 @@ final class ProgressReport
     /**
      * @return array{
      *   quizzes: list<array{assessment_id: int, title: string, pass_threshold: int}>,
+     *   assignments: list<array{lesson_id: int, title: string}>,
      *   total: int,
      *   rows: list<array{name: string, email: string, status: string, enrolled_at: string, done: int,
-     *                    last_activity: ?string, best: array<int, int>}>
+     *                    last_activity: ?string, best: array<int, int>, submissions: array<int, string>}>
      * }
      */
     public function forCourse(int $tenantId, int $courseId): array
@@ -34,6 +35,28 @@ final class ProgressReport
              WHERE a.tenant_id = ? AND l.course_id = ? ORDER BY m.position, l.position',
             [$tenantId, $courseId],
         ));
+
+        $assignments = array_map(static fn (array $r): array => [
+            'lesson_id' => (int) $r['id'],
+            'title' => (string) $r['title'],
+        ], $this->db->fetchAll(
+            "SELECT l.id, l.title FROM lessons l
+             JOIN course_modules m ON m.tenant_id = l.tenant_id AND m.id = l.module_id
+             WHERE l.tenant_id = ? AND l.course_id = ? AND l.type = 'assignment' ORDER BY m.position, l.position",
+            [$tenantId, $courseId],
+        ));
+        $submissions = [];
+        $latestRows = $assignments === [] ? [] : $this->db->fetchAll(
+            'SELECT s.enrolment_id, s.lesson_id, s.status FROM assignment_submissions s
+             JOIN (SELECT enrolment_id, lesson_id, MAX(id) AS id FROM assignment_submissions
+                    WHERE tenant_id = ? AND enrolment_id IN (SELECT id FROM enrolments WHERE tenant_id = ? AND course_id = ?)
+                    GROUP BY enrolment_id, lesson_id) latest ON latest.id = s.id
+             WHERE s.tenant_id = ?',
+            [$tenantId, $tenantId, $courseId, $tenantId],
+        );
+        foreach ($latestRows as $r) {
+            $submissions[(int) $r['enrolment_id']][(int) $r['lesson_id']] = (string) $r['status'];
+        }
 
         $total = (int) $this->db->fetchValue(
             'SELECT COUNT(*) FROM lessons WHERE tenant_id = ? AND course_id = ? AND is_mandatory = 1',
@@ -72,8 +95,9 @@ final class ProgressReport
             'done' => (int) $r['done'],
             'last_activity' => $r['last_activity'] === null ? null : (string) $r['last_activity'],
             'best' => $best[(int) $r['enrolment_id']] ?? [],
+            'submissions' => $submissions[(int) $r['enrolment_id']] ?? [],
         ], $learners);
 
-        return ['quizzes' => $quizzes, 'total' => $total, 'rows' => $rows];
+        return ['quizzes' => $quizzes, 'assignments' => $assignments, 'total' => $total, 'rows' => $rows];
     }
 }

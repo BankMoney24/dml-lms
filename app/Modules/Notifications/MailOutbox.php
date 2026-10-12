@@ -48,6 +48,11 @@ final class MailOutbox
         return $id;
     }
 
+    public function hasQueuedThisRequest(): bool
+    {
+        return $this->queuedThisRequest !== [];
+    }
+
     /** Delivers what this request queued; called after the response has gone to the browser. */
     public function deliverQueuedThisRequest(): void
     {

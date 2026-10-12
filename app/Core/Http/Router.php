@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\Core\Http;
 
 /**
- * Small explicit router. Patterns use {name} for a path segment and
- * {name:int} for a positive integer segment.
+ * Small explicit router. Patterns use {name} for a lowercase slug segment,
+ * {name:int} for a positive integer and {name:code} for a short code in any
+ * letter case (certificate numbers people type from paper).
  */
 final class Router
 {
@@ -70,10 +71,12 @@ final class Router
     private static function compile(string $pattern): string
     {
         $regex = preg_replace_callback(
-            '/\{([a-z_]+)(?::(int))?\}/',
-            static fn (array $m): string => isset($m[2]) && $m[2] === 'int'
-                ? '(?P<' . $m[1] . '>[1-9][0-9]{0,18})'
-                : '(?P<' . $m[1] . '>[a-z0-9][a-z0-9-]{0,119})',
+            '/\{([a-z_]+)(?::(int|code))?\}/',
+            static fn (array $m): string => match ($m[2] ?? '') {
+                'int' => '(?P<' . $m[1] . '>[1-9][0-9]{0,18})',
+                'code' => '(?P<' . $m[1] . '>[A-Za-z0-9][A-Za-z0-9-]{0,39})',
+                default => '(?P<' . $m[1] . '>[a-z0-9][a-z0-9-]{0,119})',
+            },
             $pattern,
         );
 

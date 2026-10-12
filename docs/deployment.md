@@ -65,6 +65,17 @@ rm /etc/httpd/conf.d/dml-lms.conf && apachectl configtest && systemctl reload ht
 firewall-cmd --permanent --remove-port=8088/tcp && firewall-cmd --reload
 ```
 
+### Courses that ship with the platform
+
+Release packages include ready-made courses in `courses/`. To add one to the school (once per course; importing again makes a second copy):
+
+```bash
+sudo -u dmldeploy -H php /var/www/dml-lms/current/bin/console course:packages
+sudo -u dmldeploy -H php /var/www/dml-lms/current/bin/console course:import dml linux-server-administration --publish --author=you@example.com
+```
+
+Without `--publish` it arrives as a draft for teachers to review first. Revoke a certificate issued by mistake with `bin/console certificate:revoke ABCD-EFGH-JKLM "reason"`; the reason is shown on the public `/verify` page.
+
 ### Email (password reset, invitations)
 
 Until `MAIL_DRIVER=smtp` is set, nothing is emailed: admins get a one-time password to pass on, and *Forgotten your password?* tells people to ask an administrator. To turn email on:

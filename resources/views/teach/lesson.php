@@ -9,7 +9,13 @@ $base = '/teach/courses/' . $course->id;
 $url = $base . '/lessons/' . $lesson->id;
 $o = static fn (string $k, string $d = ''): string => $old[$k] ?? $d;
 $crumb = $lesson->title;
-$questionErrors = array_intersect_key($errors, array_flip(['prompt', 'options', 'correct']));
+$questionErrors = array_intersect_key($errors, array_flip(['prompt', 'options', 'correct', 'explanation']));
+$bodyLabel = match ($lesson->type) {
+    'quiz' => 'Instructions shown above the questions',
+    'video' => 'Notes shown under the video',
+    'assignment' => 'The task: what to do, what to submit, how it is judged',
+    default => 'Lesson text',
+};
 $lessonErrors = array_diff_key($errors, $questionErrors);
 ?>
 <?php include __DIR__ . '/_course_head.php'; ?>
@@ -17,7 +23,9 @@ $lessonErrors = array_diff_key($errors, $questionErrors);
 <header class="page-head page-head-row">
   <div>
     <h1><?= $v->e($lesson->title) ?></h1>
-    <p class="page-head-meta"><?= $v->badge($lesson->isQuiz() ? 'Quiz' : 'Reading') ?>
+    <p class="page-head-meta"><?= $v->badge($lesson->typeLabel(), 'type-' . $lesson->type) ?>
+      <?php if ($lesson->type === 'text'): ?><span><?= $lesson->readingMinutes() ?> min read</span><?php endif; ?>
+      <?php if ($lesson->isAssignment()): ?><a href="/teach/reviews">Review queue</a><?php endif; ?>
       <?php if ($inUse): ?><span>Learners have started this lesson</span><?php endif; ?></p>
   </div>
   <a class="button button-quiet" href="<?= $url ?>/preview">Preview</a>
@@ -30,10 +38,17 @@ $lessonErrors = array_diff_key($errors, $questionErrors);
     <form method="post" action="<?= $url ?>" class="form" novalidate>
       <?= $v->csrfField() ?>
       <?= $v->field('lesson_title', 'Lesson title', ['value' => $o('lesson_title'), 'error' => $errors['lesson_title'] ?? null, 'maxlength' => 190]) ?>
-      <?= $v->field('body', $lesson->isQuiz() ? 'Instructions shown above the questions' : 'Lesson text', [
-          'type' => 'textarea', 'rows' => $lesson->isQuiz() ? 3 : 14, 'value' => $o('body'), 'error' => $errors['body'] ?? null,
-          'optional' => $lesson->isQuiz(), 'hint' => 'Leave a blank line between paragraphs.',
+      <?php if ($lesson->isVideo()): ?>
+        <?= $v->field('media_url', 'Video link', [
+            'value' => $o('media_url'), 'error' => $errors['media_url'] ?? null, 'inputmode' => 'url', 'maxlength' => 500,
+            'hint' => 'A YouTube or Vimeo address. Learners choose when to load it, to save data.',
+        ]) ?>
+      <?php endif; ?>
+      <?= $v->field('body', $bodyLabel, [
+          'type' => 'textarea', 'rows' => $lesson->isQuiz() ? 3 : 16, 'value' => $o('body'), 'error' => $errors['body'] ?? null,
+          'optional' => $lesson->isQuiz() || $lesson->isVideo(), 'class' => 'field-code',
       ]) ?>
+      <?php include __DIR__ . '/_format_help.php'; ?>
       <?php if ($lesson->isQuiz()): ?>
         <?= $v->field('pass_threshold', 'Pass mark (%)', ['value' => $o('pass_threshold'), 'inputmode' => 'numeric', 'error' => $errors['pass_threshold'] ?? null]) ?>
         <?= $v->field('max_attempts', 'Attempts allowed', ['value' => $o('max_attempts'), 'inputmode' => 'numeric', 'hint' => 'Leave blank for unlimited.', 'error' => $errors['max_attempts'] ?? null]) ?>
@@ -70,13 +85,25 @@ $lessonErrors = array_diff_key($errors, $questionErrors);
     <?php endif; ?>
     <ol class="q-list">
       <?php foreach ($questions as $q): ?>
-      <li>
+      <li id="question-<?= $q->id ?>">
         <p class="q-prompt"><?= $v->e($q->prompt) ?></p>
         <ul class="q-options">
           <?php foreach ($q->options as $opt): ?>
           <li<?= $opt->correct ? ' class="is-correct"' : '' ?>><?= $v->e($opt->label) ?><?= $opt->correct ? ' <span class="visually-hidden">(correct answer)</span>' : '' ?></li>
           <?php endforeach; ?>
         </ul>
+        <details class="inline-edit">
+          <summary><?= $q->explanation === '' ? 'Add an explanation' : 'Explanation' ?></summary>
+          <?php if ($q->explanation !== ''): ?><div class="prose prose-small"><?= $v->markdown($q->explanation) ?></div><?php endif; ?>
+          <form method="post" action="<?= $url ?>/questions/<?= $q->id ?>/explanation" class="form">
+            <?= $v->csrfField() ?>
+            <?= $v->field('explanation', 'Why the answer is right', [
+                'id' => 'explanation-' . $q->id, 'type' => 'textarea', 'rows' => 3, 'value' => $q->explanation,
+                'hint' => 'Learners see this after they pass. You can change it at any time.',
+            ]) ?>
+            <button type="submit" class="button button-small button-quiet">Save explanation</button>
+          </form>
+        </details>
         <?php if ($attempts === 0): ?>
         <form method="post" action="<?= $url ?>/questions/<?= $q->id ?>/delete">
           <?= $v->csrfField() ?>
@@ -108,6 +135,10 @@ $lessonErrors = array_diff_key($errors, $questionErrors);
             <?php if (isset($errors[$f])): ?><p class="field-error"><?= $v->e($errors[$f]) ?></p><?php endif; ?>
           <?php endforeach; ?>
         </fieldset>
+        <?= $v->field('explanation', 'Explanation', [
+            'type' => 'textarea', 'rows' => 3, 'value' => $o('explanation'), 'optional' => true, 'error' => $errors['explanation'] ?? null,
+            'hint' => 'Why the right answer is right. Shown to learners once they pass.',
+        ]) ?>
         <button type="submit" class="button button-small">Add question</button>
       </form>
     </div>

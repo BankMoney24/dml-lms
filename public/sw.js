@@ -3,7 +3,7 @@
 // nothing private to clean up on sign-out. Bump CACHE when assets change.
 'use strict';
 
-var CACHE = 'dml-shell-v1';
+var CACHE = 'dml-shell-v2';
 var SHELL = ['/assets/app.css', '/assets/app.js', '/assets/icon.svg', '/offline.html'];
 
 self.addEventListener('install', function (event) {

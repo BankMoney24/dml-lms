@@ -11,6 +11,7 @@ final class QuizQuestion
         public readonly int $id,
         public readonly string $prompt,
         public readonly array $options,
+        public readonly string $explanation = '',
     ) {
     }
 
@@ -19,6 +20,17 @@ final class QuizQuestion
         foreach ($this->options as $option) {
             if ($option->correct) {
                 return $option->id;
+            }
+        }
+
+        return null;
+    }
+
+    public function optionLabel(?int $optionId): ?string
+    {
+        foreach ($this->options as $option) {
+            if ($option->id === $optionId) {
+                return $option->label;
             }
         }
 

@@ -36,7 +36,7 @@ $container->get(Kernel::class)->handle(Request::fromGlobals())->send();
 // Emails queued by this request are sent after the browser has its response,
 // so a slow mail server never slows a page. Anything that fails is retried
 // by `bin/console mail:work` (run every minute from cron).
-if ($container->resolved(MailOutbox::class)) {
+if ($container->resolved(MailOutbox::class) && $container->get(MailOutbox::class)->hasQueuedThisRequest()) {
     if (session_status() === PHP_SESSION_ACTIVE) {
         session_write_close();
     }

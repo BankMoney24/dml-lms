@@ -2,6 +2,7 @@
 /** @var \App\Core\View\ViewHelpers $v */
 /** @var list<array{course_id: int, slug: string, title: string, status: string, done: int, total: int}> $enrolments */
 /** @var list<\App\Modules\Courses\Course> $suggested */
+/** @var list<\App\Modules\Certificates\Certificate> $certificates */
 $user = $v->shared('user');
 $enrolledIds = array_column($enrolments, 'course_id');
 $suggested = array_values(array_filter($suggested, static fn ($c) => !in_array($c->id, $enrolledIds, true)));
@@ -32,9 +33,26 @@ $firstName = explode(' ', trim($user->displayName))[0];
   <?= $v->emptyState('No courses yet', 'Your school has not published any courses. Check back soon, or ask your teacher which course to join.') ?>
 <?php endif; ?>
 
+<?php if ($certificates !== []): ?>
+<section class="section" aria-labelledby="certs">
+  <h2 id="certs">Your certificates</h2>
+  <ul class="cert-list">
+    <?php foreach ($certificates as $cert): ?>
+    <li>
+      <a href="/certificates/<?= $v->e($cert->displayCode()) ?>"><?= $v->e($cert->courseTitle) ?></a>
+      <span class="small muted">Issued <?= $v->datetime($cert->issuedAt, 'j M Y') ?><?= $cert->isValid() ? '' : ' · revoked' ?></span>
+    </li>
+    <?php endforeach; ?>
+  </ul>
+</section>
+<?php endif; ?>
+
 <?php if ($v->can('course.manage')): ?>
 <section class="section" aria-labelledby="teaching">
   <h2 id="teaching">Teaching</h2>
+  <?php if ($pendingReviews > 0): ?>
+    <p class="notice"><?= $v->e($v->plural((int) $pendingReviews, 'assignment')) ?> waiting for your review. <a href="/teach/reviews">Review now</a></p>
+  <?php endif; ?>
   <p class="actions">
     <a class="button" href="/teach">Your courses</a>
     <a class="button button-quiet" href="/teach/courses/new">New course</a>

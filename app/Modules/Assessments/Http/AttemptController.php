@@ -80,11 +80,30 @@ final class AttemptController
             }
         }
 
+        // Answers and explanations are revealed once the learner has passed, or has
+        // no attempts left; before that they only see which questions were wrong.
+        $used = $this->attempts->countFor($tenant->id, $assessment['id'], $user->user->id);
+        $outOfAttempts = $assessment['max_attempts'] !== null && $used >= $assessment['max_attempts'];
+        $reveal = $attempt['passed'] || $outOfAttempts || $this->attempts->hasPassed($tenant->id, $assessment['id'], $user->user->id);
+        $review = [];
+        foreach ($this->assessments->questions($tenant->id, $assessment['id']) as $question) {
+            $chosen = $attempt['answers'][$question->id] ?? null;
+            $review[] = [
+                'prompt' => $question->prompt,
+                'chosen' => $question->optionLabel($chosen),
+                'correct' => $chosen !== null && $chosen === $question->correctOptionId(),
+                'answer' => $reveal ? $question->optionLabel($question->correctOptionId()) : null,
+                'explanation' => $reveal ? $question->explanation : '',
+            ];
+        }
+
         return Response::html($this->view->render('learn/attempt_result', [
             'pageTitle' => 'Quiz result',
             'course' => $course,
             'lesson' => $lesson,
             'attempt' => $attempt,
+            'review' => $review,
+            'revealed' => $reveal,
             'next' => $next,
             'courseCompleted' => $enrolment !== null && $enrolment->isCompleted(),
         ]));

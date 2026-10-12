@@ -51,7 +51,7 @@ final class AssessmentRepository
     public function questions(int $tenantId, int $assessmentId): array
     {
         $questionRows = $this->db->fetchAll(
-            'SELECT id, prompt FROM questions WHERE tenant_id = ? AND assessment_id = ? ORDER BY position, id',
+            'SELECT id, prompt, explanation FROM questions WHERE tenant_id = ? AND assessment_id = ? ORDER BY position, id',
             [$tenantId, $assessmentId],
         );
         if ($questionRows === []) {
@@ -69,22 +69,27 @@ final class AssessmentRepository
         }
 
         return array_map(
-            static fn (array $q): QuizQuestion => new QuizQuestion((int) $q['id'], (string) $q['prompt'], $options[(int) $q['id']] ?? []),
+            static fn (array $q): QuizQuestion => new QuizQuestion(
+                (int) $q['id'],
+                (string) $q['prompt'],
+                $options[(int) $q['id']] ?? [],
+                (string) ($q['explanation'] ?? ''),
+            ),
             $questionRows,
         );
     }
 
     /** @param list<string> $optionLabels */
-    public function addQuestion(int $tenantId, int $assessmentId, string $prompt, array $optionLabels, int $correctIndex): int
+    public function addQuestion(int $tenantId, int $assessmentId, string $prompt, array $optionLabels, int $correctIndex, string $explanation = ''): int
     {
-        return $this->db->transaction(function () use ($tenantId, $assessmentId, $prompt, $optionLabels, $correctIndex): int {
+        return $this->db->transaction(function () use ($tenantId, $assessmentId, $prompt, $optionLabels, $correctIndex, $explanation): int {
             $position = (int) $this->db->fetchValue(
                 'SELECT COALESCE(MAX(position), 0) + 1 FROM questions WHERE tenant_id = ? AND assessment_id = ?',
                 [$tenantId, $assessmentId],
             );
             $questionId = $this->db->insert(
-                'INSERT INTO questions (tenant_id, assessment_id, prompt, position, created_at) VALUES (?, ?, ?, ?, ?)',
-                [$tenantId, $assessmentId, $prompt, $position, $this->clock->sqlNow()],
+                'INSERT INTO questions (tenant_id, assessment_id, prompt, explanation, position, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+                [$tenantId, $assessmentId, $prompt, $explanation === '' ? null : $explanation, $position, $this->clock->sqlNow()],
             );
             foreach (array_values($optionLabels) as $i => $label) {
                 $this->db->insert(
@@ -95,6 +100,14 @@ final class AssessmentRepository
 
             return $questionId;
         });
+    }
+
+    public function updateExplanation(int $tenantId, int $assessmentId, int $questionId, string $explanation): bool
+    {
+        return $this->db->execute(
+            'UPDATE questions SET explanation = ? WHERE tenant_id = ? AND assessment_id = ? AND id = ?',
+            [$explanation === '' ? null : $explanation, $tenantId, $assessmentId, $questionId],
+        ) > 0;
     }
 
     public function questionCount(int $tenantId, int $assessmentId): int

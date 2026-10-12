@@ -96,6 +96,16 @@ final class CourseRepository
         );
     }
 
+    /** @param list<string> $outcomes */
+    public function updateProfile(int $tenantId, int $courseId, ?string $level, ?int $hours, array $outcomes, string $prerequisites): void
+    {
+        $this->db->execute(
+            'UPDATE courses SET level = ?, duration_hours = ?, outcomes = ?, prerequisites = ?, updated_at = ? WHERE tenant_id = ? AND id = ?',
+            [$level, $hours, $outcomes === [] ? null : implode("\n", $outcomes), $prerequisites === '' ? null : $prerequisites,
+             $this->clock->sqlNow(), $tenantId, $courseId],
+        );
+    }
+
     public function markDraft(int $tenantId, int $courseId): void
     {
         $this->db->execute(

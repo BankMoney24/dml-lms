@@ -23,6 +23,13 @@ final class EnrolmentRepository
         return $row === null ? null : Enrolment::fromRow($row);
     }
 
+    public function findById(int $tenantId, int $enrolmentId): ?Enrolment
+    {
+        $row = $this->db->fetchOne('SELECT * FROM enrolments WHERE tenant_id = ? AND id = ?', [$tenantId, $enrolmentId]);
+
+        return $row === null ? null : Enrolment::fromRow($row);
+    }
+
     /** Idempotent: a repeated enrol request returns the existing enrolment. */
     public function enrol(int $tenantId, int $courseId, int $userId): Enrolment
     {

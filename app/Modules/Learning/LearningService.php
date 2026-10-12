@@ -7,6 +7,7 @@ namespace App\Modules\Learning;
 use App\Core\Database\Connection;
 use App\Core\Http\HttpException;
 use App\Modules\Audit\AuditLog;
+use App\Modules\Certificates\CertificateService;
 use App\Modules\Courses\Course;
 use App\Modules\Courses\Lesson;
 use App\Modules\Courses\LessonRepository;
@@ -22,6 +23,7 @@ final class LearningService
         private readonly LessonRepository $lessons,
         private readonly CompletionRule $rule,
         private readonly AuditLog $audit,
+        private readonly CertificateService $certificates,
     ) {
     }
 
@@ -59,9 +61,9 @@ final class LearningService
 
     public function completeTextLesson(Enrolment $enrolment, Lesson $lesson): bool
     {
-        if ($lesson->isQuiz()) {
-            // Quiz lessons complete only through a passing attempt.
-            throw HttpException::badRequest('Finish the quiz to complete this lesson.');
+        if (!$lesson->learnerCompletes()) {
+            // Quizzes complete through a passing attempt, assignments through a teacher's approval.
+            throw HttpException::badRequest($lesson->isQuiz() ? 'Finish the quiz to complete this lesson.' : 'Submit your work; a teacher will review it.');
         }
 
         return $this->recordLessonCompleted($enrolment, $lesson);
@@ -82,6 +84,7 @@ final class LearningService
             if ($complete) {
                 $this->enrolments->markCompleted($enrolment->tenantId, $enrolment->id);
                 $this->audit->record($enrolment->tenantId, $enrolment->userId, 'learning.course_completed', 'course', $enrolment->courseId);
+                $this->certificates->issueFor($enrolment);
             }
 
             return $complete;

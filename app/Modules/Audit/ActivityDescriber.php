@@ -45,6 +45,12 @@ final class ActivityDescriber
                 (string) ($meta['score_percent'] ?? '?'),
                 ($meta['passed'] ?? false) ? 'passed' : 'not passed',
             ),
+            'assignment.submitted' => 'submitted work for an assignment',
+            'assignment.reviewed' => ($meta['decision'] ?? '') === 'approved' ? 'approved an assignment' : 'asked for changes to an assignment',
+            'certificate.issued' => 'received a certificate',
+            'certificate.revoked' => 'had a certificate revoked',
+            'auth.password_reset' => 'reset their password from an emailed link',
+            'auth.invitation_accepted' => 'accepted their invitation',
             default => str_replace(['.', '_'], [': ', ' '], $event['action']),
         };
 

@@ -11,7 +11,11 @@ use App\Core\Database\Migrator;
 use App\Core\Mail\Mailer;
 use App\Core\Mail\MailSettings;
 use App\Core\Mail\Message;
+use App\Bootstrap\Application;
 use App\Database\Seeders\DemoSeeder;
+use App\Modules\Certificates\CertificateService;
+use App\Modules\Courses\CoursePackageImporter;
+use App\Modules\Identity\CurrentUser;
 use App\Modules\Identity\AuthService;
 use App\Modules\Identity\Role;
 use App\Modules\Identity\UserRepository;
@@ -47,6 +51,9 @@ final class ConsoleApplication
                 'mail:work' => $this->mailWork(),
                 'mail:status' => $this->mailStatus(),
                 'mail:test' => $this->mailTest($args),
+                'course:packages' => $this->coursePackages(),
+                'course:import' => $this->courseImport($args),
+                'certificate:revoke' => $this->certificateRevoke($args),
                 default => $this->help(),
             };
         } catch (Throwable $e) {
@@ -73,6 +80,11 @@ final class ConsoleApplication
           mail:work                                 Send queued emails that are due (run every minute from cron)
           mail:status                               Counts of queued / sent / failed emails in the last 7 days
           mail:test <email>                         Send a test email straight away, to check MAIL_* settings
+          course:packages                           List the course packages shipped with this release
+          course:import <tenant-slug> <package> [--publish] [--author=<email>]
+                                                    Import a course package (a name from course:packages,
+                                                    or a folder with course.json). Draft unless --publish.
+          certificate:revoke <code> "<reason>"      Revoke a certificate; the reason shows on /verify
 
         TXT;
 
@@ -183,6 +195,87 @@ final class ConsoleApplication
             ?? throw new \RuntimeException('No tenant with that slug.');
         (new DemoSeeder($this->container))->run($tenant);
         echo "Demo course added to {$slug}.\n";
+
+        return 0;
+    }
+
+    private function coursePackages(): int
+    {
+        $found = false;
+        foreach (glob(Application::basePath('courses/*/course.json')) ?: [] as $file) {
+            $data = json_decode((string) file_get_contents($file), true);
+            $title = is_array($data) && is_string($data['title'] ?? null) ? $data['title'] : '(no title)';
+            printf("%-34s %s\n", basename(dirname($file)), $title);
+            $found = true;
+        }
+        if (!$found) {
+            echo "No course packages found in courses/.\n";
+        }
+
+        return 0;
+    }
+
+    /** @param list<string> $args */
+    private function courseImport(array $args): int
+    {
+        $publish = in_array('--publish', $args, true);
+        $authorEmail = null;
+        $positional = [];
+        foreach ($args as $arg) {
+            if (str_starts_with($arg, '--author=')) {
+                $authorEmail = strtolower(substr($arg, 9));
+            } elseif (!str_starts_with($arg, '--')) {
+                $positional[] = $arg;
+            }
+        }
+        [$slug, $package] = $this->requireArgs($positional, 2, 'course:import <tenant-slug> <package> [--publish] [--author=<email>]');
+        $tenant = $this->container->get(TenantRepository::class)->findBySlug($slug)
+            ?? throw new \RuntimeException('No tenant with that slug.');
+
+        $directory = is_dir($package) ? $package : Application::basePath('courses/' . basename($package));
+        if (!is_file($directory . '/course.json')) {
+            throw new \RuntimeException("No course package \"$package\". Run course:packages to see what is available.");
+        }
+
+        $memberships = $this->container->get(MembershipRepository::class);
+        $users = $this->container->get(UserRepository::class);
+        if ($authorEmail !== null) {
+            $user = $users->findByEmail($authorEmail) ?? throw new \RuntimeException('No user with that email.');
+        } else {
+            $authorId = $this->container->get(Connection::class)->fetchValue(
+                "SELECT user_id FROM memberships WHERE tenant_id = ? AND role IN ('owner', 'admin', 'educator') AND status = 'active' ORDER BY id LIMIT 1",
+                [$tenant->id],
+            );
+            $user = $authorId === null ? null : $users->findById((int) $authorId);
+            if ($user === null) {
+                throw new \RuntimeException('Create an owner, admin or educator in this tenant first (user:create).');
+            }
+        }
+        $membership = $memberships->find($tenant->id, $user->id);
+        if ($membership === null || !$membership->isActive()) {
+            throw new \RuntimeException('The author must be an active member of this tenant.');
+        }
+
+        $result = $this->container->get(CoursePackageImporter::class)->import($tenant->id, new CurrentUser($user, $membership), $directory, $publish);
+        printf(
+            "Imported \"%s\": %d modules, %d lessons, %d quiz questions. %s\nTeaching page: /teach/courses/%d\n",
+            $result['course']->title,
+            $result['modules'],
+            $result['lessons'],
+            $result['questions'],
+            $publish ? 'Published at /courses/' . $result['course']->slug . '.' : 'Saved as a draft; publish it from the Teaching page.',
+            $result['course']->id,
+        );
+
+        return 0;
+    }
+
+    /** @param list<string> $args */
+    private function certificateRevoke(array $args): int
+    {
+        [$code, $reason] = $this->requireArgs($args, 2, 'certificate:revoke <code> "<reason>"');
+        $certificate = $this->container->get(CertificateService::class)->revoke($code, $reason);
+        printf("Revoked %s (%s, %s).\n", $certificate->displayCode(), $certificate->learnerName, $certificate->courseTitle);
 
         return 0;
     }

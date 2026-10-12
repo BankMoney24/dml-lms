@@ -13,6 +13,9 @@ use App\Core\View\View;
 use App\Modules\Assessments\AssessmentRepository;
 use App\Modules\Assessments\AttemptRepository;
 use App\Modules\Assessments\QuizQuestion;
+use App\Modules\Assignments\AssignmentService;
+use App\Modules\Assignments\SubmissionRepository;
+use App\Core\Validation\ValidationException;
 use App\Modules\Courses\Course;
 use App\Modules\Courses\CourseRepository;
 use App\Modules\Courses\Lesson;
@@ -29,6 +32,8 @@ final class LearnController
         private readonly LearningService $learning,
         private readonly AssessmentRepository $assessments,
         private readonly AttemptRepository $attempts,
+        private readonly AssignmentService $assignments,
+        private readonly SubmissionRepository $submissions,
     ) {
     }
 
@@ -47,9 +52,36 @@ final class LearnController
     public function lesson(Request $request): Response
     {
         $course = $this->publishedCourse($request);
+        $lesson = $this->lessonOf($course, $request);
+
+        return $this->renderLesson($request, $course, $lesson);
+    }
+
+    public function submitAssignment(Request $request): Response
+    {
+        $course = $this->publishedCourse($request);
+        $enrolment = $this->learning->requireEnrolment($course, RequestContext::user($request));
+        $lesson = $this->lessonOf($course, $request);
+        $answer = $request->input('answer', '') ?? '';
+        $link = $request->input('link', '') ?? '';
+        try {
+            $this->assignments->submit($enrolment, $lesson, $answer, $link, $request->clientIp);
+        } catch (ValidationException $e) {
+            return $this->renderLesson($request, $course, $lesson, $e->errors, ['answer' => $answer, 'link' => $link], 422);
+        }
+        $this->session->flash('success', 'Submitted. Your teacher will review it; you will see their feedback here.');
+
+        return Response::redirect('/courses/' . $course->slug . '/lessons/' . $lesson->id . '#submission');
+    }
+
+    /**
+     * @param array<string, string> $errors
+     * @param array<string, string> $old
+     */
+    private function renderLesson(Request $request, Course $course, Lesson $lesson, array $errors = [], array $old = [], int $status = 200): Response
+    {
         $user = RequestContext::user($request);
         $enrolment = $this->learning->requireEnrolment($course, $user);
-        $lesson = $this->lessonOf($course, $request);
         $this->learning->markOpened($enrolment, $lesson);
 
         $ordered = $this->lessons->orderedLessons($course->tenantId, $course->id);
@@ -88,7 +120,10 @@ final class LearnController
             'outline' => $this->lessons->outline($course->tenantId, $course->id),
             'completedIds' => $completedIds,
             'quiz' => $quiz,
-        ]));
+            'submissions' => $lesson->isAssignment() ? $this->submissions->history($course->tenantId, $enrolment->id, $lesson->id) : [],
+            'errors' => $errors,
+            'old' => $old,
+        ]), $status);
     }
 
     public function complete(Request $request): Response

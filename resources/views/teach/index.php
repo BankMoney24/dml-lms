@@ -4,12 +4,18 @@
     <h1>Your courses</h1>
     <p class="lead">Build courses, publish them, and follow how learners are doing.</p>
   </div>
-  <a class="button" href="/teach/courses/new">New course</a>
+  <p class="actions">
+    <a class="button button-quiet" href="/teach/reviews">Reviews<?= $pendingReviews > 0 ? ' (' . (int) $pendingReviews . ')' : '' ?></a>
+    <a class="button" href="/teach/courses/new">New course</a>
+  </p>
 </header>
+<?php if ($pendingReviews > 0): ?>
+<p class="notice"><?= $v->e($v->plural((int) $pendingReviews, 'assignment')) ?> waiting for review. <a href="/teach/reviews">Open the review queue</a></p>
+<?php endif; ?>
 <?php if ($rows === []): ?>
   <?= $v->emptyState(
       'Create your first course',
-      'A course is a set of modules, each with reading lessons and quizzes. You can publish it once it has at least one lesson.',
+      'A course is a set of modules with readings, videos, quizzes and assignments. You can publish it once it has at least one lesson.',
       '/teach/courses/new',
       'New course',
   ) ?>

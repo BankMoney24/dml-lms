@@ -90,7 +90,7 @@ final class LessonRepository
         );
     }
 
-    public function addLesson(int $tenantId, int $courseId, int $moduleId, string $type, string $title, string $body): int
+    public function addLesson(int $tenantId, int $courseId, int $moduleId, string $type, string $title, string $body, ?string $mediaUrl = null): int
     {
         $now = $this->clock->sqlNow();
         $position = (int) $this->db->fetchValue(
@@ -99,9 +99,9 @@ final class LessonRepository
         );
 
         return $this->db->insert(
-            'INSERT INTO lessons (tenant_id, course_id, module_id, type, title, body, position, is_mandatory, is_preview, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 1, 0, ?, ?)',
-            [$tenantId, $courseId, $moduleId, $type, $title, $body, $position, $now, $now],
+            'INSERT INTO lessons (tenant_id, course_id, module_id, type, title, body, media_url, position, is_mandatory, is_preview, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?, ?)',
+            [$tenantId, $courseId, $moduleId, $type, $title, $body, $mediaUrl, $position, $now, $now],
         );
     }
 
@@ -151,12 +151,19 @@ final class LessonRepository
         );
     }
 
-    public function updateLesson(int $tenantId, int $courseId, int $lessonId, string $title, string $body): void
+    public function updateLesson(int $tenantId, int $courseId, int $lessonId, string $title, string $body, ?string $mediaUrl = null): void
     {
         $this->db->execute(
-            'UPDATE lessons SET title = ?, body = ?, updated_at = ? WHERE tenant_id = ? AND course_id = ? AND id = ?',
-            [$title, $body, $this->clock->sqlNow(), $tenantId, $courseId, $lessonId],
+            'UPDATE lessons SET title = ?, body = ?, media_url = ?, updated_at = ? WHERE tenant_id = ? AND course_id = ? AND id = ?',
+            [$title, $body, $mediaUrl, $this->clock->sqlNow(), $tenantId, $courseId, $lessonId],
         );
+    }
+
+    public function findById(int $tenantId, int $lessonId): ?Lesson
+    {
+        $row = $this->db->fetchOne('SELECT * FROM lessons WHERE tenant_id = ? AND id = ?', [$tenantId, $lessonId]);
+
+        return $row === null ? null : Lesson::fromRow($row);
     }
 
     /**

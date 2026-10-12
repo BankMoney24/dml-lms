@@ -62,6 +62,59 @@
     } catch (e) { /* ignore */ }
   }
 
+  // Video lessons: the player (and its data use) loads only after the learner asks.
+  Array.prototype.forEach.call(document.querySelectorAll('.video[data-embed]'), function (figure) {
+    var link = figure.querySelector('.video-load');
+    var frame = figure.querySelector('.video-frame');
+    if (!link || !frame) { return; }
+    link.addEventListener('click', function (event) {
+      var src = figure.getAttribute('data-embed') || '';
+      if (!/^https:\/\/(www\.youtube-nocookie\.com|player\.vimeo\.com)\//.test(src)) { return; }
+      event.preventDefault();
+      var iframe = document.createElement('iframe');
+      iframe.src = src + (src.indexOf('?') === -1 ? '?' : '&') + 'autoplay=1';
+      iframe.title = figure.getAttribute('data-title') || 'Video';
+      iframe.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+      iframe.setAttribute('allowfullscreen', '');
+      iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+      frame.textContent = '';
+      frame.appendChild(iframe);
+      iframe.focus();
+    });
+  });
+
+  // Copy buttons on code blocks.
+  if (navigator.clipboard) {
+    Array.prototype.forEach.call(document.querySelectorAll('.code-block'), function (block) {
+      var code = block.querySelector('code');
+      if (!code) { return; }
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'copy-button';
+      button.textContent = 'Copy';
+      button.setAttribute('aria-label', 'Copy code');
+      button.addEventListener('click', function () {
+        navigator.clipboard.writeText(code.textContent || '').then(function () {
+          button.textContent = 'Copied';
+          setTimeout(function () { button.textContent = 'Copy'; }, 2000);
+        }, function () { button.textContent = 'Select and copy'; });
+      });
+      block.appendChild(button);
+    });
+  }
+
+  // Long outlines: bring the current lesson into view inside the sidebar.
+  var side = document.querySelector('.lesson-side');
+  var current = side && side.querySelector('.trace-node.is-current');
+  if (side && current && side.scrollHeight > side.clientHeight) {
+    side.scrollTop = Math.max(0, current.getBoundingClientRect().top - side.getBoundingClientRect().top - side.clientHeight / 3);
+  }
+
+  // Print buttons (certificates).
+  Array.prototype.forEach.call(document.querySelectorAll('[data-print]'), function (button) {
+    button.addEventListener('click', function () { window.print(); });
+  });
+
   // Service worker caches only public static assets and an offline page.
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
     navigator.serviceWorker.register('/sw.js').catch(function () { /* optional */ });
