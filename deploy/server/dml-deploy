@@ -1,0 +1,163 @@
+#!/usr/bin/env bash
+# Activates a verified release with an atomic symlink switch (PRD §16.3).
+#
+#   dml-deploy activate <release-id> <sha256>
+#   dml-deploy rollback
+#   dml-deploy status
+#
+# Layout under APP_ROOT:
+#   releases/<id>/      immutable code, never edited in place
+#   shared/.env         configuration and secrets (not in the artifact)
+#   shared/storage/     logs, sessions, private files
+#   shared/backups/     pre-migration database dumps
+#   incoming/           uploaded tarballs
+#   current -> releases/<id>
+set -euo pipefail
+umask 027
+
+CONF="${DML_DEPLOY_CONF:-$HOME/.dml-deploy.conf}"
+# shellcheck source=/dev/null
+. "$CONF"
+: "${APP_ROOT:?}" "${HEALTH_HOST:?}"
+PHP_BIN="${PHP_BIN:-php}"
+KEEP_RELEASES="${KEEP_RELEASES:-5}"
+HEALTH_SCHEME="${HEALTH_SCHEME:-https}"
+HEALTH_PORT="${HEALTH_PORT:-443}"
+RELOAD_CMD="${RELOAD_CMD:-}"
+HEALTH_RETRIES="${HEALTH_RETRIES:-12}"
+HEALTH_INTERVAL="${HEALTH_INTERVAL:-5}"
+
+RELEASES="$APP_ROOT/releases"
+SHARED="$APP_ROOT/shared"
+LOG="$APP_ROOT/deploy.log"
+
+log() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*" | tee -a "$LOG" >&2; }
+record() { printf '{"ts":"%s","action":"%s","release":"%s","result":"%s","by":"%s"}\n' \
+  "$(date -u +%FT%TZ)" "$1" "$2" "$3" "${SSH_CLIENT%% *}" >> "$LOG"; }
+
+HISTORY="$APP_ROOT/.release-history" # releases that went live, oldest first
+
+current_release() {
+  if [ -L "$APP_ROOT/current" ]; then basename "$(readlink "$APP_ROOT/current")"; else echo none; fi
+}
+
+switch_to() {
+  ln -sfn "releases/$1" "$APP_ROOT/.current.tmp"
+  mv -Tf "$APP_ROOT/.current.tmp" "$APP_ROOT/current"
+  if [ -n "$RELOAD_CMD" ]; then
+    # e.g. "sudo -n /usr/bin/systemctl reload php8.3-fpm-dml" — clears OPcache for the new path.
+    $RELOAD_CMD || log "warning: reload command failed"
+  fi
+}
+
+health_ok() {
+  local want="$1" body
+  for ((i = 0; i < HEALTH_RETRIES; i++)); do
+    body=$(curl -fsS --max-time 10 --resolve "$HEALTH_HOST:$HEALTH_PORT:127.0.0.1" \
+      "$HEALTH_SCHEME://$HEALTH_HOST:$HEALTH_PORT/health/ready" 2>/dev/null || true)
+    if [[ "$body" == *'"status":"ok"'* && "$body" == *"\"release\":\"$want\""* ]]; then
+      return 0
+    fi
+    sleep "$HEALTH_INTERVAL"
+  done
+  log "health check failed; last response: ${body:-<none>}"
+  return 1
+}
+
+backup_db() {
+  local id="$1"
+  command -v mysqldump >/dev/null || { log "mysqldump not found; skipping pre-migration backup"; return 0; }
+  mkdir -p "$SHARED/backups"
+  # Credentials come from an option file (~/.my.cnf, mode 600), never the command line.
+  mysqldump --defaults-extra-file="$HOME/.my.cnf" --single-transaction --routines --no-tablespaces "${DB_NAME:?}" \
+    | gzip > "$SHARED/backups/pre-$id.sql.gz"
+  chmod 600 "$SHARED/backups/pre-$id.sql.gz"
+  ls -1t "$SHARED/backups"/pre-*.sql.gz | tail -n +11 | xargs -r rm -f
+  log "database backed up to shared/backups/pre-$id.sql.gz"
+}
+
+activate() {
+  local id="$1" sum="$2" tarball="$APP_ROOT/incoming/$1.tar.gz" dest="$RELEASES/$1" previous
+  [ -f "$tarball" ] || { log "no uploaded artifact for $id"; exit 4; }
+  echo "$sum  $tarball" | sha256sum --check --strict --status || { log "checksum mismatch for $id"; record activate "$id" checksum_failed; exit 5; }
+
+  if [ ! -d "$dest" ]; then
+    mkdir -p "$RELEASES" "$dest.tmp"
+    tar -xzf "$tarball" -C "$dest.tmp" --no-same-owner
+    [ "$(cat "$dest.tmp/REVISION" 2>/dev/null)" = "$id" ] || { rm -rf "$dest.tmp"; log "artifact identity mismatch"; exit 6; }
+    rm -rf "$dest.tmp/storage"
+    ln -s ../../shared/storage "$dest.tmp/storage"
+    ln -s ../../shared/.env "$dest.tmp/.env"
+    chmod -R go-w "$dest.tmp"
+    mv "$dest.tmp" "$dest"
+  fi
+
+  previous="$(current_release)"
+  log "activating $id (previous: $previous)"
+
+  if (cd "$dest" && "$PHP_BIN" bin/console migrate:status | grep -q '^\[ \]'); then
+    backup_db "$id"
+    # Migrations must be backward compatible with the previous release (expand/contract),
+    # so the old code keeps working if we have to switch back.
+    (cd "$dest" && "$PHP_BIN" bin/console migrate) || { log "migration failed; live release unchanged"; record activate "$id" migrate_failed; exit 7; }
+  fi
+
+  switch_to "$id"
+  if health_ok "$id"; then
+    log "release $id is live"
+    record activate "$id" ok
+    echo "$id" >> "$HISTORY"
+    rm -f "$tarball"
+    prune
+    return 0
+  fi
+
+  if [ "$previous" != "none" ] && [ -d "$RELEASES/$previous" ]; then
+    switch_to "$previous"
+    log "rolled back to $previous"
+    record activate "$id" rolled_back
+  else
+    record activate "$id" failed_no_previous
+  fi
+  exit 8
+}
+
+prune() {
+  # Keep the last KEEP_RELEASES releases that went live (rollback targets); remove the rest,
+  # including releases that failed their health check.
+  local keep
+  keep=$(tail -n "$KEEP_RELEASES" "$HISTORY" 2>/dev/null; current_release)
+  for dir in "$RELEASES"/*/; do
+    [ -d "$dir" ] || continue
+    grep -qx "$(basename "$dir")" <<< "$keep" || rm -rf "$dir"
+  done
+}
+
+rollback() {
+  local now target
+  now="$(current_release)"
+  # The release that was live before the current one, skipping any that no longer exist.
+  target=$(grep -vx "$now" "$HISTORY" 2>/dev/null | tac | while read -r r; do [ -d "$RELEASES/$r" ] && { echo "$r"; break; }; done || true)
+  [ -n "$target" ] || { log "no earlier release to roll back to"; exit 9; }
+  switch_to "$target"
+  if health_ok "$target"; then
+    # Drop the rolled-back release from history so a second rollback goes further back.
+    grep -vx "$now" "$HISTORY" > "$HISTORY.tmp" || true
+    mv -f "$HISTORY.tmp" "$HISTORY"
+    record rollback "$target" ok
+    log "rolled back from $now to $target"
+  else
+    record rollback "$target" unhealthy
+    exit 8
+  fi
+}
+
+exec 9>"$APP_ROOT/.deploy.lock"
+flock -n 9 || { echo "another deploy is running" >&2; exit 10; }
+
+case "${1:-}" in
+  activate) activate "$2" "$3" ;;
+  rollback) rollback ;;
+  status) echo "current: $(current_release)"; ls -1t "$RELEASES" 2>/dev/null | head -n "$KEEP_RELEASES" ;;
+  *) echo "usage: dml-deploy activate <id> <sha256> | rollback | status" >&2; exit 2 ;;
+esac

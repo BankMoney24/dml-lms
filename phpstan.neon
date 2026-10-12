@@ -1,0 +1,10 @@
+parameters:
+    level: 8
+    paths:
+        - app
+        - database/seeders
+        - routes
+        - tests
+    excludePaths:
+        - resources/views
+    treatPhpDocTypesAsCertain: false

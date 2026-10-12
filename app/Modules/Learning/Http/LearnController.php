@@ -1,0 +1,141 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Learning\Http;
+
+use App\Core\Http\HttpException;
+use App\Core\Http\Request;
+use App\Core\Http\RequestContext;
+use App\Core\Http\Response;
+use App\Core\Session\Session;
+use App\Core\View\View;
+use App\Modules\Assessments\AssessmentRepository;
+use App\Modules\Assessments\AttemptRepository;
+use App\Modules\Assessments\QuizQuestion;
+use App\Modules\Courses\Course;
+use App\Modules\Courses\CourseRepository;
+use App\Modules\Courses\Lesson;
+use App\Modules\Courses\LessonRepository;
+use App\Modules\Learning\LearningService;
+
+final class LearnController
+{
+    public function __construct(
+        private readonly View $view,
+        private readonly Session $session,
+        private readonly CourseRepository $courses,
+        private readonly LessonRepository $lessons,
+        private readonly LearningService $learning,
+        private readonly AssessmentRepository $assessments,
+        private readonly AttemptRepository $attempts,
+    ) {
+    }
+
+    public function enrol(Request $request): Response
+    {
+        $course = $this->publishedCourse($request);
+        $this->learning->enrol($course, RequestContext::user($request));
+        $first = $this->lessons->orderedLessons($course->tenantId, $course->id)[0] ?? null;
+        $this->session->flash('success', 'You are enrolled. Start with the first lesson.');
+
+        return Response::redirect($first === null
+            ? '/courses/' . $course->slug
+            : '/courses/' . $course->slug . '/lessons/' . $first->id);
+    }
+
+    public function lesson(Request $request): Response
+    {
+        $course = $this->publishedCourse($request);
+        $user = RequestContext::user($request);
+        $enrolment = $this->learning->requireEnrolment($course, $user);
+        $lesson = $this->lessonOf($course, $request);
+        $this->learning->markOpened($enrolment, $lesson);
+
+        $ordered = $this->lessons->orderedLessons($course->tenantId, $course->id);
+        $index = array_search($lesson->id, array_map(static fn (Lesson $l): int => $l->id, $ordered), true);
+        $index = $index === false ? 0 : $index;
+
+        $quiz = null;
+        if ($lesson->isQuiz()) {
+            $assessment = $this->assessments->findForLesson($course->tenantId, $lesson->id);
+            if ($assessment !== null) {
+                $used = $this->attempts->countFor($course->tenantId, $assessment['id'], $user->user->id);
+                $quiz = [
+                    'pass_threshold' => $assessment['pass_threshold'],
+                    'attempts_left' => $assessment['max_attempts'] === null ? null : max(0, $assessment['max_attempts'] - $used),
+                    'best' => $this->attempts->bestScore($course->tenantId, $assessment['id'], $user->user->id),
+                    'questions' => array_map(
+                        static fn (QuizQuestion $q): array => $q->forLearner(),
+                        $this->assessments->questions($course->tenantId, $assessment['id']),
+                    ),
+                    'idempotency_key' => bin2hex(random_bytes(16)),
+                ];
+            }
+        }
+
+        $completedIds = $this->learning->completedLessonIds($enrolment);
+
+        return Response::html($this->view->render('learn/lesson', [
+            'pageTitle' => $lesson->title,
+            'course' => $course,
+            'lesson' => $lesson,
+            'position' => $index + 1,
+            'total' => count($ordered),
+            'previous' => $ordered[$index - 1] ?? null,
+            'next' => $ordered[$index + 1] ?? null,
+            'completed' => in_array($lesson->id, $completedIds, true),
+            'outline' => $this->lessons->outline($course->tenantId, $course->id),
+            'completedIds' => $completedIds,
+            'quiz' => $quiz,
+        ]));
+    }
+
+    public function complete(Request $request): Response
+    {
+        $course = $this->publishedCourse($request);
+        $enrolment = $this->learning->requireEnrolment($course, RequestContext::user($request));
+        $lesson = $this->lessonOf($course, $request);
+        $courseDone = $this->learning->completeTextLesson($enrolment, $lesson);
+
+        $next = null;
+        $ordered = $this->lessons->orderedLessons($course->tenantId, $course->id);
+        foreach ($ordered as $i => $l) {
+            if ($l->id === $lesson->id) {
+                $next = $ordered[$i + 1] ?? null;
+            }
+        }
+
+        if ($courseDone) {
+            $this->session->flash('success', 'Course complete. Well done!');
+
+            return Response::redirect('/courses/' . $course->slug);
+        }
+        $this->session->flash('success', 'Lesson marked complete.');
+
+        return Response::redirect($next === null
+            ? '/courses/' . $course->slug
+            : '/courses/' . $course->slug . '/lessons/' . $next->id);
+    }
+
+    private function publishedCourse(Request $request): Course
+    {
+        $tenant = RequestContext::tenant($request);
+        $course = $this->courses->findBySlug($tenant->id, $request->routeParam('slug'));
+        if ($course === null || !$course->isPublished()) {
+            throw HttpException::notFound();
+        }
+
+        return $course;
+    }
+
+    private function lessonOf(Course $course, Request $request): Lesson
+    {
+        $lesson = $this->lessons->findInCourse($course->tenantId, $course->id, $request->routeInt('lesson'));
+        if ($lesson === null) {
+            throw HttpException::notFound();
+        }
+
+        return $lesson;
+    }
+}

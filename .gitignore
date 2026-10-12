@@ -1,0 +1,16 @@
+/vendor/
+/.env
+/.env.*
+!/.env.example
+/storage/*
+!/storage/.gitkeep
+/REVISION
+/.phpunit.cache/
+/.phpunit.result.cache
+*.log
+*.sql
+*.sql.gz
+.DS_Store
+Thumbs.db
+/.idea/
+/.vscode/

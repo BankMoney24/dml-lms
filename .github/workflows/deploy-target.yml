@@ -1,0 +1,82 @@
+name: Deploy to one environment
+
+# Reusable: ships the already-built artifact to one environment. The SSH key
+# can only run the restricted deploy gate on the server (see
+# deploy/server/dml-deploy-gate), never an arbitrary shell.
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+      release_id:
+        type: string
+        required: true
+      sha256:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ vars.APP_URL }}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release
+          path: artifact
+
+      - name: Verify artifact checksum
+        env:
+          RELEASE_ID: ${{ inputs.release_id }}
+          EXPECTED: ${{ inputs.sha256 }}
+        run: echo "${EXPECTED}  artifact/${RELEASE_ID}.tar.gz" | sha256sum --check --strict
+
+      - name: Configure SSH (pinned host key, no agent forwarding)
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          test -n "$DEPLOY_SSH_KEY" && test -n "$DEPLOY_KNOWN_HOSTS" || { echo "::error::Deploy secrets missing for this environment."; exit 1; }
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<EOF
+          Host target
+            HostName ${{ secrets.DEPLOY_HOST }}
+            Port ${{ secrets.DEPLOY_PORT || '22' }}
+            User ${{ secrets.DEPLOY_USER }}
+            IdentityFile ~/.ssh/deploy_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            ForwardAgent no
+            ServerAliveInterval 15
+          EOF
+
+      - name: Upload artifact
+        env:
+          RELEASE_ID: ${{ inputs.release_id }}
+        run: ssh target "upload ${RELEASE_ID}" < "artifact/${RELEASE_ID}.tar.gz"
+
+      - name: Activate release (migrate, switch, health check, auto-rollback)
+        env:
+          RELEASE_ID: ${{ inputs.release_id }}
+          SHA256: ${{ inputs.sha256 }}
+        run: ssh target "deploy ${RELEASE_ID} ${SHA256}"
+
+      - name: Record
+        if: always()
+        run: |
+          {
+            echo "### ${{ inputs.environment }}: ${{ job.status }}"
+            echo "- release: ${{ inputs.release_id }}"
+            echo "- actor: ${{ github.actor }}"
+            echo "- time: $(date -u +%FT%TZ)"
+          } >> "$GITHUB_STEP_SUMMARY"
+          rm -f ~/.ssh/deploy_key

@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<ruleset name="DML">
+    <description>PSR-12 for the DML Learning Platform.</description>
+    <file>app</file>
+    <file>database/seeders</file>
+    <file>routes</file>
+    <file>tests</file>
+    <file>public/index.php</file>
+    <arg name="extensions" value="php"/>
+    <arg name="colors"/>
+    <arg value="sp"/>
+    <rule ref="PSR12">
+        <!-- Allow long SQL strings and readable test names; 120 is still enforced as a warning. -->
+        <exclude name="Generic.Files.LineLength.TooLong"/>
+    </rule>
+    <rule ref="Generic.Files.LineLength">
+        <properties>
+            <property name="lineLimit" value="160"/>
+            <property name="absoluteLineLimit" value="200"/>
+        </properties>
+    </rule>
+</ruleset>

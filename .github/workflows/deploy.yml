@@ -1,0 +1,98 @@
+name: Deploy
+
+# Release flow (PRD §16.3): a version tag builds one immutable artifact,
+# deploys it to staging, then waits for approval on the protected
+# "production" environment before deploying the same artifact there.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Tag or commit to release (must already be on main)
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      release_id: ${{ steps.meta.outputs.release_id }}
+      sha256: ${{ steps.pack.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Release must come from main
+        run: |
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor HEAD origin/main || { echo "::error::Only commits on main can be released."; exit 1; }
+
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2.40.0
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, mbstring, intl, iconv
+          coverage: none
+          tools: composer:v2
+
+      - name: Install production dependencies (locked)
+        run: |
+          test -f composer.lock
+          composer install --no-dev --no-interaction --no-progress --prefer-dist --classmap-authoritative
+
+      - id: meta
+        name: Release identity
+        run: |
+          id="$(date -u +%Y%m%d-%H%M%S)-$(git rev-parse --short=12 HEAD)"
+          echo "$id" > REVISION
+          echo "release_id=$id" >> "$GITHUB_OUTPUT"
+
+      - id: pack
+        name: Build artifact
+        run: |
+          id="${{ steps.meta.outputs.release_id }}"
+          tar --exclude-vcs --exclude='./tests' --exclude='./.github' --exclude='./docs' --exclude='./storage' \
+              --exclude='./.env' --exclude='./.env.*' --exclude='./phpunit.xml' --exclude='./phpstan.neon' --exclude='./phpcs.xml' \
+              -czf "/tmp/${id}.tar.gz" .
+          sum=$(sha256sum "/tmp/${id}.tar.gz" | cut -d' ' -f1)
+          echo "sha256=$sum" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Release ${id}"
+            echo "- commit: \`$(git rev-parse HEAD)\`"
+            echo "- sha256: \`${sum}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release
+          path: /tmp/${{ steps.meta.outputs.release_id }}.tar.gz
+          retention-days: 30
+          if-no-files-found: error
+
+  staging:
+    needs: build
+    uses: ./.github/workflows/deploy-target.yml
+    with:
+      environment: staging
+      release_id: ${{ needs.build.outputs.release_id }}
+      sha256: ${{ needs.build.outputs.sha256 }}
+    secrets: inherit
+
+  production:
+    needs: [build, staging]
+    uses: ./.github/workflows/deploy-target.yml
+    with:
+      environment: production
+      release_id: ${{ needs.build.outputs.release_id }}
+      sha256: ${{ needs.build.outputs.sha256 }}
+    secrets: inherit

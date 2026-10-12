@@ -1,0 +1,83 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Identity;
+
+use App\Core\Clock;
+use App\Core\Database\Connection;
+
+final class UserRepository
+{
+    public function __construct(private readonly Connection $db, private readonly Clock $clock)
+    {
+    }
+
+    public function findById(int $id): ?User
+    {
+        $row = $this->db->fetchOne('SELECT * FROM users WHERE id = ?', [$id]);
+
+        return $row === null ? null : User::fromRow($row);
+    }
+
+    public function findByEmail(string $email): ?User
+    {
+        $row = $this->db->fetchOne('SELECT * FROM users WHERE email = ?', [self::normaliseEmail($email)]);
+
+        return $row === null ? null : User::fromRow($row);
+    }
+
+    public function passwordHashFor(int $userId): ?string
+    {
+        $hash = $this->db->fetchValue('SELECT password_hash FROM users WHERE id = ?', [$userId]);
+
+        return is_string($hash) ? $hash : null;
+    }
+
+    public function create(string $email, string $displayName, string $passwordHash, bool $platformAdmin = false): User
+    {
+        $now = $this->clock->sqlNow();
+        $email = self::normaliseEmail($email);
+        $id = $this->db->insert(
+            'INSERT INTO users (email, display_name, password_hash, status, is_platform_admin, session_version,
+                                password_changed_at, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)',
+            [$email, $displayName, $passwordHash, User::STATUS_ACTIVE, $platformAdmin ? 1 : 0, $now, $now, $now],
+        );
+
+        return new User($id, $email, $displayName, User::STATUS_ACTIVE, $platformAdmin, 1);
+    }
+
+    /** Changing the password bumps the session version, signing out every other session (IAM-006). */
+    public function updatePassword(int $userId, string $passwordHash): void
+    {
+        $now = $this->clock->sqlNow();
+        $this->db->execute(
+            'UPDATE users SET password_hash = ?, password_changed_at = ?, session_version = session_version + 1,
+                              updated_at = ? WHERE id = ?',
+            [$passwordHash, $now, $now, $userId],
+        );
+    }
+
+    /** Silent rehash after a successful login does not end other sessions. */
+    public function rehashPassword(int $userId, string $passwordHash): void
+    {
+        $this->db->execute(
+            'UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?',
+            [$passwordHash, $this->clock->sqlNow(), $userId],
+        );
+    }
+
+    public function setStatus(int $userId, string $status): void
+    {
+        $this->db->execute(
+            'UPDATE users SET status = ?, session_version = session_version + 1, updated_at = ? WHERE id = ?',
+            [$status, $this->clock->sqlNow(), $userId],
+        );
+    }
+
+    public static function normaliseEmail(string $email): string
+    {
+        return mb_strtolower(trim($email));
+    }
+}

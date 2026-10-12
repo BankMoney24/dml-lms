@@ -1,0 +1,35 @@
+name: Generate composer.lock
+
+# One-off helper: resolves dev dependencies and pushes composer.lock to a
+# branch for review. Run it from the Actions tab, then open a PR from the
+# branch it creates. It never touches main directly.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  lock:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2.40.0
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, mbstring, intl
+          coverage: none
+          tools: composer:v2
+      - name: Resolve dependencies (platform pinned to PHP 8.3 in composer.json)
+        run: composer update --no-interaction --no-progress --no-install
+      - name: Push to a review branch
+        run: |
+          branch="chore/composer-lock-${GITHUB_RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add composer.lock
+          git commit -m "Add composer.lock resolved for PHP 8.3+"
+          git push origin "$branch"
+          echo "Open a pull request from $branch" >> "$GITHUB_STEP_SUMMARY"

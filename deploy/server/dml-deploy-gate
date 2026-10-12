@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Forced command for the deploy SSH key. Installed via authorized_keys:
+#
+#   command="/usr/local/bin/dml-deploy-gate",no-agent-forwarding,no-port-forwarding,no-pty,no-X11-forwarding,no-user-rc ssh-ed25519 AAAA... github-deploy
+#
+# The key can only: upload a release tarball, activate a verified release,
+# roll back, or report status. It cannot open a shell or run anything else.
+set -euo pipefail
+umask 027
+
+CONF="${DML_DEPLOY_CONF:-$HOME/.dml-deploy.conf}"
+# shellcheck source=/dev/null
+. "$CONF"
+: "${APP_ROOT:?APP_ROOT must be set in $CONF}"
+
+MAX_UPLOAD_BYTES="${MAX_UPLOAD_BYTES:-209715200}" # 200 MB
+ID_RE='^[0-9]{8}-[0-9]{6}-[0-9a-f]{12}$'
+SHA_RE='^[0-9a-f]{64}$'
+
+read -r -a args <<< "${SSH_ORIGINAL_COMMAND:-}"
+cmd="${args[0]:-}"
+
+case "$cmd" in
+  upload)
+    id="${args[1]:-}"
+    [[ "$id" =~ $ID_RE && ${#args[@]} -eq 2 ]] || { echo "invalid upload request" >&2; exit 2; }
+    mkdir -p "$APP_ROOT/incoming"
+    tmp="$APP_ROOT/incoming/.${id}.part"
+    head -c "$((MAX_UPLOAD_BYTES + 1))" > "$tmp"
+    size=$(stat -c %s "$tmp")
+    if [ "$size" -gt "$MAX_UPLOAD_BYTES" ] || [ "$size" -eq 0 ]; then
+      rm -f "$tmp"; echo "upload rejected: size $size" >&2; exit 3
+    fi
+    mv -f "$tmp" "$APP_ROOT/incoming/${id}.tar.gz"
+    echo "uploaded $id ($size bytes)"
+    ;;
+  deploy)
+    id="${args[1]:-}"; sum="${args[2]:-}"
+    [[ "$id" =~ $ID_RE && "$sum" =~ $SHA_RE && ${#args[@]} -eq 3 ]] || { echo "invalid deploy request" >&2; exit 2; }
+    exec /usr/local/bin/dml-deploy activate "$id" "$sum"
+    ;;
+  rollback)
+    [[ ${#args[@]} -eq 1 ]] || { echo "invalid rollback request" >&2; exit 2; }
+    exec /usr/local/bin/dml-deploy rollback
+    ;;
+  status)
+    exec /usr/local/bin/dml-deploy status
+    ;;
+  *)
+    echo "allowed commands: upload <id> | deploy <id> <sha256> | rollback | status" >&2
+    exit 2
+    ;;
+esac
