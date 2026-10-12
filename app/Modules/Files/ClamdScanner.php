@@ -17,6 +17,21 @@ final class ClamdScanner implements VirusScanner
     {
     }
 
+    /** True when clamd answers PING within two seconds. */
+    public function ping(): bool
+    {
+        $socket = @stream_socket_client(sprintf('tcp://%s:%d', $this->host, $this->port), $errno, $error, 2);
+        if ($socket === false) {
+            return false;
+        }
+        stream_set_timeout($socket, 2);
+        fwrite($socket, "zPING\0");
+        $reply = trim((string) fread($socket, 64), "\0\r\n ");
+        fclose($socket);
+
+        return $reply === 'PONG';
+    }
+
     public function scan(string $path): string
     {
         $socket = @stream_socket_client(sprintf('tcp://%s:%d', $this->host, $this->port), $errno, $error, 5);

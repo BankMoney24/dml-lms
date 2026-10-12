@@ -34,6 +34,7 @@ $title = ($pageTitle ?? '') !== '' && ($pageTitle ?? '') !== $siteName ? $pageTi
         <?php if ($v->can('course.manage')): ?><?= $v->navLink('/teach', 'Teaching') ?><?php endif; ?>
         <?php if ($v->can('members.manage')): ?><?= $v->navLink('/people', 'People') ?><?php endif; ?>
         <?php if ($v->can('audit.view')): ?><?= $v->navLink('/activity', 'Activity') ?><?php endif; ?>
+        <?php if ($user->isPlatformAdmin): ?><?= $v->navLink('/system', 'System') ?><?php endif; ?>
       </nav>
       <div class="account">
         <a href="/account"<?= $v->shared('path') === '/account' ? ' aria-current="page"' : '' ?>>

@@ -19,6 +19,7 @@ use App\Modules\Identity\Http\TwoFactorController;
 use App\Modules\Learning\Http\LearnController;
 use App\Modules\Platform\HealthController;
 use App\Modules\Platform\HomeController;
+use App\Modules\Platform\SystemController;
 use App\Modules\Tenancy\Http\PeopleController;
 
 /*
@@ -105,5 +106,6 @@ return static function (Router $r): void {
     $r->post('/people/{user:int}/send-link', [PeopleController::class, 'sendLink'], $people);
     $r->post('/people/{user:int}/reset-two-step', [PeopleController::class, 'resetTwoStep'], $people);
 
+    $r->get('/system', [SystemController::class, 'show'], ['tenant', 'auth']);
     $r->get('/activity', [ActivityController::class, 'index'], ['tenant', 'auth', 'can:audit.view']);
 };

@@ -125,7 +125,7 @@ final class TwoFactorController
         return Response::html($this->view->render('account/two_step', [
             'pageTitle' => 'Two-step sign-in',
             'enabled' => $enabled,
-            'required' => $this->twoFactor->isRequiredFor($me->membership?->role),
+            'required' => $this->twoFactor->isRequiredFor($me->membership?->role) || $me->user->isPlatformAdmin,
             'secretGrouped' => $secret === null ? null : Totp::grouped($secret),
             'otpauth' => $secret === null ? null : Totp::provisioningUri($secret, $me->user->email, $tenant->name),
             'remaining' => $enabled ? $this->twoFactor->unusedRecoveryCodes($me->user->id) : 0,

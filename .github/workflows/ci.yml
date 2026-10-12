@@ -51,7 +51,7 @@ jobs:
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2.40.0
         with:
           php-version: ${{ matrix.php }}
-          extensions: pdo_mysql, mbstring, intl, iconv
+          extensions: pdo_mysql, mbstring, intl, iconv, fileinfo, zip, pcntl, posix
           coverage: none
           tools: composer:v2
 
@@ -92,6 +92,28 @@ jobs:
 
       - name: Tests (unit, feature, security / tenant isolation)
         run: vendor/bin/phpunit
+
+      - name: Shell scripts (shellcheck)
+        run: shellcheck -S warning deploy/server/dml-backup deploy/server/dml-restore deploy/server/dml-deploy deploy/server/dml-deploy-gate deploy/server/*.sh tests/deploy/*.sh
+
+      - name: Backup and restore rehearsal (PRD Phase 0 exit gate)
+        env:
+          APP_KEY: ci-only-key-not-secret-0123456789abcdef
+          APP_ENV: testing
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: dml_lms_rehearsal_source
+          DB_USERNAME: root
+          DB_PASSWORD: root
+        run: |
+          export STORAGE_PATH="$RUNNER_TEMP/storage"
+          printf '[client]\nuser=root\npassword=root\nhost=127.0.0.1\n' > "$RUNNER_TEMP/root.cnf"
+          mysql --defaults-extra-file="$RUNNER_TEMP/root.cnf" -e "CREATE DATABASE dml_lms_rehearsal_source"
+          php bin/console migrate
+          php bin/console tenant:create demo "Demo School" demo.test
+          echo 'rehearsal-password-123' | php bin/console user:create demo teacher@demo.test "Teacher" educator
+          php bin/console seed:demo demo
+          php bin/console course:import demo linux-server-administration --publish
+          sudo MYSQL_DEFAULTS="$RUNNER_TEMP/root.cnf" bash tests/deploy/backup-restore-rehearsal.sh dml_lms_rehearsal_source
 
   secrets:
     name: Secret scan

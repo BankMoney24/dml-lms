@@ -1,0 +1,9 @@
+[Unit]
+Description=DML LMS restore test: restore the latest backup into a scratch database and compare
+After=mysqld.service mariadb.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/dml-restore verify latest
+Nice=10
+IOSchedulingClass=idle

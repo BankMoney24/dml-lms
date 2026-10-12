@@ -110,7 +110,7 @@ final class TwoFactorService
 
     public function disable(CurrentUser $me, int $tenantId, string $password, string $code): void
     {
-        if ($this->isRequiredFor($me->membership?->role)) {
+        if ($this->isRequiredFor($me->membership?->role) || $me->user->isPlatformAdmin) {
             throw ValidationException::single('code', 'Two-step sign-in is required for your role and cannot be turned off.');
         }
         $this->requirePassword($me, $password);

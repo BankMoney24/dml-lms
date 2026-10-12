@@ -507,3 +507,14 @@ fieldset[disabled] .choice { cursor: default; }
 input[type=file] { padding: var(--space-2); background: var(--surface); }
 .small-heading { font-size: var(--step-0); margin: var(--space-4) 0 var(--space-2); }
 .upload-warning { color: var(--danger); font-size: var(--step--1); font-weight: 600; margin: 0; }
+
+/* System page */
+.status-grid { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); align-items: start; }
+.status-card { background: var(--surface); border: 1px solid var(--line); border-left: 6px solid var(--line); border-radius: var(--radius-m); padding: var(--space-4) var(--space-5); min-width: 0; }
+.status-card h2 { font-size: var(--step-1); margin: 0 0 var(--space-2); display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
+.status-card.status-ok { border-left-color: var(--primary); }
+.status-card.status-warn { border-left-color: var(--lamp); }
+.status-card.status-bad { border-left-color: var(--danger); }
+.status-card .facts { font-size: var(--step--1); }
+.status-card .facts dd { overflow-wrap: anywhere; }
+.status-card .table-wrap { margin-top: var(--space-3); }

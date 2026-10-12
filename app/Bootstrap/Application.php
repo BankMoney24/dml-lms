@@ -77,6 +77,8 @@ use App\Modules\Notifications\EmailComposer;
 use App\Modules\Notifications\MailOutbox;
 use App\Modules\Platform\HealthController;
 use App\Modules\Platform\HomeController;
+use App\Modules\Platform\SystemController;
+use App\Modules\Platform\SystemStatus;
 use App\Modules\Tenancy\Http\PeopleController;
 use App\Modules\Tenancy\MemberService;
 use App\Modules\Tenancy\MembershipRepository;
@@ -266,6 +268,22 @@ final class Application
         $c->set(VerifyCsrf::class, static fn (Container $c) => new VerifyCsrf($c->get(Csrf::class)));
 
         // Controllers
+        $clamd = strtolower($config->get('UPLOAD_SCANNER', '') ?? '') === 'clamd'
+            ? new ClamdScanner($config->get('CLAMD_HOST', '127.0.0.1') ?? '127.0.0.1', $config->int('CLAMD_PORT', 3310))
+            : null;
+        $c->set(SystemController::class, static fn (Container $c) => new SystemController(
+            $c->get(View::class),
+            new SystemStatus(
+                $c->get(Connection::class),
+                new Migrator($c->get(Connection::class), self::basePath('database/migrations')),
+                $c->get(MailSettings::class),
+                $c->get(MailOutbox::class),
+                $storage,
+                self::releaseId(),
+                max(1, $config->int('UPLOAD_TENANT_QUOTA_MB', 5120)) * 1048576,
+                $clamd,
+            ),
+        ));
         $c->set(HealthController::class, static fn (Container $c) => new HealthController($c->get(Connection::class), self::releaseId()));
         $c->set(HomeController::class, static fn (Container $c) => new HomeController(
             $c->get(View::class),

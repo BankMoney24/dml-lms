@@ -1,0 +1,10 @@
+[Unit]
+Description=DML LMS encrypted backup (database, uploads, configuration)
+Wants=network-online.target
+After=network-online.target mysqld.service mariadb.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/dml-backup
+Nice=10
+IOSchedulingClass=idle

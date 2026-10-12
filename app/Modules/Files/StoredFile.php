@@ -51,6 +51,9 @@ final class StoredFile
 
     public static function formatBytes(int $bytes): string
     {
+        if ($bytes >= 1073741824) {
+            return number_format($bytes / 1073741824, $bytes >= 107374182400 ? 0 : 1) . ' GB';
+        }
         if ($bytes >= 1048576) {
             return number_format($bytes / 1048576, $bytes >= 10485760 ? 0 : 1) . ' MB';
         }

@@ -1,0 +1,14 @@
+# /etc/dml-lms/backup.conf (root only: chmod 600). Read by dml-backup and dml-restore.
+APP_ROOT=/var/www/dml-lms
+DB_NAME=dml_lms
+BACKUP_DIR=/var/backups/dml-lms
+KEEP_DAYS=14
+# AES-256 key. Keep a copy OFF this server (password manager): without it, no backup can be read.
+KEY_FILE=/etc/dml-lms/backup.key
+# Copy each backup to another machine (rsync over SSH). Strongly recommended.
+#REMOTE=backup@203.0.113.50:/srv/backups/dml-lms/
+#REMOTE_SSH_KEY=/root/.ssh/dml_backup_ed25519
+# Only if root cannot reach MySQL through the local socket without a password:
+#MYSQL_DEFAULTS=/root/.my.cnf
+APP_USER=dmllms
+APP_GROUP=dmllms

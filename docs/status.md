@@ -7,7 +7,7 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 | Item | Status | Notes |
 |---|---|---|
 | Repository, layout, coding standards | Built | PSR-12 (phpcs), PHPStan level 8, strict types |
-| Architecture overview, ADRs | Built | `docs/architecture.md`, `docs/adr/0001–0008` |
+| Architecture overview, ADRs | Built | `docs/architecture.md`, `docs/adr/0001–0009` |
 | ERD / data dictionary | Partial | Schema diagram in architecture.md; full data dictionary next |
 | Threat model | Next | Controls are listed below; a written threat model is still required |
 | CI (lint, analysis, tests, secret scan, asset budget) | Built | `.github/workflows/ci.yml`, PHP 8.3 / 8.4 / 8.5 matrix on MySQL 8.4 |
@@ -15,9 +15,9 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 | Restricted deploy, atomic switch, auto-rollback | Built | Rehearsed locally, including a broken release and manual rollback |
 | Server inspection | Ready to run | `deploy/server/inspect.sh` — needs to be run on 66.29.156.116 |
 | Authentication, tenant context, memberships, audit, migrations | Built | |
-| Backup/restore rehearsal | **Next — exit gate** | Pre-migration dumps exist; off-host backups and a restore drill are not done |
+| Backup/restore rehearsal | Built (server step pending) | Encrypted nightly backups of database, uploads and `.env`; off-server copy; weekly automatic restore test into a scratch database; `dml-restore apply` for real restores. Rehearsal script runs in CI (MySQL 8.4) and passed on MySQL 8.0.46 and MariaDB 10.11. Still to do on the server: install the timers, store the key off the server, set `REMOTE`, run one rehearsal on a spare VM. Guide: `docs/backup-restore.md` |
 
-**Phase 0 exit gate (PRD §18):** tenant-isolation tests ✔ · CI ✔ · staging deploy ☐ (needs server + secrets) · backup/restore rehearsal ☐.
+**Phase 0 exit gate (PRD §18):** tenant-isolation tests ✔ · CI ✔ · staging deploy ☐ (needs server + secrets) · backup/restore rehearsal ✔ in CI, ☐ on the server.
 
 ## Functional requirements
 
@@ -47,6 +47,7 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 | PAY-001…005 payments (Paystack) | Next | |
 | PAR-* guardians | Next | Guardian role exists with no permissions |
 | ADM-001 tenant reports | Partial | Per-course learner progress (lessons done, best quiz score per quiz, last activity). Tenant-wide reports and export next |
+| Operations overview | Built | **System** page for platform administrators: backups, restore test, migrations, email, disk and per-school storage, virus scanner; red/amber/green with the fix written out |
 | ADM-002 audit events | Built | Recorded for sign-in, people changes, course and lesson changes, enrolment, attempts, completion; readable **Activity** page for owners/admins |
 | NTF-002 transactional email | Partial | SMTP (STARTTLS/SSL) through a durable outbox with retry/backoff, `mail:work` cron, bodies erased after send. Account emails only; course/enrolment notifications and preferences next |
 | NTF-001/003+, SUP-001 | Next | In-app notifications, SMS/WhatsApp, support desk |
@@ -68,7 +69,7 @@ Shared components rendered by `ViewHelpers` (labelled fields with inline errors,
 
 ## Recommended next slice
 
-1. Run `inspect.sh`, set up staging, complete the backup/restore drill (closes Phase 0).
+1. On the server: install the backup timers, save the key off the server, set `REMOTE` (deployment.md → Backups). Then staging (closes Phase 0).
 2. Choose the email provider for the server and add SPF/DKIM for the domain (code is ready; see deployment.md → Email).
 3. Turn on ClamAV scanning on the server and add uploads to the backup routine (deployment.md → Uploaded files).
 4. Institution onboarding wizard on a reusable wizard engine (PRD §6.3–6.4).

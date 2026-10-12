@@ -31,7 +31,8 @@ Inspected 2026-10-12. Apache serves ~20 other domains from `/etc/httpd/conf.d/`;
 | Database | `dml_lms`, user `dml_lms@127.0.0.1`, over TCP (the socket directory is not readable by the app users) |
 | Deploy user | `dmldeploy` (owns releases; runs migrations; forced-command SSH key later) |
 | Email worker | `/etc/cron.d/dml-lms`: `mail:work` every minute as `dmllms` |
-| Uploaded files | `shared/storage/uploads/<school>/<year>/<month>/<random>` (back up with the database) |
+| Uploaded files | `shared/storage/uploads/<school>/<year>/<month>/<random>` (included in the nightly backup) |
+| Backups | `/var/backups/dml-lms/` (encrypted), settings and key in `/etc/dml-lms/`, timers `dml-backup` and `dml-restore-check` |
 | SELinux | `shared/storage` labelled `httpd_sys_rw_content_t`; port 8088 added to `http_port_t` |
 
 **First install** (as root): upload the release tarball, unpack only the installer, run it.
@@ -66,13 +67,33 @@ rm /etc/httpd/conf.d/dml-lms.conf && apachectl configtest && systemctl reload ht
 firewall-cmd --permanent --remove-port=8088/tcp && firewall-cmd --reload
 ```
 
-### Uploaded files
+### Backups (nightly, encrypted, restore-tested weekly)
 
-Lesson files and assignment files are stored in `/var/www/dml-lms/shared/storage/uploads/` (outside the web root, readable only through the app after an access check). **Back this folder up together with the database**; a database dump alone does not contain them, for example:
+New installs set this up automatically. On a server installed before this release, run once as root:
 
 ```bash
-tar -czf /root/backups/dml-uploads-$(date +%F).tar.gz -C /var/www/dml-lms/shared/storage uploads
+SRC=/var/www/dml-lms/current
+install -m 755 $SRC/deploy/server/dml-backup $SRC/deploy/server/dml-restore /usr/local/bin/
+install -d -m 700 /etc/dml-lms /var/backups/dml-lms
+[ -f /etc/dml-lms/backup.conf ] || install -m 600 $SRC/deploy/server/backup.conf.example /etc/dml-lms/backup.conf
+[ -s /etc/dml-lms/backup.key ] || (umask 077; openssl rand -base64 48 > /etc/dml-lms/backup.key)
+install -m 644 $SRC/deploy/systemd/dml-*.service $SRC/deploy/systemd/dml-*.timer /etc/systemd/system/
+systemctl daemon-reload && systemctl enable --now dml-backup.timer dml-restore-check.timer
+dml-backup && dml-restore verify latest
+cat /etc/dml-lms/backup.key      # save this OFF the server now (password manager)
 ```
+
+Then set `REMOTE` so copies leave the server, and let yourself see the System page:
+
+```bash
+sudo -u dmldeploy -H php /var/www/dml-lms/current/bin/console user:platform-admin you@example.com
+```
+
+Everything else (what is in a backup, restoring, losing the whole server) is in **[backup-restore.md](backup-restore.md)**.
+
+### Uploaded files
+
+Lesson files and assignment files are stored in `/var/www/dml-lms/shared/storage/uploads/` (outside the web root, readable only through the app after an access check). The nightly backup includes them.
 
 Limits, in `shared/.env`: `UPLOAD_MAX_MB` (per file, default 10) and `UPLOAD_TENANT_QUOTA_MB` (per school, default 5120). The PHP pool and Apache site allow up to 3 files of 20 MB per request; raise both if you raise `UPLOAD_MAX_MB` above 13. After updating from a release before uploads existed, install the new pool and site files once:
 
@@ -284,4 +305,4 @@ php bin/console user:create dml you@example.com "Your Name" owner     # prints a
 * Never `git pull` on the server and never deploy as root.
 * Migrations must be backward compatible with the previous release (expand → migrate → contract over separate releases), because rollback only switches code.
 * `.env`, uploads, logs and backups live in `shared/`, never inside a release.
-* Off-host backups and a restore drill are still required before real learner data (PRD §13.2) — see `docs/status.md`.
+* Backups must be copied off the server (`REMOTE`) and the backup key kept off the server before real learner data arrives (PRD §13.2). See [backup-restore.md](backup-restore.md).

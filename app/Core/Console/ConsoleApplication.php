@@ -55,6 +55,7 @@ final class ConsoleApplication
                 'course:import' => $this->courseImport($args),
                 'course:sync-files' => $this->courseSyncFiles($args),
                 'certificate:revoke' => $this->certificateRevoke($args),
+                'user:platform-admin' => $this->platformAdmin($args),
                 default => $this->help(),
             };
         } catch (Throwable $e) {
@@ -88,6 +89,7 @@ final class ConsoleApplication
           course:sync-files <tenant-slug> <package> <course-slug>
                                                     Add a package's lesson files to a course imported earlier
           certificate:revoke <code> "<reason>"      Revoke a certificate; the reason shows on /verify
+          user:platform-admin <email> [--revoke]    Let a user see the System page (they must use two-step sign-in)
 
         TXT;
 
@@ -319,6 +321,24 @@ final class ConsoleApplication
             $this->packageDirectory($package),
         );
         printf("Added %d file%s to \"%s\".\n", $added, $added === 1 ? '' : 's', $course->title);
+
+        return 0;
+    }
+
+    /** @param list<string> $args */
+    private function platformAdmin(array $args): int
+    {
+        [$positional, $options] = self::options($args);
+        [$email] = $this->requireArgs($positional, 1, 'user:platform-admin <email> [--revoke]');
+        $user = $this->container->get(UserRepository::class)->findByEmail(strtolower($email))
+            ?? throw new \RuntimeException('No user with that email.');
+        $grant = !isset($options['revoke']);
+        $this->container->get(Connection::class)->execute(
+            'UPDATE users SET is_platform_admin = ?, session_version = session_version + 1 WHERE id = ?',
+            [$grant ? 1 : 0, $user->id],
+        );
+        $this->container->get(\App\Modules\Audit\AuditLog::class)->record(null, null, $grant ? 'platform.admin_granted' : 'platform.admin_revoked', 'user', $user->id);
+        printf("%s %s platform administrator. They sign in again%s.\n", $user->email, $grant ? 'is now a' : 'is no longer a', $grant ? ' and must use two-step sign-in' : '');
 
         return 0;
     }

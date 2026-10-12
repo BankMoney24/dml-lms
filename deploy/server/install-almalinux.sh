@@ -138,6 +138,20 @@ install -o "$DEPLOY_USER" -g "$DEPLOY_USER" -m 600 "$TARBALL" "$APP_ROOT/incomin
 SUM="$(sha256sum "$TARBALL" | cut -d' ' -f1)"
 sudo -u "$DEPLOY_USER" -H /usr/local/bin/dml-deploy activate "$ID" "$SUM"
 
+step "Backups (nightly, encrypted) and weekly restore test"
+install -m 755 "$SRC/deploy/server/dml-backup" "$SRC/deploy/server/dml-restore" /usr/local/bin/
+install -d -m 700 /etc/dml-lms /var/backups/dml-lms
+[ -f /etc/dml-lms/backup.conf ] || install -m 600 "$SRC/deploy/server/backup.conf.example" /etc/dml-lms/backup.conf
+if [ ! -s /etc/dml-lms/backup.key ]; then
+  (umask 077; openssl rand -base64 48 > /etc/dml-lms/backup.key)
+  NEW_BACKUP_KEY=1
+fi
+install -m 644 "$SRC"/deploy/systemd/dml-backup.service "$SRC"/deploy/systemd/dml-backup.timer \
+  "$SRC"/deploy/systemd/dml-restore-check.service "$SRC"/deploy/systemd/dml-restore-check.timer /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now dml-backup.timer dml-restore-check.timer >/dev/null
+echo "timers: $(systemctl list-timers dml-backup.timer dml-restore-check.timer --no-legend | awk '{print $NF}' | paste -sd' ')"
+
 step "Email worker (cron)"
 if [ -d /etc/cron.d ]; then
   install -m 644 "$SRC/deploy/cron/dml-lms" /etc/cron.d/dml-lms
@@ -169,6 +183,10 @@ Email is off until you add MAIL_* settings to $APP_ROOT/shared/.env
 
 Owners and admins must set up two-step sign-in (an authenticator app) at
 their first sign-in. To change that, set TWO_FACTOR_REQUIRED_ROLES in shared/.env.
+
+Backups run nightly to /var/backups/dml-lms and are restore-tested weekly.
+$( [ "${NEW_BACKUP_KEY:-0}" = 1 ] && printf '%s\n' "IMPORTANT: copy the backup key somewhere safe OFF this server now:" "  cat /etc/dml-lms/backup.key" "Without it, no backup can ever be read." )
+Set REMOTE in /etc/dml-lms/backup.conf to copy backups to another machine.
 
 Logs: /var/log/httpd/dml-lms-error.log   $APP_ROOT/shared/storage/logs/   $APP_ROOT/deploy.log
 DONE

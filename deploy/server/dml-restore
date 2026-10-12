@@ -1,0 +1,201 @@
+#!/usr/bin/env bash
+# Checks and restores DML LMS backups made by dml-backup.
+#
+#   dml-restore list                      backups on this server, newest first
+#   dml-restore verify [FILE|latest]      prove a backup can be restored, without touching
+#                                         the live site: decrypt, check every checksum, load
+#                                         the database into a scratch copy, compare row
+#                                         counts and migrations, unpack the uploads, clean up.
+#                                         (The weekly dml-restore-check timer runs this.)
+#   dml-restore apply FILE [--with-env]   replace the LIVE database and uploaded files with
+#                                         the backup. Asks for confirmation, and first makes a
+#                                         fresh local backup of the current state.
+#
+# Runs as root. Settings: /etc/dml-lms/backup.conf (same as dml-backup).
+set -euo pipefail
+
+CONF="${DML_BACKUP_CONF:-/etc/dml-lms/backup.conf}"
+# shellcheck source=/dev/null
+[ -r "$CONF" ] && . "$CONF"
+APP_ROOT="${APP_ROOT:-/var/www/dml-lms}"
+DB_NAME="${DB_NAME:-dml_lms}"
+BACKUP_DIR="${BACKUP_DIR:-/var/backups/dml-lms}"
+KEY_FILE="${KEY_FILE:-/etc/dml-lms/backup.key}"
+MYSQL_DEFAULTS="${MYSQL_DEFAULTS:-}"
+APP_USER="${APP_USER:-dmllms}"
+APP_GROUP="${APP_GROUP:-dmllms}"
+RESTORE_STATUS_FILE="${RESTORE_STATUS_FILE:-$APP_ROOT/shared/storage/restore-check.json}"
+SCRATCH_DB="${DB_NAME}_restore_check"
+
+umask 077
+TMP=""
+cleanup() {
+  [ -n "$TMP" ] && rm -rf "$TMP"
+  if [ "${DROP_SCRATCH:-0}" = 1 ]; then
+    mysql "${MYSQL_ARGS[@]}" -e "DROP DATABASE IF EXISTS \`$SCRATCH_DB\`" 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT
+VERIFYING=0
+VERIFY_FILE=""
+VERIFY_STARTED=0
+die() {
+  echo "dml-restore: $*" >&2
+  # A failed scheduled check must show on the System page, not only in the journal.
+  [ "$VERIFYING" = 1 ] && write_restore_status failed "$*" "$VERIFY_FILE" $(( $(date +%s) - VERIFY_STARTED ))
+  exit 1
+}
+say() { echo "  $*"; }
+
+[ "$(id -u)" = 0 ] || die "run as root"
+MYSQL_ARGS=()
+[ -n "$MYSQL_DEFAULTS" ] && MYSQL_ARGS=(--defaults-extra-file="$MYSQL_DEFAULTS")
+
+pick() { # resolves FILE or "latest"
+  local want="${1:-latest}"
+  if [ "$want" = latest ]; then
+    want="$(ls -1t "$BACKUP_DIR"/dml-lms-*.tar.gpg 2>/dev/null | head -1)"
+    [ -n "$want" ] || die "no backups in $BACKUP_DIR"
+  elif [ ! -f "$want" ] && [ -f "$BACKUP_DIR/$want" ]; then
+    want="$BACKUP_DIR/$want"
+  fi
+  [ -f "$want" ] || die "no such backup: $want"
+  echo "$want"
+}
+
+json_field() { sed -n "s/.*\"$1\": *\"\{0,1\}\([^\",}]*\)\"\{0,1\}.*/\1/p" "$2" | head -1; }
+count_in_manifest() { grep -o "\"$1\": *[0-9]*" "$2" | head -1 | grep -o '[0-9]*$'; }
+
+unpack() { # file -> sets DIR (unpacked backup folder)
+  local file="$1"
+  if [ -f "$file.sha256" ]; then
+    (cd "$(dirname "$file")" && sha256sum -c --quiet "$(basename "$file").sha256") || die "checksum of $(basename "$file") does not match: the file is damaged"
+    say "file checksum ok"
+  fi
+  [ -s "$KEY_FILE" ] || die "no encryption key at $KEY_FILE"
+  TMP="$(mktemp -d /var/tmp/dml-restore.XXXXXX)"
+  GNUPGHOME="$TMP/gnupg"; mkdir -m 700 "$GNUPGHOME"; export GNUPGHOME
+  gpg --batch --quiet --pinentry-mode loopback --passphrase-file "$KEY_FILE" -d "$file" | tar -xf - -C "$TMP" \
+    || die "could not decrypt (wrong key?) or unpack $(basename "$file")"
+  DIR="$(find "$TMP" -mindepth 1 -maxdepth 1 -type d -name 'dml-lms-*' | head -1)"
+  [ -n "$DIR" ] && [ -f "$DIR/manifest.json" ] || die "not a dml-backup archive"
+  say "decrypted and unpacked"
+  local part want got
+  for part in database.sql.gz uploads.tar.gz env; do
+    want="$(grep -o "\"$part\": *\"[a-f0-9]*\"" "$DIR/manifest.json" | grep -o '[a-f0-9]\{64\}')"
+    got="$(sha256sum "$DIR/$part" | cut -d' ' -f1)"
+    [ "$want" = "$got" ] || die "$part does not match its checksum in the manifest"
+  done
+  gzip -t "$DIR/database.sql.gz" || die "database dump is corrupt"
+  say "every part matches the manifest"
+}
+
+write_restore_status() { # result message file seconds
+  local tmp
+  tmp="$(mktemp "$(dirname "$RESTORE_STATUS_FILE")/.restore-check.XXXXXX")"
+  printf '{"checked_at":"%s","result":"%s","message":"%s","file":"%s","duration_seconds":%s}\n' \
+    "$(date -u +%FT%TZ)" "$1" "$(printf '%s' "$2" | sed 's/\\/\\\\/g; s/"/\\"/g')" "$3" "$4" > "$tmp"
+  chgrp "$APP_GROUP" "$tmp" 2>/dev/null || true
+  chmod 640 "$tmp"
+  mv -f "$tmp" "$RESTORE_STATUS_FILE"
+}
+
+cmd_list() {
+  ls -1t "$BACKUP_DIR"/dml-lms-*.tar.gpg 2>/dev/null | while read -r f; do
+    printf '%s  %s\n' "$(du -h "$f" | cut -f1)" "$(basename "$f")"
+  done
+}
+
+cmd_verify() {
+  local file started problems=() t tables want got
+  VERIFYING=1
+  VERIFY_STARTED=$(date +%s)
+  started=$VERIFY_STARTED
+  file="$(pick "${1:-latest}")"
+  VERIFY_FILE="$(basename "$file")"
+  echo "Checking $VERIFY_FILE"
+  trap 'die "check stopped at line $LINENO (database import or unpacking failed); run dml-restore verify by hand to see why"' ERR
+  unpack "$file"
+
+  DROP_SCRATCH=1
+  mysql "${MYSQL_ARGS[@]}" -e "DROP DATABASE IF EXISTS \`$SCRATCH_DB\`; CREATE DATABASE \`$SCRATCH_DB\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+  gunzip < "$DIR/database.sql.gz" | mysql "${MYSQL_ARGS[@]}" "$SCRATCH_DB"
+  say "database loaded into scratch copy $SCRATCH_DB"
+
+  for t in tenants users courses lessons enrolments files; do
+    want="$(count_in_manifest "$t" "$DIR/manifest.json")"
+    got="$(mysql "${MYSQL_ARGS[@]}" -N -B "$SCRATCH_DB" -e "SELECT COUNT(*) FROM \`$t\`" 2>/dev/null || echo missing)"
+    [ "$want" = "$got" ] || problems+=("$t: manifest $want, restored $got")
+  done
+  tables="$(mysql "${MYSQL_ARGS[@]}" -N -B "$SCRATCH_DB" -e "SELECT COUNT(*) FROM schema_migrations")"
+  want="$(grep -o '"migrations": \[[^]]*\]' "$DIR/manifest.json" | grep -o '"[^"]*\.sql"' | wc -l)"
+  [ "$tables" = "$want" ] || problems+=("migrations: manifest $want, restored $tables")
+  say "row counts and migrations compared"
+
+  mkdir "$TMP/uploads-check"
+  tar -xzf "$DIR/uploads.tar.gz" -C "$TMP/uploads-check"
+  got="$(find "$TMP/uploads-check" -type f | wc -l)"
+  want="$(count_in_manifest upload_files "$DIR/manifest.json")"
+  [ "$got" = "$want" ] || problems+=("uploaded files: manifest $want, restored $got")
+  say "uploaded files unpacked ($got)"
+
+  trap - ERR
+  local seconds=$(( $(date +%s) - started ))
+  if [ ${#problems[@]} -gt 0 ]; then
+    write_restore_status failed "$(IFS='; '; echo "${problems[*]}")" "$(basename "$file")" "$seconds"
+    printf 'dml-restore: CHECK FAILED\n'; printf '  - %s\n' "${problems[@]}"
+    exit 1
+  fi
+  write_restore_status ok "restored into a scratch database and compared: all counts match" "$(basename "$file")" "$seconds"
+  echo "dml-restore: $(basename "$file") is restorable (checked in ${seconds}s, made $(json_field created_at "$DIR/manifest.json"), release $(json_field release "$DIR/manifest.json"))"
+}
+
+cmd_apply() {
+  local file with_env=0 answer stamp live_uploads
+  file="$(pick "${1:?usage: dml-restore apply FILE [--with-env]}")"
+  [ "${2:-}" = "--with-env" ] && with_env=1
+  echo "Restoring $(basename "$file") over the LIVE site ($DB_NAME, uploaded files$( [ $with_env = 1 ] && echo ', .env'))."
+  unpack "$file"
+  echo "Backup made $(json_field created_at "$DIR/manifest.json") on $(json_field host "$DIR/manifest.json"), release $(json_field release "$DIR/manifest.json")."
+  echo "Everything changed since then will be lost. A backup of the current state is made first."
+  if [ "${DML_RESTORE_YES:-}" != "$DB_NAME" ]; then
+    read -r -p "Type the database name ($DB_NAME) to continue: " answer
+    [ "$answer" = "$DB_NAME" ] || die "cancelled"
+  fi
+
+  echo "Backing up the current state first..."
+  dml-backup --no-offsite || [ $? -eq 2 ] || die "could not back up the current state; nothing was changed"
+
+  stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+  mysql "${MYSQL_ARGS[@]}" -e "DROP DATABASE IF EXISTS \`$DB_NAME\`; CREATE DATABASE \`$DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+  gunzip < "$DIR/database.sql.gz" | mysql "${MYSQL_ARGS[@]}" "$DB_NAME"
+  say "database restored"
+
+  live_uploads="$APP_ROOT/shared/storage/uploads"
+  if [ -d "$live_uploads" ]; then
+    mv "$live_uploads" "$live_uploads.before-restore-$stamp"
+    say "previous uploads kept at $live_uploads.before-restore-$stamp (delete when satisfied)"
+  fi
+  tar -xzf "$DIR/uploads.tar.gz" -C "$APP_ROOT/shared/storage"
+  mkdir -p "$live_uploads"
+  chown -R "$APP_USER:$APP_GROUP" "$live_uploads"
+  find "$live_uploads" -type d -exec chmod 2770 {} +
+  find "$live_uploads" -type f -exec chmod 640 {} +
+  command -v restorecon >/dev/null && restorecon -R "$live_uploads" || true
+  say "uploaded files restored"
+
+  if [ $with_env = 1 ]; then
+    cp -p "$APP_ROOT/shared/.env" "$APP_ROOT/shared/.env.before-restore-$stamp"
+    install -m 640 -o "$(stat -c %U "$APP_ROOT/shared/.env")" -g "$APP_GROUP" "$DIR/env" "$APP_ROOT/shared/.env"
+    say ".env restored (previous kept as .env.before-restore-$stamp)"
+  fi
+
+  echo "dml-restore: done. If the restored data is from an older release, run: sudo -u dmldeploy -H php $APP_ROOT/current/bin/console migrate"
+}
+
+case "${1:-}" in
+  list) cmd_list ;;
+  verify) cmd_verify "${2:-latest}" ;;
+  apply) shift; cmd_apply "$@" ;;
+  *) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+esac

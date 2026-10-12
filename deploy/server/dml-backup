@@ -1,0 +1,153 @@
+#!/usr/bin/env bash
+# Encrypted backup of the DML LMS: database, uploaded files and shared/.env,
+# with a manifest of checksums and row counts, copied off the server.
+#
+#   dml-backup               make a backup now (what the nightly timer runs)
+#   dml-backup --no-offsite  keep it on this server only (e.g. before a restore)
+#
+# Runs as root. Settings: /etc/dml-lms/backup.conf. The encryption key is
+# /etc/dml-lms/backup.key: keep a copy OFF this server (a password manager);
+# without it no backup can ever be read.
+#
+# Result: BACKUP_DIR/dml-lms-<UTC time>.tar.gpg (+ .sha256), and a status file
+# the System page reads: shared/storage/backup-status.json
+set -euo pipefail
+
+CONF="${DML_BACKUP_CONF:-/etc/dml-lms/backup.conf}"
+# shellcheck source=/dev/null
+[ -r "$CONF" ] && . "$CONF"
+APP_ROOT="${APP_ROOT:-/var/www/dml-lms}"
+DB_NAME="${DB_NAME:-dml_lms}"
+BACKUP_DIR="${BACKUP_DIR:-/var/backups/dml-lms}"
+KEEP_DAYS="${KEEP_DAYS:-14}"
+KEY_FILE="${KEY_FILE:-/etc/dml-lms/backup.key}"
+REMOTE="${REMOTE:-}"                  # rsync target, e.g. backup@203.0.113.50:/srv/backups/dml-lms/
+REMOTE_SSH_KEY="${REMOTE_SSH_KEY:-}"  # private key used for REMOTE
+MYSQL_DEFAULTS="${MYSQL_DEFAULTS:-}"  # optional client defaults file; default: root over the local socket
+APP_GROUP="${APP_GROUP:-dmllms}"
+STATUS_FILE="${STATUS_FILE:-$APP_ROOT/shared/storage/backup-status.json}"
+
+OFFSITE=1
+[ "${1:-}" = "--no-offsite" ] && OFFSITE=0
+
+umask 077
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+STARTED=$(date +%s)
+WORK=""
+
+die() { echo "dml-backup: $*" >&2; exit 1; }
+json_escape() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g' | tr -d '\n\r'; }
+
+write_status() { # result message file size offsite
+  local previous_ok="" previous_file="" previous_size="" previous_off="" tmp
+  if [ -r "$STATUS_FILE" ]; then
+    previous_ok=$(sed -n 's/.*"last_success_at":"\([^"]*\)".*/\1/p' "$STATUS_FILE")
+    previous_file=$(sed -n 's/.*"last_success_file":"\([^"]*\)".*/\1/p' "$STATUS_FILE")
+    previous_size=$(sed -n 's/.*"last_success_bytes":\([0-9]*\).*/\1/p' "$STATUS_FILE")
+    previous_off=$(sed -n 's/.*"last_success_offsite":"\([^"]*\)".*/\1/p' "$STATUS_FILE")
+  fi
+  local now; now="$(date -u +%FT%TZ)"
+  if [ "$1" = ok ] || [ "$1" = partial ]; then
+    previous_ok="$now"; previous_file="$3"; previous_size="$4"; previous_off="$5"
+  fi
+  tmp="$(mktemp "$(dirname "$STATUS_FILE")/.backup-status.XXXXXX")"
+  printf '{"last_run_at":"%s","last_result":"%s","last_message":"%s","last_success_at":"%s","last_success_file":"%s","last_success_bytes":%s,"last_success_offsite":"%s","keep_days":%s,"duration_seconds":%s}\n' \
+    "$now" "$1" "$(json_escape "$2")" "${previous_ok:-}" "${previous_file:-}" "${previous_size:-0}" "${previous_off:-}" "$KEEP_DAYS" "$(( $(date +%s) - STARTED ))" > "$tmp"
+  chgrp "$APP_GROUP" "$tmp" 2>/dev/null || true
+  chmod 640 "$tmp"
+  mv -f "$tmp" "$STATUS_FILE"
+}
+
+on_error() {
+  local line="$1"
+  [ -n "$WORK" ] && rm -rf "$WORK"
+  write_status failed "failed at line $line; see: journalctl -u dml-backup" "" 0 ""
+  echo "dml-backup: FAILED at line $line" >&2
+}
+trap 'on_error $LINENO' ERR
+
+[ "$(id -u)" = 0 ] || die "run as root"
+exec 9>/run/dml-backup.lock
+flock -n 9 || die "another backup is running"
+[ -s "$KEY_FILE" ] || die "no encryption key at $KEY_FILE (create one: openssl rand -base64 48 > $KEY_FILE && chmod 600 $KEY_FILE)"
+for c in mysqldump mysql gpg tar gzip sha256sum; do command -v "$c" >/dev/null || die "$c not found"; done
+
+MYSQL_ARGS=()
+[ -n "$MYSQL_DEFAULTS" ] && MYSQL_ARGS=(--defaults-extra-file="$MYSQL_DEFAULTS")
+q() { mysql "${MYSQL_ARGS[@]}" -N -B "$DB_NAME" -e "$1"; }
+
+mkdir -p "$BACKUP_DIR"
+chmod 700 "$BACKUP_DIR"
+WORK="$(mktemp -d "$BACKUP_DIR/.work-$STAMP-XXXX")"
+PART="$WORK/dml-lms-$STAMP"
+mkdir "$PART"
+
+# 1. Database: consistent snapshot of InnoDB tables, without locking the site.
+gtid=()
+mysqldump --help 2>/dev/null | grep -q -- '--set-gtid-purged' && gtid=(--set-gtid-purged=OFF)
+mysqldump "${MYSQL_ARGS[@]}" --single-transaction --routines --triggers --events --hex-blob --no-tablespaces "${gtid[@]}" "$DB_NAME" \
+  | gzip -6 > "$PART/database.sql.gz"
+gzip -t "$PART/database.sql.gz"
+
+# 2. Uploaded files and configuration.
+UPLOADS="$APP_ROOT/shared/storage/uploads"
+if [ -d "$UPLOADS" ]; then
+  tar -czf "$PART/uploads.tar.gz" -C "$APP_ROOT/shared/storage" uploads
+  upload_files=$(find "$UPLOADS" -type f | wc -l)
+else
+  tar -czf "$PART/uploads.tar.gz" --files-from /dev/null
+  upload_files=0
+fi
+cp -p "$APP_ROOT/shared/.env" "$PART/env"
+
+# 3. Manifest: what is inside, and numbers a restore check can compare.
+count() { q "SELECT COUNT(*) FROM $1" 2>/dev/null || echo 0; }
+release="$(basename "$(readlink "$APP_ROOT/current" 2>/dev/null || echo none)")"
+migrations="$(q 'SELECT name FROM schema_migrations ORDER BY name' | sed 's/.*/"&"/' | paste -sd, -)"
+{
+  printf '{\n  "format": 1,\n  "created_at": "%s",\n  "host": "%s",\n  "release": "%s",\n  "database": "%s",\n' \
+    "$(date -u +%FT%TZ)" "$(hostname)" "$release" "$DB_NAME"
+  printf '  "counts": {"tenants": %s, "users": %s, "courses": %s, "lessons": %s, "enrolments": %s, "files": %s, "upload_files": %s},\n' \
+    "$(count tenants)" "$(count users)" "$(count courses)" "$(count lessons)" "$(count enrolments)" "$(count files)" "$upload_files"
+  printf '  "migrations": [%s],\n' "$migrations"
+  printf '  "sha256": {"database.sql.gz": "%s", "uploads.tar.gz": "%s", "env": "%s"}\n}\n' \
+    "$(sha256sum "$PART/database.sql.gz" | cut -d' ' -f1)" \
+    "$(sha256sum "$PART/uploads.tar.gz" | cut -d' ' -f1)" \
+    "$(sha256sum "$PART/env" | cut -d' ' -f1)"
+} > "$PART/manifest.json"
+
+# 4. One encrypted file (AES-256, key from KEY_FILE). gpg uses a throwaway home.
+OUT="$BACKUP_DIR/dml-lms-$STAMP.tar.gpg"
+GNUPGHOME="$(mktemp -d)"; export GNUPGHOME
+tar -cf - -C "$WORK" "dml-lms-$STAMP" \
+  | gpg --batch --yes --quiet --pinentry-mode loopback --passphrase-file "$KEY_FILE" \
+        --symmetric --cipher-algo AES256 --compress-algo none -o "$OUT"
+rm -rf "$GNUPGHOME" "$WORK"; WORK=""
+(cd "$BACKUP_DIR" && sha256sum "$(basename "$OUT")" > "$(basename "$OUT").sha256")
+size=$(stat -c %s "$OUT")
+
+# 5. Keep KEEP_DAYS days here (never deleting the newest).
+find "$BACKUP_DIR" -maxdepth 1 -name 'dml-lms-*.tar.gpg*' -mtime +"$KEEP_DAYS" ! -name "$(basename "$OUT")*" -delete
+
+# 6. Off the server. Remote retention is managed on the remote side, so
+#    someone who breaks into this server cannot delete the copies there.
+offsite="not configured"
+if [ "$OFFSITE" = 1 ] && [ -n "$REMOTE" ]; then
+  ssh_cmd="ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+  [ -n "$REMOTE_SSH_KEY" ] && ssh_cmd="$ssh_cmd -i $REMOTE_SSH_KEY"
+  if rsync -a --partial -e "$ssh_cmd" "$OUT" "$OUT.sha256" "$REMOTE"; then
+    offsite="copied to $REMOTE"
+  else
+    offsite="FAILED to copy to $REMOTE"
+  fi
+elif [ "$OFFSITE" = 0 ]; then
+  offsite="skipped (--no-offsite)"
+fi
+
+if [ "${offsite#FAILED}" != "$offsite" ]; then
+  write_status partial "backup made but $offsite" "$(basename "$OUT")" "$size" "$offsite"
+  echo "dml-backup: $(basename "$OUT") ($size bytes) made, but the off-site copy failed" >&2
+  exit 2
+fi
+write_status ok "ok" "$(basename "$OUT")" "$size" "$offsite"
+echo "dml-backup: $(basename "$OUT") ($size bytes), off-site: $offsite"
