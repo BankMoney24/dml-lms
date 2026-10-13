@@ -25,6 +25,18 @@ final class Tenant
         'flexible' => 'No fixed periods',
     ];
 
+    /** What the school calls a group of learners: key => [singular, plural]. */
+    public const GROUP_TERMS = [
+        'class' => ['class', 'classes'],
+        'cohort' => ['cohort', 'cohorts'],
+        'group' => ['group', 'groups'],
+        'stream' => ['stream', 'streams'],
+        'set' => ['set', 'sets'],
+    ];
+
+    /** The usual word for each kind of institution, when the school has not chosen one. */
+    private const DEFAULT_GROUP_TERMS = ['school' => 'class', 'training_centre' => 'cohort'];
+
     /**
      * @param list<string> $levels classes, years or levels, in order
      */
@@ -48,6 +60,7 @@ final class Tenant
         public readonly bool $certificatesEnabled = true,
         public readonly bool $publicCatalogue = true,
         public readonly ?string $setupCompletedAt = null,
+        public readonly ?string $groupTerm = null,
     ) {
     }
 
@@ -82,6 +95,7 @@ final class Tenant
             (bool) ($row['certificates_enabled'] ?? true),
             (bool) ($row['public_catalogue'] ?? true),
             isset($row['setup_completed_at']) ? (string) $row['setup_completed_at'] : null,
+            isset($row['group_term']) && isset(self::GROUP_TERMS[(string) $row['group_term']]) ? (string) $row['group_term'] : null,
         );
     }
 
@@ -108,6 +122,20 @@ final class Tenant
     public function calendarLabel(): ?string
     {
         return $this->calendar === null ? null : (self::CALENDARS[$this->calendar] ?? null);
+    }
+
+    /** The chosen word for a group of learners, or the usual one for this kind of institution. */
+    public function groupTermKey(): string
+    {
+        return $this->groupTerm ?? (self::DEFAULT_GROUP_TERMS[(string) $this->kind] ?? 'group');
+    }
+
+    /** "class", or "Class" with $capital; "classes" with $plural. */
+    public function groupWord(bool $plural = false, bool $capital = false): string
+    {
+        $word = self::GROUP_TERMS[$this->groupTermKey()][$plural ? 1 : 0];
+
+        return $capital ? ucfirst($word) : $word;
     }
 
     /** Changes when the logo does, so browsers may cache /logo for a long time. */

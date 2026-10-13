@@ -21,6 +21,7 @@ use App\Modules\Tenancy\LogoStore;
 use App\Modules\Tenancy\MemberService;
 use App\Modules\Tenancy\MembershipRepository;
 use App\Modules\Tenancy\SchoolTheme;
+use App\Modules\Tenancy\Tenant;
 use App\Modules\Tenancy\TenantRepository;
 use App\Modules\Wizards\ReviewStep;
 use App\Modules\Wizards\Wizard;
@@ -142,6 +143,7 @@ final class SchoolSetupWizard implements Wizard
                 'website' => (string) ($brand['website'] ?? ''),
                 'calendar' => isset($structure['calendar']) && $structure['calendar'] !== '' ? (string) $structure['calendar'] : $tenant->calendar,
                 'levels' => isset($structure['levels']) ? StructureStep::levels((string) $structure['levels']) : $tenant->levels,
+                'group_term' => isset(Tenant::GROUP_TERMS[(string) ($structure['group_term'] ?? '')]) ? (string) $structure['group_term'] : $tenant->groupTerm,
                 'certificates_enabled' => (bool) ($features['certificates'] ?? true),
                 'public_catalogue' => (bool) ($features['public_catalogue'] ?? true),
             ]);

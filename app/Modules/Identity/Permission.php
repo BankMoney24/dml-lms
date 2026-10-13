@@ -13,4 +13,6 @@ enum Permission: string
     case ReportsView = 'reports.view';
     case AuditView = 'audit.view';
     case SchoolManage = 'school.manage';
+    /** Create classes or cohorts, choose their learners and teachers. Teachers of a group act on that group only. */
+    case GroupsManage = 'groups.manage';
 }

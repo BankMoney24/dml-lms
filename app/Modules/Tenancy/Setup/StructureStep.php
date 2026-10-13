@@ -14,13 +14,13 @@ final class StructureStep extends WizardStep
 {
     private const MAX_LEVELS = 30;
 
-    /** Suggestions by institution type: [calendar, levels]. */
+    /** Suggestions by institution type: [calendar, levels, word for a group of learners]. */
     private const SUGGESTIONS = [
-        'school' => ['terms', ['JSS 1', 'JSS 2', 'JSS 3', 'SS 1', 'SS 2', 'SS 3']],
-        'university' => ['semesters', ['100 Level', '200 Level', '300 Level', '400 Level', '500 Level']],
-        'polytechnic' => ['semesters', ['ND 1', 'ND 2', 'HND 1', 'HND 2']],
-        'training_centre' => ['flexible', []],
-        'other' => ['flexible', []],
+        'school' => ['terms', ['JSS 1', 'JSS 2', 'JSS 3', 'SS 1', 'SS 2', 'SS 3'], 'class'],
+        'university' => ['semesters', ['100 Level', '200 Level', '300 Level', '400 Level', '500 Level'], 'group'],
+        'polytechnic' => ['semesters', ['ND 1', 'ND 2', 'HND 1', 'HND 2'], 'group'],
+        'training_centre' => ['flexible', [], 'cohort'],
+        'other' => ['flexible', [], 'group'],
     ];
 
     public function key(): string
@@ -35,7 +35,7 @@ final class StructureStep extends WizardStep
 
     public function why(): string
     {
-        return 'This is saved with your school profile. Grouping learners and reports by class or level will build on it.';
+        return 'This is saved with your school profile. Classes or cohorts you create later use these levels and this name.';
     }
 
     public function optional(): bool
@@ -51,18 +51,22 @@ final class StructureStep extends WizardStep
     public function initial(WizardContext $ctx, array $all): array
     {
         $tenant = $ctx->tenant;
-        if ($tenant->calendar !== null) {
-            return ['calendar' => $tenant->calendar, 'levels' => implode("\n", $tenant->levels)];
-        }
         $kind = (string) ($all['type']['kind'] ?? $tenant->kind ?? 'other');
-        [$calendar, $levels] = self::SUGGESTIONS[$kind] ?? self::SUGGESTIONS['other'];
+        [$calendar, $levels, $term] = self::SUGGESTIONS[$kind] ?? self::SUGGESTIONS['other'];
+        if ($tenant->calendar !== null) {
+            return ['calendar' => $tenant->calendar, 'levels' => implode("\n", $tenant->levels), 'group_term' => $tenant->groupTerm ?? $term];
+        }
 
-        return ['calendar' => $calendar, 'levels' => implode("\n", $levels)];
+        return ['calendar' => $calendar, 'levels' => implode("\n", $levels), 'group_term' => $term];
     }
 
     public function read(Request $request): array
     {
-        return ['calendar' => $request->input('calendar', '') ?? '', 'levels' => $request->input('levels', '') ?? ''];
+        return [
+            'calendar' => $request->input('calendar', '') ?? '',
+            'levels' => $request->input('levels', '') ?? '',
+            'group_term' => $request->input('group_term', '') ?? '',
+        ];
     }
 
     public function accept(WizardContext $ctx, array $raw, array $all): array
@@ -71,6 +75,10 @@ final class StructureStep extends WizardStep
         $calendar = (string) ($raw['calendar'] ?? '');
         if (!isset(Tenant::CALENDARS[$calendar])) {
             $errors['calendar'] = 'Choose how your year is organised.';
+        }
+        $term = (string) ($raw['group_term'] ?? '');
+        if ($term !== '' && !isset(Tenant::GROUP_TERMS[$term])) {
+            $errors['group_term'] = 'Choose what you call a group of learners.';
         }
         $levels = self::levels((string) ($raw['levels'] ?? ''));
         if (count($levels) > self::MAX_LEVELS) {
@@ -86,7 +94,7 @@ final class StructureStep extends WizardStep
             throw new ValidationException($errors);
         }
 
-        return ['calendar' => $calendar, 'levels' => implode("\n", $levels)];
+        return ['calendar' => $calendar, 'levels' => implode("\n", $levels), 'group_term' => $term];
     }
 
     public function summary(WizardContext $ctx, array $data): array
@@ -96,6 +104,7 @@ final class StructureStep extends WizardStep
         return [
             ['Year organised in', Tenant::CALENDARS[(string) ($data['calendar'] ?? '')] ?? 'Not set'],
             ['Classes or levels', $levels === [] ? 'None listed' : implode(', ', $levels)],
+            ['Groups of learners are called', ucfirst(Tenant::GROUP_TERMS[(string) ($data['group_term'] ?? '')][1] ?? $ctx->tenant->groupWord(true))],
         ];
     }
 

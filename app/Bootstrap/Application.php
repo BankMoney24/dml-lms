@@ -8,6 +8,10 @@ use App\Modules\VirtualLabs\LabCatalogue;
 use App\Modules\VirtualLabs\LabGateway;
 use App\Modules\VirtualLabs\LabSessionRepository;
 use App\Modules\VirtualLabs\Http\LabController;
+use App\Modules\Groups\GroupProgress;
+use App\Modules\Groups\GroupRepository;
+use App\Modules\Groups\GroupService;
+use App\Modules\Groups\Http\GroupController;
 use App\Modules\Payments\Http\PaymentAdminController;
 use App\Modules\Payments\Http\PaymentController;
 use App\Modules\Payments\HttpPaystackApi;
@@ -274,6 +278,17 @@ final class Application
             $c->get(Logger::class),
             $c->get(Clock::class),
         ));
+        $c->set(GroupRepository::class, static fn (Container $c) => new GroupRepository($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(GroupService::class, static fn (Container $c) => new GroupService(
+            $c->get(Connection::class),
+            $c->get(GroupRepository::class),
+            $c->get(CourseRepository::class),
+            $c->get(UserRepository::class),
+            $c->get(MembershipRepository::class),
+            $c->get(LearningService::class),
+            $c->get(AuditLog::class),
+            $c->get(Clock::class),
+        ));
         $c->set(WizardRunRepository::class, static fn (Container $c) => new WizardRunRepository($c->get(Connection::class), $c->get(Clock::class)));
         $c->set(FileService::class, static fn (Container $c) => new FileService(
             $c->get(FileRepository::class),
@@ -367,6 +382,8 @@ final class Application
             $c->get(CourseCards::class),
             $c->get(LessonRepository::class),
             $c->get(ProgressRepository::class),
+            $c->get(GroupRepository::class),
+            new GroupProgress($c->get(Connection::class)),
         ));
         $c->set(LoginController::class, static fn (Container $c) => new LoginController(
             $c->get(View::class),
@@ -549,6 +566,15 @@ final class Application
             $c->get(PaymentService::class),
             $c->get(PaymentRepository::class),
             $c->get(PaymentAccountRepository::class),
+            $c->get(CourseRepository::class),
+            $c->get(Clock::class),
+        ));
+        $c->set(GroupController::class, static fn (Container $c) => new GroupController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(GroupService::class),
+            $c->get(GroupRepository::class),
+            new GroupProgress($c->get(Connection::class)),
             $c->get(CourseRepository::class),
             $c->get(Clock::class),
         ));

@@ -121,7 +121,8 @@ main.wrap { flex: 1; padding-top: var(--space-6); padding-bottom: var(--space-7)
 @media (max-width: 48rem) {
   .topbar-inner { flex-wrap: wrap; gap: 0 var(--space-4); padding-top: var(--space-2); }
   .account { margin-left: auto; }
-  .nav { order: 3; flex-basis: 100%; overflow-x: auto; margin: 0 calc(-1 * var(--space-4)); padding: 0 var(--space-2); min-height: 2.75rem; scrollbar-width: none; }
+  .nav { order: 3; flex-basis: 100%; overflow-x: auto; margin: 0 calc(-1 * var(--space-4)); padding: 0 var(--space-2); min-height: 2.75rem; scrollbar-width: none; gap: 0; }
+  .nav a { padding: 0 var(--space-2); font-size: 0.9375rem; }
   .account .role { display: none; }
 }
 
@@ -997,3 +998,57 @@ ul.plain { list-style: none; margin: 0 0 var(--space-2); padding: 0; }
   .pay-table td .small { grid-column: 2; }
   .pay-table td > .badge { justify-self: start; }
 }
+
+/* Classes, cohorts or groups (ADR 0013) */
+.groups-layout { display: grid; gap: var(--space-6); }
+@media (min-width: 60rem) { .groups-layout { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; } }
+.group-list { list-style: none; padding: 0; margin: 0 0 var(--space-4); display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); gap: var(--space-4); }
+.group-card { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); padding: var(--space-4) var(--space-4) var(--space-4) var(--space-5); }
+.group-card::before { content: ""; position: absolute; left: 0; top: var(--space-4); bottom: var(--space-4); width: 4px; border-radius: 0 4px 4px 0; background: var(--primary); }
+.group-card h3 { font-size: var(--step-1); margin: 0 0 var(--space-1); }
+.group-card h3 a { color: var(--ink); text-decoration: none; }
+.group-card h3 a::after { content: ""; position: absolute; inset: 0; border-radius: var(--radius-m); }
+.group-card:hover { border-color: var(--primary); }
+.group-card:focus-within { outline: 3px solid var(--focus); outline-offset: 2px; }
+.group-card-detail { margin: 0 0 var(--space-2); color: var(--ink-soft); font-size: var(--step--1); }
+.group-card-counts { display: flex; gap: var(--space-4); margin: 0 0 var(--space-1); font-weight: 650; font-variant-numeric: tabular-nums; }
+.group-card-teachers { margin: 0; }
+.page-head-actions { margin: 0; }
+.progress-grid th[scope="col"] { min-width: 8.5rem; vertical-align: bottom; }
+.progress-grid th[scope="col"] a { color: var(--ink); }
+.progress-grid th .small, .progress-grid td .small { display: block; font-weight: 400; }
+.progress-grid th[scope="row"] { font-weight: 650; min-width: 11rem; }
+.pg-cell { vertical-align: middle; }
+.pg-count { font-variant-numeric: tabular-nums; font-size: var(--step--1); }
+.meter-thin { height: 0.375rem; margin-top: var(--space-1); max-width: 8rem; }
+.pg-late { display: block; margin-top: var(--space-1); font-size: 0.8125rem; font-weight: 650; color: var(--danger); }
+.pg-cell.is-late { background: var(--danger-soft); }
+.plain-list { list-style: none; padding: 0; margin: 0 0 var(--space-3); }
+.set-course { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--line); }
+.set-course > span .small { display: block; }
+.tick-list { max-height: 18rem; overflow-y: auto; border: 1px solid var(--line); border-radius: var(--radius-s); padding: var(--space-2); background: var(--surface); }
+.tick-list legend { font-weight: 650; padding: 0 var(--space-1); }
+.choice-tight { min-height: 0; padding: var(--space-1) var(--space-2); margin: 0; }
+.choice-tight input { margin-top: 0.2rem; }
+.my-group { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); padding: var(--space-5); }
+.my-group-head h2 { margin: 0 0 var(--space-1); font-size: var(--step-1); }
+.my-group-head p { margin: 0 0 var(--space-4); }
+.set-list { list-style: none; padding: 0; margin: 0; counter-reset: none; }
+.set-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-1) var(--space-4); align-items: baseline; padding: var(--space-3) 0 var(--space-3) var(--space-4); border-top: 1px solid var(--line); position: relative; }
+.set-item::before { content: ""; position: absolute; left: 0; top: 1.05rem; width: 0.625rem; height: 0.625rem; border-radius: 50%; border: 2px solid var(--primary); background: var(--surface); }
+.set-item.is-done::before { background: var(--primary); }
+.set-item.is-late::before { border-color: var(--danger); }
+.set-title { font-weight: 650; }
+.set-due { font-size: var(--step--1); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.set-item.is-late .set-due { color: var(--danger); font-weight: 650; }
+.set-item.is-done .set-due { color: var(--primary); font-weight: 650; }
+.set-progress { color: var(--ink-soft); }
+.set-item .meter-thin { grid-column: 1 / -1; max-width: 16rem; }
+
+/* Keep the learner's name in view while the course columns scroll sideways. */
+.table.progress-grid { overflow: visible; }
+.progress-grid thead th:first-child { position: sticky; left: 0; z-index: 1; background: var(--surface); }
+.progress-grid th[scope="row"] { position: sticky; left: 0; z-index: 1; background: var(--surface); box-shadow: 1px 0 0 var(--line); }
+@media (max-width: 40rem) { .progress-grid th[scope="row"] { min-width: 8rem; } .progress-grid th[scope="row"] .small { display: none; } }
+/* The set courses read as one trace: a line joins the nodes. */
+.set-item:not(:last-child)::after { content: ""; position: absolute; left: 0.25rem; top: 1.85rem; bottom: -1.05rem; width: 2px; background: var(--line); }

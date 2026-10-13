@@ -57,6 +57,27 @@ final class LearningService
         return $enrolment;
     }
 
+    /**
+     * Enrols a learner because their class or cohort was given the course.
+     * The school chose it for them, so a price is not charged to the learner.
+     * Returns true only when a new enrolment was made: false when already
+     * enrolled, the course is not open (unpublished) or the person cannot
+     * learn here.
+     */
+    public function enrolForGroup(Course $course, CurrentUser $learner, int $assignedBy, int $groupId): bool
+    {
+        if (!$course->isPublished() || !$learner->can(Permission::CourseLearn)) {
+            return false;
+        }
+        if ($this->enrolments->find($course->tenantId, $course->id, $learner->user->id) !== null) {
+            return false;
+        }
+        $this->enrolments->enrol($course->tenantId, $course->id, $learner->user->id);
+        $this->audit->record($course->tenantId, $assignedBy, 'learning.enrolled_by_group', 'course', $course->id, ['learner' => $learner->user->id, 'group' => $groupId]);
+
+        return true;
+    }
+
     /** Learners must be enrolled to open lessons; course managers may preview. */
     public function requireEnrolment(Course $course, CurrentUser $user): Enrolment
     {

@@ -11,6 +11,8 @@ use App\Core\View\View;
 use App\Modules\Assignments\SubmissionRepository;
 use App\Modules\Certificates\CertificateService;
 use App\Modules\Courses\CourseRepository;
+use App\Modules\Groups\GroupProgress;
+use App\Modules\Groups\GroupRepository;
 use App\Modules\Identity\Permission;
 use App\Modules\Courses\LessonRepository;
 use App\Modules\Learning\CourseCards;
@@ -30,6 +32,8 @@ final class HomeController
         private readonly CourseCards $cards,
         private readonly LessonRepository $lessons,
         private readonly ProgressRepository $progress,
+        private readonly ?GroupRepository $groups = null,
+        private readonly ?GroupProgress $groupProgress = null,
     ) {
     }
 
@@ -100,7 +104,21 @@ final class HomeController
             ];
         }
 
+        // The learner's class or cohort: what the school set for them, with due dates.
+        $myGroups = [];
+        foreach ($this->groups?->forLearner($tenant->id, $user->user->id) ?? [] as $g) {
+            $ids = array_map(static fn (array $c): int => $c['course']->id, $g['courses']);
+            $matrix = $this->groupProgress?->matrix($tenant->id, [$user->user->id], $ids) ?? ['lessons' => [], 'cells' => [], 'last_active' => []];
+            $g['progress'] = ['lessons' => $matrix['lessons'], 'cells' => $matrix['cells'][$user->user->id] ?? []];
+            $myGroups[] = $g;
+        }
+        if ($teaching !== null) {
+            $teaching['groups'] = $this->groups?->overview($tenant->id, $user->can(Permission::GroupsManage) ? null : $user->user->id) ?? [];
+        }
+
         return Response::html($this->view->render('dashboard/index', [
+            'myGroups' => $myGroups,
+            'today' => (new \DateTimeImmutable('now', new \DateTimeZone($tenant->timezone)))->format('Y-m-d'),
             'pageTitle' => 'Home',
             'continue' => $continue,
             'myCards' => array_values(array_filter($myCards, static fn (array $c): bool => $continue === null || $c['course']->id !== $continue['card']['course']->id)),

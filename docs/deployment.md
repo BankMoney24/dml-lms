@@ -147,6 +147,10 @@ sudo -u dmldeploy -H php /var/www/dml-lms/current/bin/console course:import dml 
 sudo -u dmldeploy -H php /var/www/dml-lms/current/bin/console course:import dml practical-tech-skills --author=you@example.com
 ```
 
+### Classes and cohorts
+
+Nothing to install. Choose what your school calls them (class, cohort, group, stream or set) under **School → Settings → Type and academic year**, then create them from the new menu item. Learners in a class are enrolled in the courses set for it.
+
 ### Payments (Paystack)
 
 Schools sell courses through their own Paystack account (ADR 0012). PHP has to make outgoing HTTPS calls to `api.paystack.co`; SELinux blocks that by default, so allow it once:

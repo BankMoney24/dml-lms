@@ -12,6 +12,7 @@ use App\Modules\Courses\Http\CatalogueController;
 use App\Modules\Courses\Http\LessonEditorController;
 use App\Modules\Courses\Http\TeachController;
 use App\Modules\Files\Http\FileController;
+use App\Modules\Groups\Http\GroupController;
 use App\Modules\Identity\Http\AccountController;
 use App\Modules\Identity\Http\LoginController;
 use App\Modules\Identity\Http\PasswordResetController;
@@ -127,6 +128,20 @@ return static function (Router $r): void {
     $r->post('/people/{user:int}/remove', [PeopleController::class, 'remove'], $people);
     $r->post('/people/{user:int}/send-link', [PeopleController::class, 'sendLink'], $people);
     $r->post('/people/{user:int}/reset-two-step', [PeopleController::class, 'resetTwoStep'], $people);
+
+    // Classes, cohorts or groups (ADR 0013). The service decides who may see each group.
+    $groups = ['tenant', 'auth'];
+    $r->get('/groups', [GroupController::class, 'index'], $groups);
+    $r->post('/groups', [GroupController::class, 'store'], ['tenant', 'auth', 'can:groups.manage']);
+    $r->get('/groups/{group:int}', [GroupController::class, 'show'], $groups);
+    $r->get('/groups/{group:int}/progress.csv', [GroupController::class, 'export'], $groups);
+    $r->post('/groups/{group:int}/details', [GroupController::class, 'update'], ['tenant', 'auth', 'can:groups.manage']);
+    $r->post('/groups/{group:int}/archive', [GroupController::class, 'archive'], ['tenant', 'auth', 'can:groups.manage']);
+    $r->post('/groups/{group:int}/teachers', [GroupController::class, 'teachers'], ['tenant', 'auth', 'can:groups.manage']);
+    $r->post('/groups/{group:int}/learners', [GroupController::class, 'addLearners'], $groups);
+    $r->post('/groups/{group:int}/learners/{user:int}/remove', [GroupController::class, 'removeLearner'], $groups);
+    $r->post('/groups/{group:int}/courses', [GroupController::class, 'assignCourse'], $groups);
+    $r->post('/groups/{group:int}/courses/{course:int}/remove', [GroupController::class, 'unassignCourse'], $groups);
 
     $school = ['tenant', 'auth', 'can:school.manage'];
     $r->get('/school', [SchoolController::class, 'index'], $school);

@@ -5,7 +5,9 @@
 /** @var list<array<string, mixed>> $suggestedCards */
 /** @var list<\App\Modules\Certificates\Certificate> $certificates */
 /** @var bool $setupPending */
-/** @var ?array{published: int, drafts: int, reviews: int, courses: list<array{course: \App\Modules\Courses\Course, lessons: int, enrolled: int, completed: int, active: int}>} $teaching */
+/** @var list<array{group: \App\Modules\Groups\LearnerGroup, teachers: list<string>, courses: list<array{course: \App\Modules\Courses\Course, due_on: ?string}>, progress: array{lessons: array<int, int>, cells: array<int, array{status: string, done: int}>}}> $myGroups */
+/** @var string $today */
+/** @var ?array{groups?: list<array{group: \App\Modules\Groups\LearnerGroup, learners: int, courses: int, teachers: list<string>}>, published: int, drafts: int, reviews: int, courses: list<array{course: \App\Modules\Courses\Course, lessons: int, enrolled: int, completed: int, active: int}>} $teaching */
 $user = $v->shared('user');
 $firstName = explode(' ', trim($user->displayName))[0];
 $hasLearning = $continue !== null || $myCards !== [];
@@ -42,6 +44,38 @@ $hasLearning = $continue !== null || $myCards !== [];
 </section>
 <?php endif; ?>
 
+<?php $tenantNow = $v->shared('tenant'); foreach ($myGroups as $mg): $g = $mg['group']; ?>
+<section class="section my-group" aria-labelledby="my-group-<?= $g->id ?>">
+  <div class="my-group-head">
+    <h2 id="my-group-<?= $g->id ?>">Your <?= $v->e($tenantNow?->groupWord() ?? 'class') ?>: <?= $v->e($g->name) ?></h2>
+    <?php if ($mg['teachers'] !== []): ?><p class="small muted">Taught by <?= $v->e(implode(', ', $mg['teachers'])) ?></p><?php endif; ?>
+  </div>
+  <?php if ($mg['courses'] === []): ?>
+    <p class="muted">Your teacher has not set any courses yet.</p>
+  <?php else: ?>
+  <ol class="set-list">
+    <?php foreach ($mg['courses'] as $sc):
+        $course = $sc['course'];
+        $cell = $mg['progress']['cells'][$course->id] ?? null;
+        $total = $mg['progress']['lessons'][$course->id] ?? 0;
+        $done = $cell !== null && $cell['status'] === 'completed';
+        $late = !$done && $sc['due_on'] !== null && $sc['due_on'] < $today;
+        $dueText = $sc['due_on'] === null ? null : (new DateTimeImmutable($sc['due_on']))->format('j M');
+        ?>
+    <li class="set-item<?= $done ? ' is-done' : '' ?><?= $late ? ' is-late' : '' ?>">
+      <a class="set-title" href="/courses/<?= $v->e($course->slug) ?>"><?= $v->e($course->title) ?></a>
+      <span class="set-due"><?= $done ? 'Completed' : ($dueText === null ? 'No due date' : ($late ? 'Was due ' . $v->e($dueText) : 'Due ' . $v->e($dueText))) ?></span>
+      <?php if (!$done): ?>
+        <span class="set-progress small"><?= $cell === null ? 'Not started' : $v->e($cell['done'] . ' of ' . $v->plural($total, 'lesson')) ?></span>
+        <progress class="meter meter-thin" max="<?= max(1, $total) ?>" value="<?= $cell['done'] ?? 0 ?>" aria-label="<?= $v->e($course->title) ?> progress"></progress>
+      <?php endif; ?>
+    </li>
+    <?php endforeach; ?>
+  </ol>
+  <?php endif; ?>
+</section>
+<?php endforeach; ?>
+
 <?php if ($teaching !== null): ?>
 <section class="section teaching-strip" aria-labelledby="teaching">
   <h2 id="teaching">Teaching</h2>
@@ -52,6 +86,9 @@ $hasLearning = $continue !== null || $myCards !== [];
     <li><a href="/teach"><?= $v->e($v->plural($teaching['published'], 'published course')) ?><?= $teaching['drafts'] > 0 ? ', ' . $v->e($v->plural($teaching['drafts'], 'draft')) : '' ?></a></li>
     <li><a href="/teach/courses/new">Start a new course</a></li>
     <?php if ($v->can('members.manage')): ?><li><a href="/people">Add people</a></li><?php endif; ?>
+    <?php foreach (array_slice($teaching['groups'] ?? [], 0, 6) as $tg): ?>
+      <li><a href="/groups/<?= $tg['group']->id ?>"><?= $v->e($tg['group']->name . ': ' . $v->plural($tg['learners'], 'learner') . ', ' . $v->plural($tg['courses'], 'course')) ?></a></li>
+    <?php endforeach; ?>
   </ul>
   <?php if ($teaching['courses'] !== []): ?>
   <div class="table-wrap teaching-table">

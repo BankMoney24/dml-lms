@@ -36,6 +36,7 @@ $title = ($pageTitle ?? '') !== '' && ($pageTitle ?? '') !== $siteName ? $pageTi
         <?= $v->navLink('/', 'Home') ?>
         <?= $v->navLink('/courses', 'Courses') ?>
         <?php if ($v->can('course.manage')): ?><?= $v->navLink('/teach', 'Teaching') ?><?php endif; ?>
+        <?php if ($v->can('groups.manage') || $v->can('course.manage')): ?><?= $v->navLink('/groups', $tenant->groupWord(true, true)) ?><?php endif; ?>
         <?php if ($v->can('school.manage')): ?><?= $v->navLink('/school', 'School', ['/people', '/activity', '/setup']) ?>
         <?php elseif ($v->can('members.manage')): ?><?= $v->navLink('/people', 'People') ?><?php endif; ?>
         <?php if ($user->isPlatformAdmin): ?><?= $v->navLink('/system', 'System') ?><?php endif; ?>

@@ -126,6 +126,7 @@ $none = '<span class="muted">Not set</span>';
       <dt>Type</dt><dd><?= $school->kindLabel() !== null ? $v->e($school->kindLabel()) : $none ?></dd>
       <dt>Year organised in</dt><dd><?= $school->calendarLabel() !== null ? $v->e($school->calendarLabel()) : $none ?></dd>
       <dt>Classes or levels</dt><dd><?= $school->levels !== [] ? $v->e(implode(', ', $school->levels)) : $none ?></dd>
+      <dt>Groups of learners</dt><dd><a href="/groups"><?= $v->e($school->groupWord(true, true)) ?></a></dd>
     </dl>
   </section>
 

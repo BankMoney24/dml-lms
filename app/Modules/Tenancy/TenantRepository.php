@@ -82,18 +82,18 @@ final class TenantRepository
      *
      * @param array{name: string, kind: ?string, tagline: string, theme: string, contact_email: string,
      *              contact_phone: string, website: string, calendar: ?string, levels: list<string>,
-     *              certificates_enabled: bool, public_catalogue: bool} $p
+     *              certificates_enabled: bool, public_catalogue: bool, group_term?: ?string} $p
      */
     public function updateProfile(int $tenantId, array $p): void
     {
         $this->db->execute(
             'UPDATE tenants SET name = ?, kind = ?, tagline = ?, theme = ?, contact_email = ?, contact_phone = ?, website = ?,
-                    calendar = ?, levels = ?, certificates_enabled = ?, public_catalogue = ?, updated_at = ?
+                    calendar = ?, levels = ?, group_term = ?, certificates_enabled = ?, public_catalogue = ?, updated_at = ?
              WHERE id = ?',
             [
                 $p['name'], $p['kind'], $p['tagline'], $p['theme'], $p['contact_email'], $p['contact_phone'], $p['website'],
                 $p['calendar'], $p['levels'] === [] ? null : json_encode($p['levels'], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
-                $p['certificates_enabled'] ? 1 : 0, $p['public_catalogue'] ? 1 : 0, $this->clock->sqlNow(), $tenantId,
+                $p['group_term'] ?? null, $p['certificates_enabled'] ? 1 : 0, $p['public_catalogue'] ? 1 : 0, $this->clock->sqlNow(), $tenantId,
             ],
         );
     }
