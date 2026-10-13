@@ -8,6 +8,8 @@
 /** @var list<\App\Modules\Files\StoredFile> $lessonFiles */
 /** @var array<int, list<\App\Modules\Files\StoredFile>> $submissionFiles */
 /** @var ?array<string, mixed> $lab */
+/** @var ?array{saved: bool, body: string, updated_at: string} $note */
+$note ??= null;
 $base = '/courses/' . $v->e($course->slug);
 $latest = $submissions[0] ?? null;
 ?>
@@ -15,9 +17,17 @@ $latest = $submissions[0] ?? null;
 
 <div class="lesson-layout">
 <article class="lesson">
-  <header class="lesson-head">
-    <p class="lesson-kind"><?= $v->e($lesson->typeLabel()) ?><?php if ($lesson->type === 'text'): ?>, <?= $lesson->readingMinutes() ?> min read<?php endif; ?></p>
-    <h1><?= $v->e($lesson->title) ?></h1>
+  <header class="lesson-head lesson-head-row">
+    <div>
+      <p class="lesson-kind"><?= $v->e($lesson->typeLabel()) ?><?php if ($lesson->type === 'text'): ?>, <?= $lesson->readingMinutes() ?> min read<?php endif; ?></p>
+      <h1><?= $v->e($lesson->title) ?></h1>
+    </div>
+    <?php $isSaved = $note !== null && $note['saved']; ?>
+    <form method="post" action="<?= $base ?>/lessons/<?= $lesson->id ?>/save" class="save-form">
+      <?= $v->csrfField() ?>
+      <input type="hidden" name="saved" value="<?= $isSaved ? '0' : '1' ?>">
+      <button type="submit" class="save-toggle" aria-pressed="<?= $isSaved ? 'true' : 'false' ?>"><?= $v->icon($isSaved ? 'saved-on' : 'saved') ?><span><?= $isSaved ? 'Saved' : 'Save' ?></span><span class="visually-hidden"> this lesson for later</span></button>
+    </form>
   </header>
 
   <?php if ($lesson->type === 'text' || $lesson->isVideo()): ?>
@@ -158,8 +168,20 @@ $latest = $submissions[0] ?? null;
   <?php endif; ?>
 </article>
 <aside class="lesson-side" aria-labelledby="side-h">
-  <h2 id="side-h" class="side-title">Your progress</h2>
-  <?php $linkLessons = true; $currentLessonId = $lesson->id; include __DIR__ . '/../courses/_trace.php'; ?>
+  <section class="note-box" id="notes" aria-labelledby="notes-h">
+    <h2 id="notes-h" class="note-title"><?= $v->icon('note') ?>Your notes</h2>
+    <form method="post" action="<?= $base ?>/lessons/<?= $lesson->id ?>/note" class="note-form">
+      <?= $v->csrfField() ?>
+      <label for="note" class="visually-hidden">Your notes on this lesson</label>
+      <textarea id="note" name="note" rows="<?= $note !== null && $note['body'] !== '' ? 6 : 3 ?>" maxlength="5000" placeholder="Write what you want to remember: a command, a definition, a question for your teacher." aria-describedby="note-hint"><?= $v->e($note['body'] ?? '') ?></textarea>
+      <p class="hint" id="note-hint">Only you can see your notes.<?php if ($note !== null && $note['body'] !== ''): ?> Saved <?= $v->datetime($note['updated_at'], 'j M, H:i') ?>.<?php endif; ?></p>
+      <button type="submit" class="button button-small button-quiet">Save note</button>
+    </form>
+  </section>
+  <div class="side-trace">
+    <h2 id="side-h" class="side-title">Your progress</h2>
+    <?php $linkLessons = true; $currentLessonId = $lesson->id; include __DIR__ . '/../courses/_trace.php'; ?>
+  </div>
 </aside>
 </div>
 

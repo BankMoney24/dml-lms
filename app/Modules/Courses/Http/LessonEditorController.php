@@ -77,6 +77,7 @@ final class LessonEditorController
             'media_url' => $request->input('media_url', '') ?? '',
             'pass_threshold' => $request->input('pass_threshold', '70') ?? '70',
             'max_attempts' => $request->input('max_attempts', '') ?? '',
+            'preview' => $request->input('preview', '0') === '1' ? '1' : '0',
         ];
         try {
             $this->authoring->updateLesson($course, RequestContext::user($request), $lesson->id, $input);
@@ -87,6 +88,7 @@ final class LessonEditorController
                 'media_url' => $input['media_url'],
                 'pass_threshold' => $input['pass_threshold'],
                 'max_attempts' => $input['max_attempts'],
+                'preview' => $input['preview'],
             ], 422);
         }
         $this->session->flash('success', 'Lesson saved.');

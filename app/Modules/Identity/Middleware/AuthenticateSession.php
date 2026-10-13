@@ -30,6 +30,7 @@ final class AuthenticateSession implements Middleware
         private readonly View $view,
         private readonly array $twoStepRequiredRoles = [],
         private readonly ?NotificationRepository $notifications = null,
+        private readonly ?\App\Modules\Platform\NavCounts $navCounts = null,
     ) {
     }
 
@@ -46,6 +47,7 @@ final class AuthenticateSession implements Middleware
                 $this->view->share('role', $current->membership?->role);
                 $this->view->share('permissions', $current->permissionNames());
                 $this->view->share('unread', $this->notifications?->unreadCount($tenant->id, $current->user->id) ?? 0);
+                $this->view->share('nav_counts', $this->navCounts?->for($current, $tenant->id) ?? []);
 
                 if ($current->user->mustChangePassword && !in_array($request->path, self::ALLOWED_WHILE_PASSWORD_PENDING, true)) {
                     return Response::redirect('/account');

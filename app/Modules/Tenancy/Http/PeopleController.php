@@ -162,6 +162,7 @@ final class PeopleController
             'emailing' => $this->mail->deliveryAvailable(),
             'newMember' => $newMember,
             'guardianCounts' => $this->guardians?->counts($tenant->id) ?? [],
+            'find' => mb_substr(trim($request->query('find', '') ?? ''), 0, 120),
             'errors' => $errors,
             'old' => $old + ['name' => '', 'email' => '', 'role' => 'learner'],
         ]), $status);

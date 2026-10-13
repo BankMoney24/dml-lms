@@ -33,6 +33,8 @@ Health endpoints (`/health`, `/health/ready`) skip session, tenant and auth.
 | Notifications | email outbox; in-app notifications and the Notifier other modules call (ADR 0015) | Identity, Tenancy |
 | Guardians | guardian_links, the guardian's read-only child view (ADR 0016) | Identity, Tenancy, Learning, Groups |
 | Support | support_requests, support_messages, the help desk (ADR 0017) | Identity, Tenancy, Files, Notifications |
+| Study | lesson_notes, learning days, due dates, calendar link (ADR 0018) | Identity, Tenancy, Learning, Groups |
+| Search | school-wide search across courses, lessons, classes, people and pages (ADR 0018) | Courses, Groups, Identity |
 | Groups | learner_groups (classes, cohorts), members, courses set for a group, progress grid (ADR 0013) | Courses, Learning, Identity, Audit |
 | Payments | course prices, payment_accounts (sealed Paystack keys), payments, payment_events, checkout, verify and webhook handling (ADR 0012) | Courses, Learning, Identity, Audit |
 | Platform | home page, health, System page, Schools (platform administrators) | Tenancy, Identity; otherwise read-only |

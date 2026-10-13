@@ -26,7 +26,7 @@ final class AuthenticationTest extends AppTestCase
 
         $this->assertRedirectTo('/', $response);
         $this->assertGreaterThan($before, $this->session->regenerations);
-        $this->assertStringContainsString('Hello, Test', $this->get(self::HOST, '/')->body);
+        $this->assertStringContainsString(', Test</h1>', $this->get(self::HOST, '/')->body);
     }
 
     public function testWrongPasswordAndUnknownAccountGetTheSameMessage(): void

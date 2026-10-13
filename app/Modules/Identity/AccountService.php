@@ -59,4 +59,15 @@ final class AccountService
         $this->users->updateDisplayName($me->user->id, $name);
         $this->audit->record($tenantId, $me->user->id, 'account.name_changed', 'user', $me->user->id);
     }
+
+    /** Light, dark or the device's own setting; an unknown value is ignored. */
+    public function setAppearance(CurrentUser $me, string $appearance): bool
+    {
+        if (!isset(User::APPEARANCES[$appearance])) {
+            return false;
+        }
+        $this->users->setAppearance($me->user->id, $appearance);
+
+        return true;
+    }
 }

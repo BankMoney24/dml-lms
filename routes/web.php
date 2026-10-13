@@ -28,6 +28,8 @@ use App\Modules\Platform\HomeController;
 use App\Modules\Platform\SchoolsController;
 use App\Modules\Platform\SeoController;
 use App\Modules\Platform\SystemController;
+use App\Modules\Search\Http\SearchController;
+use App\Modules\Study\Http\StudyController;
 use App\Modules\Support\Http\SupportController;
 use App\Modules\Tenancy\Http\PeopleController;
 use App\Modules\VirtualLabs\Http\LabController;
@@ -62,6 +64,8 @@ return static function (Router $r): void {
 
     $r->get('/courses', [CatalogueController::class, 'index'], ['tenant']);
     $r->get('/courses/{slug}', [CatalogueController::class, 'show'], ['tenant']);
+    // Free preview lessons (CRS-003): open to anyone who may see the course page.
+    $r->get('/courses/{slug}/preview/{lesson:int}', [CatalogueController::class, 'preview'], ['tenant']);
 
     $learn = ['tenant', 'auth', 'can:course.learn'];
     $r->post('/courses/{slug}/enrol', [LearnController::class, 'enrol'], $learn);
@@ -75,6 +79,10 @@ return static function (Router $r): void {
     $r->post('/courses/{slug}/lessons/{lesson:int}/attempts', [AttemptController::class, 'submit'], $learn);
     $r->get('/courses/{slug}/lessons/{lesson:int}/attempts/{attempt:int}', [AttemptController::class, 'result'], $learn);
     $r->post('/courses/{slug}/lessons/{lesson:int}/submissions', [LearnController::class, 'submitAssignment'], $learn);
+    // Saved lessons and private notes (ADR 0018).
+    $r->post('/courses/{slug}/lessons/{lesson:int}/save', [StudyController::class, 'toggleSave'], $learn);
+    $r->post('/courses/{slug}/lessons/{lesson:int}/note', [StudyController::class, 'saveNote'], $learn);
+    $r->get('/saved', [StudyController::class, 'saved'], $learn);
 
     // Virtual labs: the gateway checks on every request that the session is this learner's.
     $r->post('/courses/{slug}/lessons/{lesson:int}/lab', [LabController::class, 'start'], $learn);
@@ -128,6 +136,13 @@ return static function (Router $r): void {
     $r->post('/account/two-step/enable', [TwoFactorController::class, 'enable'], $signedIn);
     $r->post('/account/two-step/disable', [TwoFactorController::class, 'disable'], $signedIn);
     $r->post('/account/two-step/recovery-codes', [TwoFactorController::class, 'regenerateCodes'], $signedIn);
+    $r->post('/account/appearance', [AccountController::class, 'updateAppearance'], $signedIn);
+    $r->get('/account/calendar', [StudyController::class, 'calendar'], $signedIn);
+    $r->post('/account/calendar', [StudyController::class, 'issueCalendar'], $signedIn);
+    $r->post('/account/calendar/revoke', [StudyController::class, 'revokeCalendar'], $signedIn);
+    // Calendar apps fetch this themselves: no session; the secret in the address is the key (ADR 0018).
+    $r->get('/calendar/{token:code}.ics', [StudyController::class, 'feed'], [Kernel::BARE, 'host-tenant', 'tenant']);
+    $r->get('/search', [SearchController::class, 'index'], $signedIn);
 
     $people = ['tenant', 'auth', 'can:members.manage'];
     $r->get('/people', [PeopleController::class, 'index'], $people);

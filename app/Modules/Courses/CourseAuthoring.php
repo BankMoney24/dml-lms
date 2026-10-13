@@ -201,7 +201,7 @@ final class CourseAuthoring
     }
 
     /**
-     * @param array{title: string, body: string, media_url?: string, pass_threshold?: string, max_attempts?: string} $input
+     * @param array{title: string, body: string, media_url?: string, pass_threshold?: string, max_attempts?: string, preview?: string} $input
      */
     public function updateLesson(Course $course, CurrentUser $author, int $lessonId, array $input): void
     {
@@ -210,8 +210,9 @@ final class CourseAuthoring
         // A lab lesson keeps its lab; to use another lab, add a new lesson.
         $valid = $this->validLesson($lesson->type, ['lab_key' => (string) $lesson->labKey] + $input + ['type' => $lesson->type]);
 
-        $this->db->transaction(function () use ($course, $lesson, $valid, $author): void {
-            $this->lessons->updateLesson($course->tenantId, $course->id, $lesson->id, $valid['title'], $valid['body'], $valid['media_url']);
+        $preview = $lesson->canBePreview() && ($input['preview'] ?? '') === '1';
+        $this->db->transaction(function () use ($course, $lesson, $valid, $author, $preview): void {
+            $this->lessons->updateLesson($course->tenantId, $course->id, $lesson->id, $valid['title'], $valid['body'], $valid['media_url'], $preview);
             if ($lesson->isQuiz()) {
                 $assessment = $this->assessments->findForLesson($course->tenantId, $lesson->id);
                 if ($assessment !== null) {

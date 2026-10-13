@@ -57,6 +57,9 @@ $lessonErrors = array_diff_key($errors, $questionErrors, ['file' => true]);
         <?= $v->field('pass_threshold', 'Pass mark (%)', ['value' => $o('pass_threshold'), 'inputmode' => 'numeric', 'error' => $errors['pass_threshold'] ?? null]) ?>
         <?= $v->field('max_attempts', 'Attempts allowed', ['value' => $o('max_attempts'), 'inputmode' => 'numeric', 'hint' => 'Leave blank for unlimited.', 'error' => $errors['max_attempts'] ?? null]) ?>
       <?php endif; ?>
+      <?php if ($lesson->canBePreview()): ?>
+      <label class="choice choice-tight preview-choice"><input type="checkbox" name="preview" value="1"<?= $o('preview', $lesson->preview ? '1' : '0') === '1' ? ' checked' : '' ?>><span><strong>Free preview.</strong> Anyone can read this lesson from the course page before joining<?= $course->isPaid() ? ' or paying' : '' ?>. Good for a first lesson.</span></label>
+      <?php endif; ?>
       <button type="submit" class="button">Save lesson</button>
     </form>
 

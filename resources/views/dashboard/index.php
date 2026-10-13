@@ -12,9 +12,22 @@
 $user = $v->shared('user');
 $firstName = explode(' ', trim($user->displayName))[0];
 $hasLearning = $continue !== null || $myCards !== [];
+/** @var ?array{weeks: list<list<array{date: string, count: int, level: int, future: bool}>>, months: list<array{column: int, label: string}>, streak: int, today: bool, active_days: int, this_week: int, best_streak: int} $activity */
+/** @var list<array{course_id: int, slug: string, title: string, due_on: string, group: string, started: bool}> $comingUp */
+/** @var list<array{lesson_id: int, lesson_title: string, course_slug: string, course_title: string, saved: bool, body: string, updated_at: string}> $recentNotes */
+$activity ??= null;
+$comingUp ??= [];
+$recentNotes ??= [];
+$zone = new DateTimeZone($v->shared('tenant')?->timezone ?? 'UTC');
+$now = new DateTimeImmutable('now', $zone);
+$hour = (int) $now->format('G');
+$greeting = $hour < 12 ? 'Good morning' : ($hour < 17 ? 'Good afternoon' : 'Good evening');
+$hasSide = $activity !== null || $comingUp !== [] || $recentNotes !== [];
+$hasMain = $continue !== null || $children !== [] || $myGroups !== [];
 ?>
-<header class="page-head">
-  <h1>Hello, <?= $v->e($firstName) ?></h1>
+<header class="home-head">
+  <p class="home-date"><?= $v->e($now->format('l j F')) ?></p>
+  <h1><?= $v->e($greeting) ?>, <?= $v->e($firstName) ?></h1>
   <?php if ($continue === null && $teaching === null): ?>
     <p class="lead"><?= $hasLearning ? 'You have finished everything you started. Pick something new below.' : ($children !== [] ? 'See how your ' . (count($children) === 1 ? 'child is' : 'children are') . ' getting on.' : 'Choose a course to begin.') ?></p>
   <?php endif; ?>
@@ -30,6 +43,10 @@ $hasLearning = $continue !== null || $myCards !== [];
 </section>
 <?php endif; ?>
 
+<?php if ($hasMain || $hasSide): ?>
+<div class="home-grid<?= $hasSide ? '' : ' is-single' ?><?= $hasMain ? '' : ' is-side-only' ?>">
+  <?php if ($hasMain): ?>
+  <div class="home-main">
 <?php if ($continue !== null): $card = $continue['card']; $c = $card['course']; $pct = $card['lessons'] === 0 ? 0 : intdiv($card['done'] * 100, $card['lessons']); ?>
 <section class="continue" aria-labelledby="continue-h">
   <p class="continue-kicker" id="continue-h">Continue where you stopped</p>
@@ -90,6 +107,81 @@ $hasLearning = $continue !== null || $myCards !== [];
 </section>
 <?php endforeach; ?>
 
+  </div>
+  <?php endif; ?>
+  <?php if ($hasSide): ?>
+  <aside class="home-side" aria-label="Your study">
+    <?php if ($activity !== null): ?>
+    <section class="panel study-panel" aria-labelledby="streak-h">
+      <h2 id="streak-h">Your learning</h2>
+      <p class="streak-line">
+      <?php if ($activity['streak'] > 0 && $activity['today']): ?>
+        <strong><?= $v->e($v->plural($activity['streak'], 'day')) ?> in a row</strong>, today included. Keep going tomorrow.
+      <?php elseif ($activity['streak'] > 0): ?>
+        <strong><?= $v->e($v->plural($activity['streak'], 'day')) ?> in a row.</strong> Open a lesson today to make it <?= $activity['streak'] + 1 ?>.
+      <?php elseif ($activity['active_days'] > 0): ?>
+        Open a lesson today to start a new run of days.
+      <?php else: ?>
+        Each day you learn lights up a square here.
+      <?php endif; ?>
+      </p>
+      <?php $weeksCount = count($activity['weeks']); $monthAt = array_column($activity['months'], 'label', 'column'); ?>
+      <figure class="pixel-cal" aria-label="<?= $v->e('Active on ' . $v->plural($activity['active_days'], 'day') . ' in the last ' . $weeksCount . ' weeks') ?>">
+        <div class="pc-months" aria-hidden="true"><?php for ($w = 0; $w < $weeksCount; $w++): ?><span><?= isset($monthAt[$w]) ? $v->e($monthAt[$w]) : '' ?></span><?php endfor; ?></div>
+        <div class="pc-body" aria-hidden="true">
+          <div class="pc-days"><span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span><span></span></div>
+          <div class="pc-grid">
+          <?php foreach ($activity['weeks'] as $week): ?><div class="pc-week"><?php foreach ($week as $cell): ?><span class="pc-day lvl-<?= $cell['level'] ?><?= $cell['future'] ? ' is-future' : '' ?><?= $cell['date'] === $now->format('Y-m-d') ? ' is-today' : '' ?>"<?php if (!$cell['future']): ?> title="<?= $v->e((new DateTimeImmutable($cell['date']))->format('D j M') . ': ' . ($cell['count'] === 0 ? 'no activity' : $v->plural($cell['count'], 'thing') . ' done')) ?>"<?php endif; ?>></span><?php endforeach; ?></div><?php endforeach; ?>
+          </div>
+        </div>
+      </figure>
+      <div class="pc-foot">
+        <p class="small muted">This week: <?= $v->e($v->plural($activity['this_week'], 'day')) ?>. Longest run: <?= $v->e($v->plural($activity['best_streak'], 'day')) ?>.</p>
+        <p class="pc-legend" aria-hidden="true"><span>Less</span><span class="pc-day lvl-0"></span><span class="pc-day lvl-1"></span><span class="pc-day lvl-2"></span><span class="pc-day lvl-3"></span><span class="pc-day lvl-4"></span><span>More</span></p>
+      </div>
+    </section>
+    <?php endif; ?>
+
+    <?php if ($comingUp !== []): ?>
+    <section class="panel" aria-labelledby="due-h">
+      <h2 id="due-h">Coming up</h2>
+      <ul class="due-list">
+        <?php foreach ($comingUp as $d):
+            $date = new DateTimeImmutable($d['due_on'], $zone);
+            $days = (int) (new DateTimeImmutable($now->format('Y-m-d'), $zone))->diff($date)->format('%r%a');
+            $when = match (true) {
+                $days === 0 => 'Due today',
+                $days === 1 => 'Due tomorrow',
+                $days > 1 => 'Due in ' . $days . ' days',
+                $days === -1 => 'Was due yesterday',
+                default => 'Was due ' . (-$days) . ' days ago',
+            }; ?>
+        <li class="<?= $days < 0 ? 'is-late' : ($days <= 2 ? 'is-soon' : '') ?>">
+          <span class="due-date" aria-hidden="true"><span class="due-day"><?= $date->format('j') ?></span><span class="due-month"><?= $date->format('M') ?></span></span>
+          <span class="due-text"><a href="/courses/<?= $v->e($d['slug']) ?>"><?= $v->e($d['title']) ?></a><span class="small due-when"><?= $v->e($when) ?><?= $d['started'] ? '' : ', not started' ?></span></span>
+        </li>
+        <?php endforeach; ?>
+      </ul>
+      <p class="small panel-link"><a href="/account/calendar"><?= $v->icon('calendar') ?>Put due dates in your calendar</a></p>
+    </section>
+    <?php endif; ?>
+
+    <?php if ($recentNotes !== []): ?>
+    <section class="panel" aria-labelledby="notes-h">
+      <h2 id="notes-h">Saved and notes</h2>
+      <ul class="mini-notes">
+        <?php foreach ($recentNotes as $n): ?>
+        <li><a href="/courses/<?= $v->e($n['course_slug']) ?>/lessons/<?= $n['lesson_id'] ?>"><?= $v->icon($n['saved'] ? 'saved-on' : 'note') ?><span><span class="mini-note-title"><?= $v->e($n['lesson_title']) ?></span><span class="small muted"><?= $n['body'] !== '' ? $v->e(mb_strimwidth($n['body'], 0, 70, '…')) : $v->e($n['course_title']) ?></span></span></a></li>
+        <?php endforeach; ?>
+      </ul>
+      <p class="small panel-link"><a href="/saved">All saved lessons and notes</a></p>
+    </section>
+    <?php endif; ?>
+  </aside>
+  <?php endif; ?>
+</div>
+<?php endif; ?>
+
 <?php if ($teaching !== null): ?>
 <section class="section teaching-strip" aria-labelledby="teaching">
   <h2 id="teaching">Teaching</h2>
@@ -99,13 +191,14 @@ $hasLearning = $continue !== null || $myCards !== [];
       <h3 class="staff-sub">To do</h3>
       <ul class="todo-list">
         <?php if ($teaching['reviews'] > 0): ?>
-          <li class="todo-urgent"><a href="/teach/reviews"><?= $v->e($v->plural($teaching['reviews'], 'assignment')) ?> waiting for your review</a></li>
+          <li class="todo-urgent"><a href="/teach/reviews"><?= $v->icon('review') ?><?= $v->e($v->plural($teaching['reviews'], 'assignment')) ?> waiting for your review</a></li>
         <?php endif; ?>
         <?php if ($teaching['drafts'] > 0): ?>
-          <li><a href="/teach"><?= $v->e($v->plural($teaching['drafts'], 'draft course')) ?> to finish and publish</a></li>
+          <li><a href="/teach"><?= $v->icon('teach') ?><?= $v->e($v->plural($teaching['drafts'], 'draft course')) ?> to finish and publish</a></li>
         <?php endif; ?>
-        <li><a href="/teach/courses/new">Start a new course</a></li>
-        <?php if ($v->can('members.manage')): ?><li><a href="/people">Add people</a></li><?php endif; ?>
+        <li><a href="/teach/courses/new"><?= $v->icon('courses') ?>Start a new course</a></li>
+        <?php if ($v->can('members.manage')): ?><li><a href="/people"><?= $v->icon('people') ?>Add people</a></li><?php endif; ?>
+        <?php $openHelp = (int) ($v->shared('nav_counts', [])['support'] ?? 0); if ($openHelp > 0): ?><li class="todo-urgent"><a href="/school/support"><?= $v->icon('inbox') ?><?= $v->e($v->plural($openHelp, 'help request')) ?> waiting for an answer</a></li><?php endif; ?>
       </ul>
     </div>
     <?php if ($tgroups !== []): ?>

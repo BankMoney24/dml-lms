@@ -98,6 +98,37 @@ final class ViewHelpers
         );
     }
 
+    /** A decorative icon from the sprite; the text beside it carries the meaning. */
+    public function icon(string $name, string $class = ''): string
+    {
+        return '<svg class="icon' . ($class !== '' ? ' ' . $this->e($class) : '') . '" aria-hidden="true" focusable="false"><use href="'
+            . $this->e($this->asset('icons.svg')) . '#' . $this->e(preg_replace('/[^a-z-]/', '', $name)) . '"></use></svg>';
+    }
+
+    /**
+     * A sidebar link with its icon; marks the current section like navLink().
+     *
+     * @param list<string> $alsoFor
+     */
+    public function sideLink(string $href, string $label, string $icon, array $alsoFor = [], int $count = 0): string
+    {
+        $path = (string) ($this->shared['path'] ?? '/');
+        // With $alsoFor, the link's own section is matched exactly (so /teach is not current on /teach/reviews).
+        $current = $href === '/' ? $path === '/' : ($path === $href || ($alsoFor === [] && str_starts_with($path, $href . '/')));
+        foreach ($alsoFor as $prefix) {
+            $current = $current || $path === $prefix || str_starts_with($path, $prefix . '/');
+        }
+
+        return sprintf(
+            '<li><a href="%s"%s>%s<span class="side-text">%s</span>%s</a></li>',
+            $this->e($href),
+            $current ? ' aria-current="page"' : '',
+            $this->icon($icon),
+            $this->e($label),
+            $count > 0 ? '<span class="side-count">' . ($count > 99 ? '99+' : $count) . '<span class="visually-hidden"> waiting</span></span>' : '',
+        );
+    }
+
     /**
      * One labelled form control with hint and inline error, wired with
      * aria-describedby / aria-invalid.

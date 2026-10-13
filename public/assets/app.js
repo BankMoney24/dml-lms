@@ -104,7 +104,7 @@
   }
 
   // Long outlines: bring the current lesson into view inside the sidebar.
-  var side = document.querySelector('.lesson-side');
+  var side = document.querySelector('.side-trace') || document.querySelector('.lesson-side');
   var current = side && side.querySelector('.trace-node.is-current');
   if (side && current && side.scrollHeight > side.clientHeight) {
     side.scrollTop = Math.max(0, current.getBoundingClientRect().top - side.getBoundingClientRect().top - side.clientHeight / 3);
@@ -202,6 +202,175 @@
         if (match) { shown++; }
       });
       if (status) { status.textContent = q === '' ? '' : shown + (shown === 1 ? ' match' : ' matches'); }
+    });
+    // Arriving from search with ?find=…: narrow the list straight away.
+    if (input.value.trim() !== '') { input.dispatchEvent(new Event('input')); }
+  });
+
+  // App shell: the sidebar slides in on phones. Without scripts the menu link opens it with :target.
+  var sidebar = document.getElementById('sidebar');
+  var scrim = document.querySelector('.nav-scrim');
+  var opener = document.querySelector('[data-nav-open]');
+  function setNav(open) {
+    document.body.classList.toggle('nav-open', open);
+    if (scrim) { scrim.hidden = !open; }
+    if (opener) { opener.setAttribute('aria-expanded', open ? 'true' : 'false'); }
+    if (open && sidebar) {
+      var first = sidebar.querySelector('a[aria-current="page"]') || sidebar.querySelector('a');
+      if (first) { first.focus(); }
+    } else if (!open && opener && sidebar && sidebar.contains(document.activeElement)) {
+      opener.focus();
+    }
+  }
+  if (sidebar && opener) {
+    opener.setAttribute('role', 'button');
+    opener.setAttribute('aria-expanded', 'false');
+    opener.addEventListener('click', function (e) { e.preventDefault(); setNav(true); });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-nav-close]'), function (el) {
+      el.addEventListener('click', function (e) { e.preventDefault(); setNav(false); });
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && document.body.classList.contains('nav-open')) { setNav(false); }
+    });
+  }
+
+  // Menus built on <details>: close on Escape or a click elsewhere.
+  var menus = document.querySelectorAll('details[data-menu]');
+  document.addEventListener('click', function (e) {
+    Array.prototype.forEach.call(menus, function (m) { if (m.open && !m.contains(e.target)) { m.open = false; } });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') { return; }
+    Array.prototype.forEach.call(menus, function (m) {
+      if (m.open) { m.open = false; var s = m.querySelector('summary'); if (s) { s.focus(); } }
+    });
+  });
+
+  // Search as you type. The form still works on its own: Enter goes to the full results page.
+  var searchForm = document.querySelector('form[data-search]');
+  var searchInput = searchForm && searchForm.querySelector('input[type=search]');
+  var pop = searchForm && searchForm.querySelector('.search-pop');
+  if (searchForm && searchInput && pop && window.fetch) {
+    var sprite = (searchForm.querySelector('use') || { getAttribute: function () { return ''; } }).getAttribute('href').split('#')[0];
+    var timer = null, active = -1, options = [], lastQ = '', seq = 0;
+    searchInput.setAttribute('role', 'combobox');
+    searchInput.setAttribute('aria-autocomplete', 'list');
+    searchInput.setAttribute('aria-expanded', 'false');
+    searchInput.setAttribute('aria-controls', 'search-pop');
+    pop.setAttribute('role', 'listbox');
+    pop.setAttribute('aria-label', 'Search results');
+
+    var icon = function (name) {
+      var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('class', 'icon');
+      svg.setAttribute('aria-hidden', 'true');
+      var use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+      use.setAttribute('href', sprite + '#' + String(name).replace(/[^a-z-]/g, ''));
+      svg.appendChild(use);
+      return svg;
+    };
+    var close = function () {
+      pop.hidden = true; active = -1; options = [];
+      searchInput.setAttribute('aria-expanded', 'false');
+      searchInput.removeAttribute('aria-activedescendant');
+    };
+    var highlight = function (i) {
+      options.forEach(function (o, n) { o.setAttribute('aria-selected', n === i ? 'true' : 'false'); });
+      active = i;
+      if (i >= 0 && options[i]) {
+        searchInput.setAttribute('aria-activedescendant', options[i].id);
+        options[i].scrollIntoView({ block: 'nearest' });
+      } else { searchInput.removeAttribute('aria-activedescendant'); }
+    };
+    var render = function (data, q) {
+      pop.textContent = '';
+      options = [];
+      var n = 0;
+      (data.groups || []).forEach(function (g) {
+        if (!g.items || !g.items.length) { return; }
+        var head = document.createElement('p');
+        head.className = 'search-group';
+        head.setAttribute('role', 'presentation');
+        head.textContent = g.label;
+        pop.appendChild(head);
+        g.items.forEach(function (item) {
+          if (typeof item.url !== 'string' || item.url.charAt(0) !== '/' || item.url.charAt(1) === '/') { return; }
+          var a = document.createElement('a');
+          a.className = 'search-option';
+          a.href = item.url;
+          a.id = 'search-opt-' + (n++);
+          a.setAttribute('role', 'option');
+          a.setAttribute('aria-selected', 'false');
+          a.tabIndex = -1;
+          a.appendChild(icon(item.icon || 'arrow'));
+          var text = document.createElement('span');
+          text.className = 'search-option-text';
+          var t = document.createElement('span'); t.className = 'search-option-title'; t.textContent = item.title;
+          text.appendChild(t);
+          if (item.detail) { var d = document.createElement('span'); d.className = 'search-option-detail'; d.textContent = item.detail; text.appendChild(d); }
+          a.appendChild(text);
+          pop.appendChild(a);
+          options.push(a);
+        });
+      });
+      if (!options.length) {
+        var none = document.createElement('p');
+        none.className = 'search-empty';
+        none.textContent = 'Nothing matches “' + q + '”. Try a shorter word.';
+        pop.appendChild(none);
+      }
+      var all = document.createElement('a');
+      all.className = 'search-all';
+      all.href = '/search?q=' + encodeURIComponent(q);
+      all.textContent = 'See all results for “' + q + '”';
+      pop.appendChild(all);
+      pop.hidden = false;
+      searchInput.setAttribute('aria-expanded', 'true');
+      active = -1;
+    };
+    var run = function () {
+      var q = searchInput.value.trim();
+      if (q.length < 2) { close(); lastQ = ''; return; }
+      if (q === lastQ && !pop.hidden) { return; }
+      lastQ = q;
+      var mine = ++seq;
+      fetch('/search?format=json&q=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) { if (data && mine === seq && searchInput.value.trim() === q) { render(data, q); } })
+        .catch(function () { /* offline: the form still submits */ });
+    };
+    searchInput.addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(run, 160); });
+    searchInput.addEventListener('focus', function () { if (searchInput.value.trim().length >= 2) { run(); } });
+    searchInput.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown' && options.length) { e.preventDefault(); highlight(active + 1 >= options.length ? 0 : active + 1); }
+      else if (e.key === 'ArrowUp' && options.length) { e.preventDefault(); highlight(active <= 0 ? options.length - 1 : active - 1); }
+      else if (e.key === 'Enter' && active >= 0 && options[active]) { e.preventDefault(); location.href = options[active].href; }
+      else if (e.key === 'Escape') { if (!pop.hidden) { e.stopPropagation(); close(); } else { searchInput.blur(); } }
+    });
+    document.addEventListener('click', function (e) { if (!searchForm.contains(e.target)) { close(); } });
+    // "/" or Ctrl/Cmd+K jumps to search from anywhere except a text field.
+    document.addEventListener('keydown', function (e) {
+      var tag = (document.activeElement && document.activeElement.tagName) || '';
+      var typing = /^(INPUT|TEXTAREA|SELECT)$/.test(tag) || (document.activeElement && document.activeElement.isContentEditable);
+      if (((e.key === 'k' || e.key === 'K') && (e.ctrlKey || e.metaKey)) || (e.key === '/' && !typing)) {
+        if (searchInput.offsetParent === null) { return; }
+        e.preventDefault();
+        searchInput.focus();
+        searchInput.select();
+      }
+    });
+  }
+
+  // Copy buttons for links people paste elsewhere (calendar link).
+  Array.prototype.forEach.call(document.querySelectorAll('[data-copy]'), function (button) {
+    var target = document.getElementById(button.getAttribute('data-copy'));
+    if (!target || !navigator.clipboard) { return; }
+    button.hidden = false;
+    button.addEventListener('click', function () {
+      navigator.clipboard.writeText(target.value || target.textContent || '').then(function () {
+        button.textContent = 'Copied';
+        setTimeout(function () { button.textContent = 'Copy link'; }, 2000);
+      });
     });
   });
 

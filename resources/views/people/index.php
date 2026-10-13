@@ -39,7 +39,7 @@ foreach ($members as $m) {
     <?php if (count($members) > 8): ?>
     <p class="filter-row">
       <label for="people-find" hidden>Find a person</label>
-      <input type="search" id="people-find" data-filter="people-rows" placeholder="Name or email" autocomplete="off" hidden>
+      <input type="search" id="people-find" data-filter="people-rows" placeholder="Name or email" autocomplete="off" value="<?= $v->e($find ?? '') ?>" hidden>
       <span id="people-rows-count" class="small muted" role="status"></span>
     </p>
     <?php endif; ?>
@@ -50,7 +50,7 @@ foreach ($members as $m) {
       <?php foreach ($members as $m):
         $isMe = $m['user_id'] === $meId;
         $locked = $isMe || ($m['role']->value === 'owner' && !$iAmOwner); ?>
-        <tr data-filter-row="<?= $v->e($m['name'] . ' ' . $m['email']) ?>">
+        <tr id="person-<?= $m['user_id'] ?>" data-filter-row="<?= $v->e($m['name'] . ' ' . $m['email']) ?>">
           <td><?= $v->e($m['name']) ?><?= $isMe ? ' ' . $v->badge('You') : '' ?>
             <?= $m['pending'] ? ' ' . $v->badge('Not signed in yet', 'draft') : '' ?>
             <?= $m['two_step'] ? ' ' . $v->badge('Two-step on', 'ok') : '' ?>

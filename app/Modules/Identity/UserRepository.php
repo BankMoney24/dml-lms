@@ -90,6 +90,14 @@ final class UserRepository
         );
     }
 
+    public function setAppearance(int $userId, string $appearance): void
+    {
+        if (!isset(User::APPEARANCES[$appearance])) {
+            throw new \InvalidArgumentException('Unknown appearance');
+        }
+        $this->db->execute('UPDATE users SET appearance = ?, updated_at = ? WHERE id = ?', [$appearance, $this->clock->sqlNow(), $userId]);
+    }
+
     public function setStatus(int $userId, string $status): void
     {
         $this->db->execute(

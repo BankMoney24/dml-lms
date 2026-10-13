@@ -36,6 +36,9 @@ final class HomeController
         private readonly ?GroupRepository $groups = null,
         private readonly ?GroupProgress $groupProgress = null,
         private readonly ?\App\Modules\Guardians\GuardianRepository $guardians = null,
+        private readonly ?\App\Modules\Study\ActivityReport $activity = null,
+        private readonly ?\App\Modules\Study\Deadlines $deadlines = null,
+        private readonly ?\App\Modules\Study\NoteRepository $notes = null,
     ) {
     }
 
@@ -134,10 +137,24 @@ final class HomeController
             $teaching['groups'] = $this->groups?->overview($tenant->id, $user->can(Permission::GroupsManage) ? null : $user->user->id) ?? [];
         }
 
+        // Study panels for learners: active days and what is due soon (ADR 0018).
+        $today = (new \DateTimeImmutable('now', new \DateTimeZone($tenant->timezone)))->format('Y-m-d');
+        $learns = $user->can(Permission::CourseLearn);
+        $activity = $learns && ($enrolments !== [] || $myGroups !== []) ? $this->activity?->for($tenant->id, $user->user->id, $tenant->timezone) : null;
+        $soon = (new \DateTimeImmutable($today))->modify('+21 days')->format('Y-m-d');
+        $comingUp = $learns ? array_values(array_filter(
+            $this->deadlines?->forLearner($tenant->id, $user->user->id, (new \DateTimeImmutable($today))->modify('-30 days')->format('Y-m-d'), 20) ?? [],
+            static fn (array $d): bool => $d['due_on'] <= $soon,
+        )) : [];
+        $recentNotes = $learns ? array_slice($this->notes?->forUser($tenant->id, $user->user->id, 3) ?? [], 0, 3) : [];
+
         return Response::html($this->view->render('dashboard/index', [
+            'activity' => $activity,
+            'comingUp' => array_slice($comingUp, 0, 5),
+            'recentNotes' => $recentNotes,
             'myGroups' => $myGroups,
             'children' => $this->guardians?->childrenOf($tenant->id, $user->user->id) ?? [],
-            'today' => (new \DateTimeImmutable('now', new \DateTimeZone($tenant->timezone)))->format('Y-m-d'),
+            'today' => $today,
             'pageTitle' => 'Home',
             'continue' => $continue,
             'myCards' => array_values(array_filter($myCards, static fn (array $c): bool => $continue === null || $c['course']->id !== $continue['card']['course']->id)),

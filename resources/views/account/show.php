@@ -48,6 +48,26 @@ $passwordErrors = array_intersect_key($errors, array_flip(['current_password', '
     </form>
   </section>
 
+  <section class="section" aria-labelledby="look-h">
+    <h2 id="look-h">Appearance</h2>
+    <form method="post" action="/account/appearance" class="look-form">
+      <?= $v->csrfField() ?>
+      <input type="hidden" name="back" value="/account">
+      <p class="hint" id="look-hint">Dark is easier on the eyes at night and saves battery on many phones.</p>
+      <div class="segmented segmented-wide" role="group" aria-labelledby="look-h" aria-describedby="look-hint">
+        <?php foreach (\App\Modules\Identity\User::APPEARANCES as $look => $label): ?>
+        <button type="submit" name="appearance" value="<?= $look ?>" aria-pressed="<?= $me->user->appearance === $look ? 'true' : 'false' ?>"><?= $v->icon(['system' => 'device', 'light' => 'sun', 'dark' => 'moon'][$look]) ?><span><?= $v->e($label) ?></span></button>
+        <?php endforeach; ?>
+      </div>
+    </form>
+  </section>
+
+  <section class="section" aria-labelledby="cal-h">
+    <h2 id="cal-h">Due dates in your calendar</h2>
+    <p>Get a private link that puts the due dates your teachers set into Google Calendar, your phone or Outlook.</p>
+    <p><a class="button button-quiet" href="/account/calendar"><?= $v->icon('calendar') ?>Set up a calendar link</a></p>
+  </section>
+
   <?php if ($payments !== []): ?>
   <section class="section" aria-labelledby="payments-h">
     <h2 id="payments-h">Your payments</h2>

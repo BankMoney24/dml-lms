@@ -24,6 +24,12 @@ foreach ($outline as $module) {
     }
 }
 $lessonCount = count($lessonIds);
+$firstPreview = null;
+foreach ($outline as $module) {
+    foreach ($module['lessons'] as $lesson) {
+        $firstPreview ??= $lesson->isOpenPreview() ? $lesson : null;
+    }
+}
 $done = count(array_intersect($lessonIds, $completedIds));
 ?>
 <div class="course-layout">
@@ -85,6 +91,9 @@ $done = count(array_intersect($lessonIds, $completedIds));
       <p class="small muted"><?= $course->isPaid() ? 'You can open it without paying because you build courses here.' : 'Free. Your progress is saved as you go.' ?></p>
     <?php else: ?>
       <p class="muted">You can look through the outline. Learners enrol from this page.</p>
+    <?php endif; ?>
+    <?php if ($enrolment === null && $firstPreview !== null): ?>
+      <p class="start-preview"><?= $v->icon('lesson') ?><span>Not sure yet? <a href="/courses/<?= $v->e($course->slug) ?>/preview/<?= $firstPreview->id ?>">Read “<?= $v->e($firstPreview->title) ?>” free</a>, no sign-up needed.</span></p>
     <?php endif; ?>
     </div>
 

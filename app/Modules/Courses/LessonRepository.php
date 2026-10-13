@@ -151,11 +151,11 @@ final class LessonRepository
         );
     }
 
-    public function updateLesson(int $tenantId, int $courseId, int $lessonId, string $title, string $body, ?string $mediaUrl = null): void
+    public function updateLesson(int $tenantId, int $courseId, int $lessonId, string $title, string $body, ?string $mediaUrl = null, bool $preview = false): void
     {
         $this->db->execute(
-            'UPDATE lessons SET title = ?, body = ?, media_url = ?, updated_at = ? WHERE tenant_id = ? AND course_id = ? AND id = ?',
-            [$title, $body, $mediaUrl, $this->clock->sqlNow(), $tenantId, $courseId, $lessonId],
+            'UPDATE lessons SET title = ?, body = ?, media_url = ?, is_preview = ?, updated_at = ? WHERE tenant_id = ? AND course_id = ? AND id = ?',
+            [$title, $body, $mediaUrl, $preview ? 1 : 0, $this->clock->sqlNow(), $tenantId, $courseId, $lessonId],
         );
     }
 

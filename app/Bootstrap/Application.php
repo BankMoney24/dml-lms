@@ -317,6 +317,14 @@ final class Application
             $c->get(MemberService::class),
             $c->get(AuditLog::class),
         ));
+        $c->set(\App\Modules\Study\NoteRepository::class, static fn (Container $c) => new \App\Modules\Study\NoteRepository($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(\App\Modules\Study\Deadlines::class, static fn (Container $c) => new \App\Modules\Study\Deadlines($c->get(Connection::class)));
+        $c->set(\App\Modules\Study\ActivityReport::class, static fn (Container $c) => new \App\Modules\Study\ActivityReport($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(\App\Modules\Study\CalendarFeed::class, static fn (Container $c) => new \App\Modules\Study\CalendarFeed(
+            $c->get(Connection::class),
+            $c->get(Clock::class),
+            $c->get(\App\Modules\Study\Deadlines::class),
+        ));
         $c->set(SupportRepository::class, static fn (Container $c) => new SupportRepository($c->get(Connection::class), $c->get(Clock::class)));
         $c->set(SupportService::class, static fn (Container $c) => new SupportService(
             $c->get(Connection::class),
@@ -376,6 +384,7 @@ final class Application
             $c->get(View::class),
             self::twoStepRoles($config),
             $c->get(NotificationRepository::class),
+            new \App\Modules\Platform\NavCounts($c->get(Connection::class)),
         ));
         $c->set(VerifyCsrf::class, static fn (Container $c) => new VerifyCsrf($c->get(Csrf::class)));
 
@@ -424,6 +433,9 @@ final class Application
             $c->get(GroupRepository::class),
             new GroupProgress($c->get(Connection::class)),
             $c->get(GuardianRepository::class),
+            $c->get(\App\Modules\Study\ActivityReport::class),
+            $c->get(\App\Modules\Study\Deadlines::class),
+            $c->get(\App\Modules\Study\NoteRepository::class),
         ));
         $c->set(LoginController::class, static fn (Container $c) => new LoginController(
             $c->get(View::class),
@@ -455,6 +467,7 @@ final class Application
             $c->get(FileService::class),
             $c->get(LabCatalogue::class),
             $c->get(LabSessionRepository::class),
+            $c->get(\App\Modules\Study\NoteRepository::class),
         ));
         $c->set(LabController::class, static fn (Container $c) => new LabController(
             $c->get(View::class),
@@ -643,6 +656,20 @@ final class Application
             new ChildReport($c->get(Connection::class)),
             $c->get(GroupRepository::class),
             $c->get(CertificateService::class),
+        ));
+        $c->set(\App\Modules\Search\Http\SearchController::class, static fn (Container $c) => new \App\Modules\Search\Http\SearchController(
+            $c->get(View::class),
+            new \App\Modules\Search\SearchService($c->get(Connection::class), $c->get(GroupRepository::class)),
+        ));
+        $c->set(\App\Modules\Study\Http\StudyController::class, static fn (Container $c) => new \App\Modules\Study\Http\StudyController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(CourseRepository::class),
+            $c->get(LessonRepository::class),
+            $c->get(LearningService::class),
+            $c->get(\App\Modules\Study\NoteRepository::class),
+            $c->get(\App\Modules\Study\CalendarFeed::class),
+            $c->get(\App\Modules\Study\Deadlines::class),
         ));
         $c->set(SupportController::class, static fn (Container $c) => new SupportController(
             $c->get(View::class),

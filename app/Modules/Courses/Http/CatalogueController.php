@@ -89,4 +89,51 @@ final class CatalogueController
             'waiting' => $mustPay && $user !== null ? $this->payments->waiting($tenant, $user->user->id, $course) : null,
         ]));
     }
+
+    /**
+     * A free preview lesson (CRS-003): readings and videos the author opened to
+     * everyone, so visitors can try a course before joining or paying.
+     */
+    public function preview(Request $request): Response
+    {
+        $tenant = RequestContext::tenant($request);
+        if (!$tenant->publicCatalogue && RequestContext::optionalUser($request) === null) {
+            return Response::redirect('/login');
+        }
+        $course = $this->courses->findBySlug($tenant->id, $request->routeParam('slug'));
+        if ($course === null || !$course->isPublished()) {
+            throw HttpException::notFound();
+        }
+        $lesson = $this->lessons->findInCourse($tenant->id, $course->id, $request->routeInt('lesson'));
+        if ($lesson === null || !$lesson->isOpenPreview()) {
+            throw HttpException::notFound();
+        }
+        $user = RequestContext::optionalUser($request);
+        if ($user !== null && $this->enrolments->find($tenant->id, $course->id, $user->user->id) !== null) {
+            return Response::redirect('/courses/' . $course->slug . '/lessons/' . $lesson->id);
+        }
+        $mustPay = $user !== null && $this->learning->needsPayment($course, $user);
+        $ordered = $this->lessons->orderedLessons($tenant->id, $course->id);
+        $position = 1;
+        foreach ($ordered as $i => $l) {
+            if ($l->id === $lesson->id) {
+                $position = $i + 1;
+            }
+        }
+
+        return Response::html($this->view->render('learn/preview', [
+            'pageTitle' => $lesson->title . ': free preview',
+            'course' => $course,
+            'lesson' => $lesson,
+            'position' => $position,
+            'total' => count($ordered),
+            'otherPreviews' => array_values(array_filter($ordered, static fn ($l): bool => $l->isOpenPreview() && $l->id !== $lesson->id)),
+            'signedIn' => $user !== null,
+            'canLearn' => $user === null || $user->can(\App\Modules\Identity\Permission::CourseLearn),
+            'mustPay' => $mustPay,
+            'payOnline' => $mustPay && $this->payments->isConnected($tenant),
+            'indexable' => $tenant->publicCatalogue,
+            'metaDescription' => sprintf('A free lesson from %s, a course from %s.', $course->title, $tenant->name),
+        ]));
+    }
 }

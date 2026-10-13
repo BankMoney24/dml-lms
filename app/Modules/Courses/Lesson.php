@@ -37,6 +37,7 @@ final class Lesson
         public readonly bool $mandatory,
         public readonly ?string $mediaUrl = null,
         public readonly ?string $labKey = null,
+        public readonly bool $preview = false,
     ) {
     }
 
@@ -55,6 +56,7 @@ final class Lesson
             (bool) $row['is_mandatory'],
             isset($row['media_url']) && $row['media_url'] !== '' ? (string) $row['media_url'] : null,
             isset($row['lab_key']) && $row['lab_key'] !== '' ? (string) $row['lab_key'] : null,
+            (bool) ($row['is_preview'] ?? false),
         );
     }
 
@@ -82,6 +84,17 @@ final class Lesson
     public function learnerCompletes(): bool
     {
         return $this->type === self::TYPE_TEXT || $this->type === self::TYPE_VIDEO;
+    }
+
+    /** Readings and videos can be opened by anyone as a free preview, if the author allows it (CRS-003). */
+    public function canBePreview(): bool
+    {
+        return $this->learnerCompletes();
+    }
+
+    public function isOpenPreview(): bool
+    {
+        return $this->preview && $this->canBePreview();
     }
 
     public function typeLabel(): string

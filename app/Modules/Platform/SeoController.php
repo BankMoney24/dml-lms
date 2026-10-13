@@ -17,7 +17,10 @@ use App\Modules\Tenancy\Tenant;
  */
 final class SeoController
 {
-    private const PRIVATE_PATHS = ['/account', '/teach', '/school', '/people', '/activity', '/groups', '/labs', '/setup', '/system', '/payments', '/files', '/password', '/login/verify'];
+    private const PRIVATE_PATHS = [
+        '/account', '/teach', '/school', '/people', '/activity', '/groups', '/labs', '/setup', '/system', '/payments', '/files',
+        '/password', '/login/verify', '/calendar', '/saved', '/search', '/help', '/notifications', '/children',
+    ];
 
     public function __construct(private readonly CourseRepository $courses)
     {

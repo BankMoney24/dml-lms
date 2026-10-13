@@ -63,6 +63,23 @@ final class AccountController
         return Response::redirect($me->user->mustChangePassword ? '/' : '/account');
     }
 
+    /** From the account menu or page; goes back to the page it came from (same site only). */
+    public function updateAppearance(Request $request): Response
+    {
+        $choice = $request->input('appearance', '') ?? '';
+        if ($this->accounts->setAppearance(RequestContext::user($request), $choice)) {
+            $this->session->flash('success', 'Appearance set to ' . strtolower(\App\Modules\Identity\User::APPEARANCES[$choice]) . '.');
+        }
+        $back = $request->input('back', '/account') ?? '/account';
+
+        return Response::redirect(self::isLocalPath($back) ? $back : '/account');
+    }
+
+    private static function isLocalPath(string $path): bool
+    {
+        return preg_match('#^/(?![/\\\\])[^\s]*$#', $path) === 1 && strlen($path) <= 300;
+    }
+
     /**
      * @param array<string, string> $errors
      * @param array<string, string> $old

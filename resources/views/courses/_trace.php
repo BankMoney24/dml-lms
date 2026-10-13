@@ -7,6 +7,7 @@
  * @var \App\Core\View\ViewHelpers $v
  */
 $currentLessonId ??= null;
+$savedIds ??= [];
 $n = 0;
 ?>
 <div class="trace">
@@ -37,10 +38,12 @@ $n = 0;
         <span class="trace-text">
           <?php if ($linkLessons): ?>
             <a href="/courses/<?= $v->e($course->slug) ?>/lessons/<?= $lesson->id ?>"<?= $current ? ' aria-current="page"' : '' ?>><?= $v->e($lesson->title) ?></a>
+          <?php elseif ($lesson->isOpenPreview()): ?>
+            <a href="/courses/<?= $v->e($course->slug) ?>/preview/<?= $lesson->id ?>"<?= $current ? ' aria-current="page"' : '' ?>><?= $v->e($lesson->title) ?></a>
           <?php else: ?>
             <?= $v->e($lesson->title) ?>
           <?php endif; ?>
-          <span class="trace-meta"><?= $v->e($lesson->typeLabel()) ?><?= $done ? ', done' : '' ?></span>
+          <span class="trace-meta"><?= $v->e($lesson->typeLabel()) ?><?= $done ? ', done' : '' ?><?php if (!$linkLessons && $lesson->isOpenPreview()): ?> <span class="tag tag-preview">Free preview</span><?php endif; ?><?php if (in_array($lesson->id, $savedIds, true)): ?> <span class="tag tag-saved">Saved</span><?php endif; ?></span>
         </span>
       </li>
       <?php endforeach; ?>

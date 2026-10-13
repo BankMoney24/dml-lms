@@ -42,6 +42,7 @@ final class LearnController
         private readonly FileService $fileService,
         private readonly LabCatalogue $labs,
         private readonly LabSessionRepository $labSessions,
+        private readonly ?\App\Modules\Study\NoteRepository $notes = null,
     ) {
     }
 
@@ -151,6 +152,7 @@ final class LearnController
             'submissionFiles' => $this->files->forSubmissions($course->tenantId, array_map(static fn ($s): int => $s->id, $submissions)),
             'lessonFiles' => $this->files->forLesson($course->tenantId, $lesson->id),
             'policy' => $this->fileService->policy(),
+            'note' => $this->notes?->find($course->tenantId, $user->user->id, $lesson->id),
             'errors' => $errors,
             'old' => $old,
         ]), $status);

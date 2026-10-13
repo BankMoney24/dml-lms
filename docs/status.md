@@ -38,7 +38,7 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 | IAM-006 invalidate sessions on credential/membership change | Built | session_version |
 | IAM-007 generic auth errors | Built | Constant-time path for unknown accounts |
 | CRS-001/002 courses, modules, ordered lessons | Built | Lab lessons from the lab catalogue. School subject / Skills track on courses, filterable in the course list. Reading (Markdown: headings, lists, code blocks with copy, callouts, tables), video (YouTube/Vimeo, privacy-enhanced, loads only on request), quiz and assignment lessons; edit, reorder, preview, unpublish; level, hours, outcomes and prerequisites. Files on any lesson (PDFs, handouts, configs, scripts), shown with their size. Course packages import with `course:import`, including files. Prices on courses (ADR 0012) |
-| CRS-003 preview/gated content | Partial | Enrolment gate ✔; preview lessons next |
+| CRS-003 preview/gated content | Built | Enrolment and payment gate; authors mark readings and videos as free previews, readable from the course page without joining, with a call to join or pay. ADR 0018 |
 | CRS-004 progress and resume | Built | "Continue" goes to the first incomplete lesson |
 | ASM-001 MCQ, server scoring, thresholds | Built | Floor rounding; answers never sent to the browser; per-question explanations shown once the learner passes (or runs out of attempts) |
 | ASM-002 auditable attempts, limits | Built | Idempotency keys, attempt limits under row lock |
@@ -55,6 +55,7 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 | NTF-002 transactional email | Partial | SMTP (STARTTLS/SSL) through a durable outbox with retry/backoff, `mail:work` cron, bodies erased after send. Account emails only; course/enrolment notifications and preferences next |
 | NTF-001 in-app notifications | Built | Bell with unread count and a Notifications page: new work to review (course author and class teachers), review decisions, joining a class, courses set or due dates changed, becoming a class teacher, payment confirmed, certificate ready, class announcements. Safe same-site links, current members only, read ones cleared after 90 days. Class announcements on the class page and learners' home pages. ADR 0015 |
 | SUP-001 help requests | Built | "Get help" for every signed-in member: category, subject, message and up to 3 virus-checked attachments. Threads with open / answered / resolved status; a reply reopens. Help desk tab for owners and admins with status filters. Only the person who asked and support staff see a request or its files. Notifications both ways; audited; 5 unresolved requests per person. ADR 0017 |
+| Study tools and app shell | Built | Sidebar and app bar for signed-in pages with role-based links and counts, account menu, light/dark/device appearance per person, search with as-you-type results (`/`, Ctrl/Cmd+K), saved lessons and private notes, learning days and streak, coming-up due dates, private calendar (iCalendar) link shown once and stored hashed, course covers. ADR 0018 |
 | NTF-003 | Next | SMS/WhatsApp after consent review |
 | §8 offline | Partial | Offline banner, static-asset service worker, quiz drafts on device until server confirms, idempotent submit. IndexedDB outbox and conflict handling next |
 | §9 public API v1 | Next | |
