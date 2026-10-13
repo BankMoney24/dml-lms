@@ -26,6 +26,7 @@ enum Role: string
                 Permission::AuditView,
                 Permission::SchoolManage,
                 Permission::GroupsManage,
+                Permission::SupportManage,
             ],
             self::Educator => [
                 Permission::CourseView,

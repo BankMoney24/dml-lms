@@ -31,6 +31,9 @@ use App\Modules\Platform\SchoolsController;
 use App\Modules\Platform\SeoController;
 use App\Modules\Platform\SchoolAdminService;
 use App\Modules\Files\VirusScanner;
+use App\Modules\Support\Http\SupportController;
+use App\Modules\Support\SupportRepository;
+use App\Modules\Support\SupportService;
 use App\Modules\Tenancy\LogoStore;
 use App\Modules\Courses\CoursePackages;
 use App\Modules\Wizards\WizardRunRepository;
@@ -314,6 +317,14 @@ final class Application
             $c->get(MemberService::class),
             $c->get(AuditLog::class),
         ));
+        $c->set(SupportRepository::class, static fn (Container $c) => new SupportRepository($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(SupportService::class, static fn (Container $c) => new SupportService(
+            $c->get(Connection::class),
+            $c->get(SupportRepository::class),
+            $c->get(FileService::class),
+            $c->get(AuditLog::class),
+            $c->get(Notifier::class),
+        ));
         $c->set(WizardRunRepository::class, static fn (Container $c) => new WizardRunRepository($c->get(Connection::class), $c->get(Clock::class)));
         $c->set(FileService::class, static fn (Container $c) => new FileService(
             $c->get(FileRepository::class),
@@ -494,6 +505,7 @@ final class Application
             $c->get(CourseRepository::class),
             $c->get(EnrolmentRepository::class),
             $c->get(SubmissionRepository::class),
+            $c->get(SupportService::class),
         ));
         $c->set(CertificateController::class, static fn (Container $c) => new CertificateController(
             $c->get(View::class),
@@ -631,6 +643,13 @@ final class Application
             new ChildReport($c->get(Connection::class)),
             $c->get(GroupRepository::class),
             $c->get(CertificateService::class),
+        ));
+        $c->set(SupportController::class, static fn (Container $c) => new SupportController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(SupportService::class),
+            $c->get(SupportRepository::class),
+            $c->get(FileRepository::class),
         ));
         $c->set(ActivityController::class, static fn (Container $c) => new ActivityController(
             $c->get(View::class),

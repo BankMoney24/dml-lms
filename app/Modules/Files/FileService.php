@@ -103,10 +103,10 @@ final class FileService
      * @param list<PreparedUpload> $prepared
      * @return list<StoredFile>
      */
-    public function persist(int $tenantId, int $userId, array $prepared, ?int $lessonId, ?int $submissionId): array
+    public function persist(int $tenantId, int $userId, array $prepared, ?int $lessonId, ?int $submissionId, ?int $supportMessageId = null): array
     {
-        if (($lessonId === null) === ($submissionId === null)) {
-            throw new \LogicException('A file belongs to exactly one lesson or one submission.');
+        if (count(array_filter([$lessonId, $submissionId, $supportMessageId], static fn (?int $id): bool => $id !== null)) !== 1) {
+            throw new \LogicException('A file belongs to exactly one lesson, submission or help message.');
         }
         $stored = [];
         $movedPaths = [];
@@ -121,6 +121,7 @@ final class FileService
                 $id = $this->files->insert($tenantId, [
                     'lesson_id' => $lessonId,
                     'submission_id' => $submissionId,
+                    'support_message_id' => $supportMessageId,
                     'uploaded_by' => $userId,
                     'original_name' => $p->name,
                     'extension' => $p->extension,

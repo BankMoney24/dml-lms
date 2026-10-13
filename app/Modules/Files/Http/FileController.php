@@ -33,6 +33,7 @@ final class FileController
         private readonly CourseRepository $courses,
         private readonly EnrolmentRepository $enrolments,
         private readonly SubmissionRepository $submissions,
+        private readonly ?\App\Modules\Support\SupportService $support = null,
     ) {
     }
 
@@ -73,6 +74,9 @@ final class FileController
             $submission = $this->submissions->find($file->tenantId, $file->submissionId);
 
             return $submission !== null && ($submission->userId === $user->user->id || $user->can(Permission::CourseManage));
+        }
+        if ($file->supportMessageId !== null) {
+            return $this->support?->mayReadMessageFile($file->tenantId, $user, $file->supportMessageId) ?? false;
         }
 
         return false;

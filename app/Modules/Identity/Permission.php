@@ -15,4 +15,6 @@ enum Permission: string
     case SchoolManage = 'school.manage';
     /** Create classes or cohorts, choose their learners and teachers. Teachers of a group act on that group only. */
     case GroupsManage = 'groups.manage';
+    /** Answer the school's help requests. */
+    case SupportManage = 'support.manage';
 }

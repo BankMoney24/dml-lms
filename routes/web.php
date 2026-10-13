@@ -28,6 +28,7 @@ use App\Modules\Platform\HomeController;
 use App\Modules\Platform\SchoolsController;
 use App\Modules\Platform\SeoController;
 use App\Modules\Platform\SystemController;
+use App\Modules\Support\Http\SupportController;
 use App\Modules\Tenancy\Http\PeopleController;
 use App\Modules\VirtualLabs\Http\LabController;
 use App\Modules\Tenancy\Http\SchoolController;
@@ -144,6 +145,13 @@ return static function (Router $r): void {
     // A guardian's view of their linked learners; the link is checked on every request.
     $r->get('/children', [ChildController::class, 'index'], ['tenant', 'auth']);
     $r->get('/children/{learner:int}', [ChildController::class, 'show'], ['tenant', 'auth']);
+    // Help requests (SUP-001): everyone asks, support staff answer.
+    $r->get('/help', [SupportController::class, 'index'], ['tenant', 'auth']);
+    $r->post('/help', [SupportController::class, 'store'], ['tenant', 'auth']);
+    $r->get('/help/{request:int}', [SupportController::class, 'show'], ['tenant', 'auth']);
+    $r->post('/help/{request:int}/reply', [SupportController::class, 'reply'], ['tenant', 'auth']);
+    $r->post('/help/{request:int}/status', [SupportController::class, 'status'], ['tenant', 'auth']);
+    $r->get('/school/support', [SupportController::class, 'inbox'], ['tenant', 'auth', 'can:support.manage']);
     $r->get('/notifications', [NotificationController::class, 'index'], ['tenant', 'auth']);
     $r->get('/notifications/{notification:int}', [NotificationController::class, 'open'], ['tenant', 'auth']);
     $r->post('/notifications/read-all', [NotificationController::class, 'readAll'], ['tenant', 'auth']);

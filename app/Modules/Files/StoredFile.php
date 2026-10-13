@@ -20,6 +20,7 @@ final class StoredFile
         public readonly string $storageKey,
         public readonly string $scanStatus,
         public readonly string $createdAt,
+        public readonly ?int $supportMessageId = null,
     ) {
     }
 
@@ -40,6 +41,7 @@ final class StoredFile
             (string) $row['storage_key'],
             (string) $row['scan_status'],
             (string) $row['created_at'],
+            isset($row['support_message_id']) ? (int) $row['support_message_id'] : null,
         );
     }
 

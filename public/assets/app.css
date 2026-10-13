@@ -1240,3 +1240,15 @@ ul.plain { list-style: none; margin: 0 0 var(--space-2); padding: 0; }
 .checklist-plain li::before { content: ""; position: absolute; left: 0; top: 0.45em; width: 0.65rem; height: 0.65rem; border-radius: 2px; border: 2px solid var(--line); }
 .checklist-plain li.is-on::before { background: var(--lamp); border-color: var(--lamp); }
 .child-courses .set-title { font-weight: 650; }
+
+/* Help requests */
+.help-list { list-style: none; padding: 0; margin: 0 0 var(--space-4); display: grid; gap: var(--space-2); max-width: 46rem; }
+.help-list li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); }
+.help-list a { display: grid; gap: 2px; text-decoration: none; color: var(--ink); min-width: 0; }
+.help-subject { font-weight: 650; color: var(--primary); }
+.thread { list-style: none; padding: 0; margin: 0 0 var(--space-5); display: grid; gap: var(--space-3); max-width: 46rem; }
+.thread-msg { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); padding: var(--space-3) var(--space-4); }
+.thread-msg.is-staff { border-left: 4px solid var(--primary); margin-left: var(--space-5); }
+.thread-msg p { margin: var(--space-1) 0; }
+.reply-box { max-width: 46rem; }
+@media (max-width: 40rem) { .thread-msg.is-staff { margin-left: var(--space-3); } .help-list li { flex-wrap: wrap; } }

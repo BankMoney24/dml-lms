@@ -32,6 +32,7 @@ Health endpoints (`/health`, `/health/ready`) skip session, tenant and auth.
 | VirtualLabs | lab catalogue, lab_sessions, the lab gateway and code runner (ADR 0011) | Courses, Learning, Audit |
 | Notifications | email outbox; in-app notifications and the Notifier other modules call (ADR 0015) | Identity, Tenancy |
 | Guardians | guardian_links, the guardian's read-only child view (ADR 0016) | Identity, Tenancy, Learning, Groups |
+| Support | support_requests, support_messages, the help desk (ADR 0017) | Identity, Tenancy, Files, Notifications |
 | Groups | learner_groups (classes, cohorts), members, courses set for a group, progress grid (ADR 0013) | Courses, Learning, Identity, Audit |
 | Payments | course prices, payment_accounts (sealed Paystack keys), payments, payment_events, checkout, verify and webhook handling (ADR 0012) | Courses, Learning, Identity, Audit |
 | Platform | home page, health, System page, Schools (platform administrators) | Tenancy, Identity; otherwise read-only |
