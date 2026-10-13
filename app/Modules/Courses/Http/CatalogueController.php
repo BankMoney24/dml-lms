@@ -14,7 +14,9 @@ use App\Modules\Courses\CourseRepository;
 use App\Modules\Courses\LessonRepository;
 use App\Modules\Learning\CourseCards;
 use App\Modules\Learning\EnrolmentRepository;
+use App\Modules\Learning\LearningService;
 use App\Modules\Learning\ProgressRepository;
+use App\Modules\Payments\PaymentService;
 
 final class CatalogueController
 {
@@ -28,6 +30,8 @@ final class CatalogueController
         private readonly ProgressRepository $progress,
         private readonly CertificateService $certificates,
         private readonly CourseCards $cards,
+        private readonly LearningService $learning,
+        private readonly PaymentService $payments,
     ) {
     }
 
@@ -65,6 +69,7 @@ final class CatalogueController
 
         $user = RequestContext::optionalUser($request);
         $enrolment = $user === null ? null : $this->enrolments->find($tenant->id, $course->id, $user->user->id);
+        $mustPay = $user !== null && $enrolment === null && $this->learning->needsPayment($course, $user);
 
         return Response::html($this->view->render('courses/show', [
             'pageTitle' => $course->title,
@@ -73,6 +78,9 @@ final class CatalogueController
             'enrolment' => $enrolment,
             'certificate' => $this->certificates->forEnrolment($enrolment),
             'completedIds' => $enrolment === null ? [] : $this->progress->completedLessonIds($tenant->id, $enrolment->id),
+            'mustPay' => $mustPay,
+            'payOnline' => $mustPay && $this->payments->isConnected($tenant),
+            'waiting' => $mustPay && $user !== null ? $this->payments->waiting($tenant, $user->user->id, $course) : null,
         ]));
     }
 }

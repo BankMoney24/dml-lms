@@ -72,6 +72,20 @@ final class Response
         return new self('', $status, ['Location' => $location]);
     }
 
+    /**
+     * Sends the browser to a payment provider's checkout page. Only exact,
+     * known checkout addresses are allowed, so this can never become an
+     * open redirect.
+     */
+    public static function redirectToCheckout(string $url): self
+    {
+        if (preg_match('#^https://checkout\.paystack\.com/[A-Za-z0-9]+$#', $url) !== 1) {
+            throw new \InvalidArgumentException('Not a known checkout address.');
+        }
+
+        return new self('', 303, ['Location' => $url]);
+    }
+
     public function withHeader(string $name, string $value): self
     {
         $clone = clone $this;

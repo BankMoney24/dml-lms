@@ -147,6 +147,31 @@ $n = 0;
       </form>
     </section>
 
+    <section class="panel" aria-labelledby="price-h">
+      <h2 id="price-h">Price</h2>
+      <?php if ($v->can('school.manage')): ?>
+        <form method="post" action="<?= $base ?>/price" class="form price-form" novalidate>
+          <?= $v->csrfField() ?>
+          <div class="price-fields">
+            <?= $v->field('currency', 'Currency', [
+                'type' => 'select', 'error' => $errors['currency'] ?? null,
+                'options' => array_map(static fn (array $c): string => $c[0] . ' ' . $c[1], \App\Modules\Payments\Money::CURRENCIES),
+                'value' => $o('currency', $defaultCurrency),
+            ]) ?>
+            <?= $v->field('price', 'Price', [
+                'value' => $o('price', $course->priceMinor === null ? '' : rtrim(rtrim(number_format($course->priceMinor / 100, 2, '.', ''), '0'), '.')),
+                'inputmode' => 'decimal', 'optional' => true, 'error' => $errors['price'] ?? null,
+            ]) ?>
+          </div>
+          <p class="hint">Leave blank for a free course. Learners pay before they can start; take payments on the <a href="/school/payments">Payments</a> page.</p>
+          <button type="submit" class="button button-small">Save price</button>
+        </form>
+      <?php else: ?>
+        <p><?= $course->isPaid() ? '<strong>' . $v->e((string) $course->priceLabel()) . '</strong>. Learners pay before they can start.' : 'Free.' ?></p>
+        <p class="small muted">A school administrator sets prices.</p>
+      <?php endif; ?>
+    </section>
+
     <?php $detailErrors = array_intersect_key($errors, array_flip(['title', 'summary', 'level', 'duration_hours', 'outcomes', 'prerequisites', 'track'])); ?>
     <details class="panel"<?= $detailErrors !== [] || $o('details_open') === '1' ? ' open' : '' ?>>
       <summary>Course details</summary>

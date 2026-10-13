@@ -3,6 +3,9 @@
 /** @var \App\Modules\Courses\Course $course */
 /** @var ?\App\Modules\Learning\Enrolment $enrolment */
 /** @var ?\App\Modules\Certificates\Certificate $certificate */
+/** @var bool $mustPay this learner has to pay before enrolling */
+/** @var bool $payOnline the school takes payments through Paystack */
+/** @var ?\App\Modules\Payments\Payment $waiting a checkout started recently and not yet confirmed */
 $user = $v->shared('user');
 $lessonIds = [];
 $counts = [];
@@ -53,7 +56,26 @@ $done = count(array_intersect($lessonIds, $completedIds));
       <progress class="meter" max="<?= max(1, $lessonCount) ?>" value="<?= $done ?>" aria-label="Your progress"></progress>
       <p><a class="button" href="/courses/<?= $v->e($course->slug) ?>/lessons/<?= $firstOpen->id ?>"><?= $done === 0 ? 'Start' : 'Continue' ?>: <?= $v->e($firstOpen->title) ?></a></p>
     <?php elseif ($user === null): ?>
+      <?php if ($course->isPaid()): ?><p class="course-price"><strong><?= $v->e((string) $course->priceLabel()) ?></strong> for the whole course</p><?php endif; ?>
       <p><a class="button" href="/login">Sign in to enrol</a></p>
+    <?php elseif ($v->can('course.learn') && $mustPay): ?>
+      <div class="pay-box" id="pay">
+        <p class="course-price"><strong><?= $v->e((string) $course->priceLabel()) ?></strong> for the whole course</p>
+        <?php if ($waiting !== null): ?>
+          <p class="notice">You started a payment of <?= $v->e($waiting->amount()) ?> on <?= $v->e($v->datetime($waiting->createdAt)) ?>.
+            If money left your account, the course opens as soon as Paystack confirms it.
+            <a href="/payments/paystack/callback?reference=<?= $v->e(rawurlencode($waiting->reference)) ?>">Check now</a></p>
+        <?php endif; ?>
+        <?php if ($payOnline): ?>
+          <form method="post" action="/courses/<?= $v->e($course->slug) ?>/pay">
+            <?= $v->csrfField() ?>
+            <button type="submit" class="button">Pay <?= $v->e((string) $course->priceLabel()) ?> and start</button>
+          </form>
+          <p class="small muted">You pay on Paystack's secure page by card, bank transfer or USSD, then come straight back here.</p>
+        <?php else: ?>
+          <p>This school does not take payments online yet. Ask the school how to pay. Once they record your payment, the course opens for you here.</p>
+        <?php endif; ?>
+      </div>
     <?php elseif ($v->can('course.learn')): ?>
       <form method="post" action="/courses/<?= $v->e($course->slug) ?>/enrol">
         <?= $v->csrfField() ?>

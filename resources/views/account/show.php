@@ -1,4 +1,6 @@
 <?php
+/** @var list<array{payment: \App\Modules\Payments\Payment, course: string}> $payments */
+/** @var int $now */
 /** @var \App\Core\View\ViewHelpers $v */
 /** @var \App\Modules\Identity\CurrentUser $me */
 /** @var array<string, string> $errors */
@@ -45,5 +47,26 @@ $passwordErrors = array_intersect_key($errors, array_flip(['current_password', '
       <button type="submit" class="button button-quiet">Save name</button>
     </form>
   </section>
+
+  <?php if ($payments !== []): ?>
+  <section class="section" aria-labelledby="payments-h">
+    <h2 id="payments-h">Your payments</h2>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th scope="col">Course</th><th scope="col" class="num">Amount</th><th scope="col">Status</th></tr></thead>
+        <tbody>
+        <?php foreach ($payments as $row): $p = $row['payment']; ?>
+          <tr>
+            <td><?= $v->e($row['course']) ?><span class="small muted"><?= $v->datetime($p->paidAt ?? $p->createdAt) ?>, <span class="ref"><?= $v->e($p->reference) ?></span></span></td>
+            <td class="num"><?= $v->e($p->amount()) ?></td>
+            <td><?= $v->e($p->statusLabel($now)) ?></td>
+          </tr>
+        <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+    <p class="small muted">Quote the reference if you ask the school about a payment.</p>
+  </section>
+  <?php endif; ?>
   <?php endif; ?>
 </section>

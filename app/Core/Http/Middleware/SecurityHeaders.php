@@ -24,7 +24,8 @@ final class SecurityHeaders implements Middleware
                 . "font-src 'self'; connect-src 'self'; "
                 // Video lessons: only the privacy-enhanced YouTube player and Vimeo.
                 // and this site's own sandboxed code runner for programming labs.
-                . "frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; "
+                // Paid courses: the Pay button's form is redirected to Paystack's checkout.
+                . "frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://checkout.paystack.com; "
                 . "object-src 'none'",
             'X-Content-Type-Options' => 'nosniff',
             'X-Frame-Options' => 'DENY',

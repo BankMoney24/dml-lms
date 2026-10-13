@@ -11,6 +11,7 @@ use App\Core\Session\Session;
 use App\Core\Validation\ValidationException;
 use App\Core\View\View;
 use App\Modules\Identity\AccountService;
+use App\Modules\Payments\PaymentRepository;
 
 final class AccountController
 {
@@ -18,6 +19,7 @@ final class AccountController
         private readonly View $view,
         private readonly Session $session,
         private readonly AccountService $accounts,
+        private readonly ?PaymentRepository $payments = null,
     ) {
     }
 
@@ -72,6 +74,8 @@ final class AccountController
         return Response::html($this->view->render('account/show', [
             'pageTitle' => 'Your account',
             'me' => $me,
+            'payments' => $this->payments?->forUser(RequestContext::tenant($request)->id, $me->user->id) ?? [],
+            'now' => time(),
             'errors' => $errors,
             'old' => $old + ['display_name' => $me->user->displayName],
         ]), $status);

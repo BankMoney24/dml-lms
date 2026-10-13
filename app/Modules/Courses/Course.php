@@ -27,6 +27,8 @@ final class Course
         public readonly array $outcomes = [],
         public readonly string $prerequisites = '',
         public readonly ?string $track = null,
+        public readonly ?int $priceMinor = null,
+        public readonly ?string $currency = null,
     ) {
     }
 
@@ -47,12 +49,26 @@ final class Course
             self::lines((string) ($row['outcomes'] ?? '')),
             (string) ($row['prerequisites'] ?? ''),
             isset($row['track']) && isset(self::TRACKS[(string) $row['track']]) ? (string) $row['track'] : null,
+            isset($row['price_minor']) && (int) $row['price_minor'] > 0 ? (int) $row['price_minor'] : null,
+            isset($row['currency']) && is_string($row['currency']) && $row['currency'] !== '' ? $row['currency'] : null,
         );
     }
 
     public function isPublished(): bool
     {
         return $this->status === self::STATUS_PUBLISHED;
+    }
+
+    /** A course with a price; learners pay before they can start it. */
+    public function isPaid(): bool
+    {
+        return $this->priceMinor !== null && $this->priceMinor > 0 && $this->currency !== null;
+    }
+
+    /** "₦15,000" or null for a free course. */
+    public function priceLabel(): ?string
+    {
+        return $this->isPaid() ? \App\Modules\Payments\Money::format((int) $this->priceMinor, (string) $this->currency) : null;
     }
 
     public function trackLabel(): ?string

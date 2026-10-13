@@ -147,6 +147,24 @@ sudo -u dmldeploy -H php /var/www/dml-lms/current/bin/console course:import dml 
 sudo -u dmldeploy -H php /var/www/dml-lms/current/bin/console course:import dml practical-tech-skills --author=you@example.com
 ```
 
+### Payments (Paystack)
+
+Schools sell courses through their own Paystack account (ADR 0012). PHP has to make outgoing HTTPS calls to `api.paystack.co`; SELinux blocks that by default, so allow it once:
+
+```bash
+setsebool -P httpd_can_network_connect on
+```
+
+Then, signed in as a school admin:
+
+1. **School → Payments**: paste the Paystack **test** secret key (`sk_test_…`) and choose the currency. The key is checked with Paystack, stored encrypted and never shown again.
+2. Copy the webhook address shown there into Paystack: Settings → API Keys & Webhooks → Test Webhook URL.
+3. Set a price on a course: **Teaching → the course → Price**.
+4. Sign in as a learner, pay with a Paystack test card, and check the course opens and the payment shows under School → Payments.
+5. When ready, connect the **live** key and paste the same webhook address as the Live Webhook URL. Paystack only sends live webhooks to `https://` addresses, so put the domain on HTTPS first; until then payments are still confirmed when the learner returns from Paystack.
+
+Money paid by bank transfer or cash: **School → Payments → Record a payment**. It enrols the learner at once.
+
 ### Email (password reset, invitations)
 
 Until `MAIL_DRIVER=smtp` is set, nothing is emailed: admins get a one-time password to pass on, and *Forgotten your password?* tells people to ask an administrator. To turn email on:

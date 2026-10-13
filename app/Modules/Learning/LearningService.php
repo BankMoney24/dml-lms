@@ -13,6 +13,7 @@ use App\Modules\Courses\Lesson;
 use App\Modules\Courses\LessonRepository;
 use App\Modules\Identity\CurrentUser;
 use App\Modules\Identity\Permission;
+use App\Modules\Payments\PaymentRepository;
 
 final class LearningService
 {
@@ -24,7 +25,16 @@ final class LearningService
         private readonly CompletionRule $rule,
         private readonly AuditLog $audit,
         private readonly CertificateService $certificates,
+        private readonly PaymentRepository $payments,
     ) {
+    }
+
+    /** Paid courses need a confirmed payment first; people who build courses can always look inside. */
+    public function needsPayment(Course $course, CurrentUser $learner): bool
+    {
+        return $course->isPaid()
+            && !$learner->can(Permission::CourseManage)
+            && !$this->payments->hasPaid($course->tenantId, $learner->user->id, $course->id);
     }
 
     public function enrol(Course $course, CurrentUser $learner): Enrolment
@@ -36,6 +46,10 @@ final class LearningService
         $existing = $this->enrolments->find($course->tenantId, $course->id, $learner->user->id);
         if ($existing !== null) {
             return $existing;
+        }
+        if ($this->needsPayment($course, $learner)) {
+            // Access to a paid course follows a payment confirmed on the server (PAY-003).
+            throw new HttpException(403, 'This course is paid. Pay for it on the course page to start.');
         }
         $enrolment = $this->enrolments->enrol($course->tenantId, $course->id, $learner->user->id);
         $this->audit->record($course->tenantId, $learner->user->id, 'learning.enrolled', 'course', $course->id);

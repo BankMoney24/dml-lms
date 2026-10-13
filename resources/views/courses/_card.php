@@ -17,6 +17,7 @@ $c = $card['course'];
     <?php if ($c->durationHours !== null): ?><span><?= $v->e('About ' . $v->plural($c->durationHours, 'hour')) ?></span><?php endif; ?>
     <span><?= $v->e($v->plural($card['lessons'], 'lesson')) ?></span>
     <?php if (($card['labs'] ?? 0) > 0): ?><span class="course-card-labs"><?= $v->e($v->plural($card['labs'], 'lab')) ?></span><?php endif; ?>
+    <?php if ($c->isPaid() && !$card['enrolled']): ?><span class="course-card-price"><?= $v->e((string) $c->priceLabel()) ?></span><?php endif; ?>
   </p>
   <?php if ($card['completed']): ?>
     <p class="course-card-status"><?= $v->badge('Completed', 'done') ?></p>

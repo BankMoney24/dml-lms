@@ -17,6 +17,7 @@ use App\Modules\Assignments\SubmissionRepository;
 use App\Modules\Courses\Course;
 use App\Modules\Courses\CourseAuthoring;
 use App\Modules\Courses\CourseRepository;
+use App\Modules\Payments\PaymentAccountRepository;
 use App\Modules\Courses\LessonRepository;
 use App\Modules\Learning\ProgressReport;
 
@@ -33,6 +34,7 @@ final class TeachController
         private readonly ProgressReport $progress,
         private readonly SubmissionRepository $pendingReviews,
         private readonly LabCatalogue $labs = new LabCatalogue([]),
+        private readonly ?PaymentAccountRepository $paymentAccounts = null,
     ) {
     }
 
@@ -84,6 +86,24 @@ final class TeachController
             return $this->renderEdit($course, $e->errors, $old + ['details_open' => '1'], 422);
         }
         $this->session->flash('success', 'Course details saved.');
+
+        return Response::redirect('/teach/courses/' . $course->id);
+    }
+
+    /** School administrators only: the route checks school.manage and so does CourseAuthoring. */
+    public function updatePrice(Request $request): Response
+    {
+        $course = $this->course($request);
+        $old = ['price' => $request->input('price', '') ?? '', 'currency' => $request->input('currency', '') ?? ''];
+        try {
+            $this->authoring->setPrice($course, RequestContext::user($request), $old['price'], $old['currency']);
+        } catch (ValidationException $e) {
+            return $this->renderEdit($course, $e->errors, $old, 422);
+        }
+        $updated = $this->courses->findById($course->tenantId, $course->id);
+        $this->session->flash('success', $updated !== null && $updated->isPaid()
+            ? sprintf('Price set to %s. Learners pay before they can start.', $updated->priceLabel())
+            : 'This course is now free.');
 
         return Response::redirect('/teach/courses/' . $course->id);
     }
@@ -238,6 +258,7 @@ final class TeachController
             'questionCounts' => $questionCounts,
             'publishProblems' => $course->isPublished() ? [] : $this->authoring->publishProblems($course),
             'labOptions' => $this->labs->options(),
+            'defaultCurrency' => $course->currency ?? ($this->paymentAccounts?->find($course->tenantId)['currency'] ?? 'NGN'),
             'errors' => $errors,
             'old' => $old,
         ]), $status);

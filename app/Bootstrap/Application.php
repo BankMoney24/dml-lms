@@ -8,6 +8,13 @@ use App\Modules\VirtualLabs\LabCatalogue;
 use App\Modules\VirtualLabs\LabGateway;
 use App\Modules\VirtualLabs\LabSessionRepository;
 use App\Modules\VirtualLabs\Http\LabController;
+use App\Modules\Payments\Http\PaymentAdminController;
+use App\Modules\Payments\Http\PaymentController;
+use App\Modules\Payments\HttpPaystackApi;
+use App\Modules\Payments\PaymentAccountRepository;
+use App\Modules\Payments\PaymentRepository;
+use App\Modules\Payments\PaymentService;
+use App\Modules\Payments\PaystackApi;
 use App\Modules\Platform\SchoolsController;
 use App\Modules\Platform\SchoolAdminService;
 use App\Modules\Files\VirusScanner;
@@ -231,6 +238,7 @@ final class Application
             new CompletionRule(),
             $c->get(AuditLog::class),
             $c->get(CertificateService::class),
+            $c->get(PaymentRepository::class),
         ));
         $c->set(FileRepository::class, static fn (Container $c) => new FileRepository($c->get(Connection::class), $c->get(Clock::class)));
         $c->set(VirusScanner::class, static fn () => strtolower($config->get('UPLOAD_SCANNER', '') ?? '') === 'clamd'
@@ -248,6 +256,22 @@ final class Application
             $c->get(EnrolmentRepository::class),
             $c->get(LearningService::class),
             $c->get(AuditLog::class),
+            $c->get(Clock::class),
+        ));
+        $c->set(PaymentRepository::class, static fn (Container $c) => new PaymentRepository($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(PaymentAccountRepository::class, static fn (Container $c) => new PaymentAccountRepository($c->get(Connection::class), $c->get(Clock::class), new SecretBox($appKey)));
+        $c->set(PaystackApi::class, static fn () => new HttpPaystackApi());
+        $c->set(PaymentService::class, static fn (Container $c) => new PaymentService(
+            $c->get(Connection::class),
+            $c->get(PaymentRepository::class),
+            $c->get(PaymentAccountRepository::class),
+            $c->get(PaystackApi::class),
+            $c->get(CourseRepository::class),
+            $c->get(UserRepository::class),
+            $c->get(MembershipRepository::class),
+            $c->get(LearningService::class),
+            $c->get(AuditLog::class),
+            $c->get(Logger::class),
             $c->get(Clock::class),
         ));
         $c->set(WizardRunRepository::class, static fn (Container $c) => new WizardRunRepository($c->get(Connection::class), $c->get(Clock::class)));
@@ -357,6 +381,8 @@ final class Application
             $c->get(ProgressRepository::class),
             $c->get(CertificateService::class),
             $c->get(CourseCards::class),
+            $c->get(LearningService::class),
+            $c->get(PaymentService::class),
         ));
         $c->set(LearnController::class, static fn (Container $c) => new LearnController(
             $c->get(View::class),
@@ -403,6 +429,7 @@ final class Application
             new ProgressReport($c->get(Connection::class)),
             $c->get(SubmissionRepository::class),
             $c->get(LabCatalogue::class),
+            $c->get(PaymentAccountRepository::class),
         ));
         $c->set(ReviewController::class, static fn (Container $c) => new ReviewController(
             $c->get(View::class),
@@ -446,6 +473,7 @@ final class Application
             $c->get(View::class),
             $c->get(Session::class),
             $c->get(AccountService::class),
+            $c->get(PaymentRepository::class),
         ));
         $c->set(MemberService::class, static fn (Container $c) => new MemberService(
             $c->get(Connection::class),
@@ -508,6 +536,22 @@ final class Application
             $c->get(MembershipRepository::class),
             $c->get(CourseRepository::class),
         ));
+        $c->set(PaymentController::class, static fn (Container $c) => new PaymentController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(CourseRepository::class),
+            $c->get(LearningService::class),
+            $c->get(PaymentService::class),
+        ));
+        $c->set(PaymentAdminController::class, static fn (Container $c) => new PaymentAdminController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(PaymentService::class),
+            $c->get(PaymentRepository::class),
+            $c->get(PaymentAccountRepository::class),
+            $c->get(CourseRepository::class),
+            $c->get(Clock::class),
+        ));
         $c->set(ActivityController::class, static fn (Container $c) => new ActivityController(
             $c->get(View::class),
             $c->get(AuditLog::class),
@@ -539,6 +583,10 @@ final class Application
 
     private static function routeMiddleware(Container $c, string $spec): Middleware
     {
+        if ($spec === 'host-tenant') {
+            // For bare routes (webhooks): find the school from the host without a session.
+            return $c->get(ResolveTenant::class);
+        }
         if ($spec === 'tenant') {
             return new RequireTenant($c->get(TenantContext::class));
         }

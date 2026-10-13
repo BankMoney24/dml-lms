@@ -3,11 +3,14 @@
  * Tabs shared by the school's administration pages.
  *
  * @var \App\Core\View\ViewHelpers $v
- * @var string $schoolTab 'overview' | 'people' | 'activity'
+ * @var string $schoolTab 'overview' | 'payments' | 'people' | 'activity'
  */
 $tabs = [];
 if ($v->can('school.manage')) {
     $tabs['overview'] = ['/school', 'Settings'];
+}
+if ($v->can('school.manage')) {
+    $tabs['payments'] = ['/school/payments', 'Payments'];
 }
 if ($v->can('members.manage')) {
     $tabs['people'] = ['/people', 'People'];

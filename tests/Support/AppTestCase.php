@@ -45,6 +45,8 @@ abstract class AppTestCase extends TestCase
     protected FileMailer $mailer;
     /** @var array<string, string> per-test configuration on top of TestDatabase::config() */
     protected array $config = [];
+    /** @var array<string, object> extra service overrides, e.g. a fake payment provider */
+    protected array $overrides = [];
 
     protected function setUp(): void
     {
@@ -61,7 +63,7 @@ abstract class AppTestCase extends TestCase
             Connection::class => TestDatabase::connection(),
             Session::class => $session,
             Mailer::class => $this->mailer,
-        ]);
+        ] + $this->overrides);
     }
 
     /** Switches to a different "browser". */

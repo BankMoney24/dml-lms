@@ -11,6 +11,7 @@ use App\Modules\Assessments\AssessmentRepository;
 use App\Modules\Audit\AuditLog;
 use App\Modules\Identity\CurrentUser;
 use App\Modules\Identity\Permission;
+use App\Modules\Payments\Money;
 use App\Modules\VirtualLabs\LabCatalogue;
 
 /**
@@ -113,6 +114,36 @@ final class CourseAuthoring
         }
 
         return ['level' => $level === '' ? null : $level, 'hours' => $hours, 'outcomes' => $outcomes, 'prerequisites' => $prerequisites, 'track' => $track === '' ? null : $track];
+    }
+
+    /**
+     * Sets or clears the course price. Only school administrators decide what
+     * a course costs; a blank price makes it free. Payments already started
+     * keep the amount they started with.
+     */
+    public function setPrice(Course $course, CurrentUser $admin, string $priceText, string $currency): void
+    {
+        $admin->authorise(Permission::SchoolManage);
+        $priceText = trim($priceText);
+        if ($priceText === '' || $priceText === '0') {
+            $this->courses->updatePrice($course->tenantId, $course->id, null, null);
+            $this->audit->record($course->tenantId, $admin->user->id, 'course.price_cleared', 'course', $course->id);
+
+            return;
+        }
+        $errors = [];
+        $minor = Money::parse($priceText);
+        if ($minor === null || $minor < Money::MIN_MINOR || $minor > Money::MAX_MINOR) {
+            $errors['price'] = 'Enter a price of at least 100, for example 15000, or leave it blank for a free course.';
+        }
+        if (!Money::isSupported($currency)) {
+            $errors['currency'] = 'Choose a currency.';
+        }
+        if ($errors !== []) {
+            throw new ValidationException($errors);
+        }
+        $this->courses->updatePrice($course->tenantId, $course->id, $minor, $currency);
+        $this->audit->record($course->tenantId, $admin->user->id, 'course.priced', 'course', $course->id, ['amount' => $minor, 'currency' => $currency]);
     }
 
     public function addModule(Course $course, CurrentUser $author, string $title): int

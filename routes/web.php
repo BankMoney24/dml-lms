@@ -17,6 +17,8 @@ use App\Modules\Identity\Http\LoginController;
 use App\Modules\Identity\Http\PasswordResetController;
 use App\Modules\Identity\Http\TwoFactorController;
 use App\Modules\Learning\Http\LearnController;
+use App\Modules\Payments\Http\PaymentAdminController;
+use App\Modules\Payments\Http\PaymentController;
 use App\Modules\Platform\HealthController;
 use App\Modules\Platform\HomeController;
 use App\Modules\Platform\SchoolsController;
@@ -54,6 +56,11 @@ return static function (Router $r): void {
 
     $learn = ['tenant', 'auth', 'can:course.learn'];
     $r->post('/courses/{slug}/enrol', [LearnController::class, 'enrol'], $learn);
+    // Paid courses (ADR 0012): access follows a payment Paystack itself confirms.
+    $r->post('/courses/{slug}/pay', [PaymentController::class, 'pay'], $learn);
+    $r->get('/payments/paystack/callback', [PaymentController::class, 'callback'], ['tenant', 'auth']);
+    // No session or CSRF: Paystack's HMAC signature, checked with the school's key, is the authentication.
+    $r->post('/webhooks/paystack', [PaymentController::class, 'webhook'], [Kernel::BARE, 'host-tenant', 'tenant']);
     $r->get('/courses/{slug}/lessons/{lesson:int}', [LearnController::class, 'lesson'], $learn);
     $r->post('/courses/{slug}/lessons/{lesson:int}/complete', [LearnController::class, 'complete'], $learn);
     $r->post('/courses/{slug}/lessons/{lesson:int}/attempts', [AttemptController::class, 'submit'], $learn);
@@ -78,6 +85,7 @@ return static function (Router $r): void {
     $r->post('/teach/courses', [TeachController::class, 'store'], $teach);
     $r->get('/teach/courses/{course:int}', [TeachController::class, 'edit'], $teach);
     $r->post('/teach/courses/{course:int}/details', [TeachController::class, 'updateDetails'], $teach);
+    $r->post('/teach/courses/{course:int}/price', [TeachController::class, 'updatePrice'], ['tenant', 'auth', 'can:school.manage']);
     $r->post('/teach/courses/{course:int}/modules', [TeachController::class, 'addModule'], $teach);
     $r->post('/teach/courses/{course:int}/modules/{module:int}', [TeachController::class, 'renameModule'], $teach);
     $r->post('/teach/courses/{course:int}/modules/{module:int}/delete', [TeachController::class, 'deleteModule'], $teach);
@@ -123,6 +131,11 @@ return static function (Router $r): void {
     $school = ['tenant', 'auth', 'can:school.manage'];
     $r->get('/school', [SchoolController::class, 'index'], $school);
     $r->get('/school/logo-preview', [SchoolController::class, 'logoPreview'], $school);
+    $r->get('/school/payments', [PaymentAdminController::class, 'index'], $school);
+    $r->get('/school/payments.csv', [PaymentAdminController::class, 'export'], $school);
+    $r->post('/school/payments/connect', [PaymentAdminController::class, 'connect'], $school);
+    $r->post('/school/payments/disconnect', [PaymentAdminController::class, 'disconnect'], $school);
+    $r->post('/school/payments/manual', [PaymentAdminController::class, 'manual'], $school);
     $r->get('/logo', [SchoolController::class, 'logo'], ['tenant']);
 
     // Wizard engine; each wizard checks who may run it.

@@ -10,6 +10,9 @@ namespace App\Core\Http;
  */
 final class Request
 {
+    /** JSON bodies (webhooks) larger than this are not read. */
+    public const MAX_RAW_BYTES = 65536;
+
     /** @var array<string, mixed> */
     private array $attributes = [];
 
@@ -32,6 +35,7 @@ final class Request
         public readonly bool $secure = false,
         private readonly array $files = [],
         public readonly bool $bodyTooLarge = false,
+        public readonly string $rawBody = '',
     ) {
     }
 
@@ -53,9 +57,16 @@ final class Request
                 $files[$key] = UploadedFile::listFromPhp($entry);
             }
         }
-        // When a body exceeds post_max_size PHP silently drops all fields and files.
+        // When a form body exceeds post_max_size PHP silently drops all fields and files.
+        // Only form posts are parsed into $_POST; a JSON body (a webhook) never is.
         $length = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
-        $tooLarge = ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && $length > 0 && $_POST === [] && $_FILES === [];
+        $type = strtolower($headers['content-type'] ?? '');
+        $isForm = str_starts_with($type, 'application/x-www-form-urlencoded') || str_starts_with($type, 'multipart/form-data');
+        $tooLarge = ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && $isForm && $length > 0 && $_POST === [] && $_FILES === [];
+        $raw = '';
+        if (str_starts_with($type, 'application/json') && $length > 0 && $length <= self::MAX_RAW_BYTES) {
+            $raw = (string) file_get_contents('php://input', false, null, 0, self::MAX_RAW_BYTES);
+        }
 
         $uri = (string) ($_SERVER['REQUEST_URI'] ?? '/');
         $path = parse_url($uri, PHP_URL_PATH);
@@ -72,6 +83,7 @@ final class Request
             secure: ($_SERVER['HTTPS'] ?? '') !== '' && ($_SERVER['HTTPS'] ?? '') !== 'off',
             files: $files,
             bodyTooLarge: $tooLarge,
+            rawBody: $raw,
         );
     }
 

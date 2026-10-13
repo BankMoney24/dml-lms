@@ -48,6 +48,11 @@ final class LearnController
     public function enrol(Request $request): Response
     {
         $course = $this->publishedCourse($request);
+        if ($this->learning->needsPayment($course, RequestContext::user($request))) {
+            $this->session->flash('error', 'This course is paid. Pay for it below to start.');
+
+            return Response::redirect('/courses/' . $course->slug);
+        }
         $this->learning->enrol($course, RequestContext::user($request));
         $first = $this->lessons->orderedLessons($course->tenantId, $course->id)[0] ?? null;
         $this->session->flash('success', 'You are enrolled. Start with the first lesson.');

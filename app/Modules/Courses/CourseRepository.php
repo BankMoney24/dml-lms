@@ -83,6 +83,15 @@ final class CourseRepository
         return array_values(array_filter(array_map(static fn (int $id): ?Course => $byId[$id] ?? null, $ids)));
     }
 
+    /** @return list<Course> courses with a price, for recording payments by hand */
+    public function listPaid(int $tenantId): array
+    {
+        return array_map(
+            static fn (array $row): Course => Course::fromRow($row),
+            $this->db->fetchAll('SELECT * FROM courses WHERE tenant_id = ? AND price_minor IS NOT NULL ORDER BY title LIMIT 500', [$tenantId]),
+        );
+    }
+
     /** @return list<array{course: Course, lesson_count: int}> */
     public function listAllWithCounts(int $tenantId): array
     {
@@ -147,6 +156,14 @@ final class CourseRepository
             'UPDATE courses SET level = ?, duration_hours = ?, outcomes = ?, prerequisites = ?, track = ?, updated_at = ? WHERE tenant_id = ? AND id = ?',
             [$level, $hours, $outcomes === [] ? null : implode("\n", $outcomes), $prerequisites === '' ? null : $prerequisites, $track,
              $this->clock->sqlNow(), $tenantId, $courseId],
+        );
+    }
+
+    public function updatePrice(int $tenantId, int $courseId, ?int $priceMinor, ?string $currency): void
+    {
+        $this->db->execute(
+            'UPDATE courses SET price_minor = ?, currency = ?, updated_at = ? WHERE tenant_id = ? AND id = ?',
+            [$priceMinor, $currency, $this->clock->sqlNow(), $tenantId, $courseId],
         );
     }
 
