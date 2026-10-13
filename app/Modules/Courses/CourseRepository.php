@@ -29,14 +29,35 @@ final class CourseRepository
     }
 
     /** @return list<Course> */
-    public function listPublished(int $tenantId, int $limit = 24, int $offset = 0): array
+    public function listPublished(int $tenantId, int $limit = 24, int $offset = 0, ?string $track = null): array
     {
-        $rows = $this->db->fetchAll(
-            'SELECT * FROM courses WHERE tenant_id = ? AND status = ? ORDER BY published_at DESC, id DESC LIMIT ? OFFSET ?',
-            [$tenantId, Course::STATUS_PUBLISHED, max(1, min($limit, 100)), max(0, $offset)],
-        );
+        $rows = $track === null
+            ? $this->db->fetchAll(
+                'SELECT * FROM courses WHERE tenant_id = ? AND status = ? ORDER BY published_at DESC, id DESC LIMIT ? OFFSET ?',
+                [$tenantId, Course::STATUS_PUBLISHED, max(1, min($limit, 100)), max(0, $offset)],
+            )
+            : $this->db->fetchAll(
+                'SELECT * FROM courses WHERE tenant_id = ? AND status = ? AND track = ? ORDER BY published_at DESC, id DESC LIMIT ? OFFSET ?',
+                [$tenantId, Course::STATUS_PUBLISHED, $track, max(1, min($limit, 100)), max(0, $offset)],
+            );
 
         return array_map(Course::fromRow(...), $rows);
+    }
+
+    /** @return array<string, int> published courses per track ("school", "skills"), for the catalogue filter */
+    public function publishedTrackCounts(int $tenantId): array
+    {
+        $counts = [];
+        foreach (
+            $this->db->fetchAll(
+                'SELECT track, COUNT(*) AS n FROM courses WHERE tenant_id = ? AND status = ? AND track IS NOT NULL GROUP BY track',
+                [$tenantId, Course::STATUS_PUBLISHED],
+            ) as $r
+        ) {
+            $counts[(string) $r['track']] = (int) $r['n'];
+        }
+
+        return $counts;
     }
 
     /**
@@ -120,11 +141,11 @@ final class CourseRepository
     }
 
     /** @param list<string> $outcomes */
-    public function updateProfile(int $tenantId, int $courseId, ?string $level, ?int $hours, array $outcomes, string $prerequisites): void
+    public function updateProfile(int $tenantId, int $courseId, ?string $level, ?int $hours, array $outcomes, string $prerequisites, ?string $track = null): void
     {
         $this->db->execute(
-            'UPDATE courses SET level = ?, duration_hours = ?, outcomes = ?, prerequisites = ?, updated_at = ? WHERE tenant_id = ? AND id = ?',
-            [$level, $hours, $outcomes === [] ? null : implode("\n", $outcomes), $prerequisites === '' ? null : $prerequisites,
+            'UPDATE courses SET level = ?, duration_hours = ?, outcomes = ?, prerequisites = ?, track = ?, updated_at = ? WHERE tenant_id = ? AND id = ?',
+            [$level, $hours, $outcomes === [] ? null : implode("\n", $outcomes), $prerequisites === '' ? null : $prerequisites, $track,
              $this->clock->sqlNow(), $tenantId, $courseId],
         );
     }

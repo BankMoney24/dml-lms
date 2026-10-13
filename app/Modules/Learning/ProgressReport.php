@@ -17,9 +17,11 @@ final class ProgressReport
      * @return array{
      *   quizzes: list<array{assessment_id: int, title: string, pass_threshold: int}>,
      *   assignments: list<array{lesson_id: int, title: string}>,
+     *   labs: list<array{lesson_id: int, title: string}>,
      *   total: int,
      *   rows: list<array{name: string, email: string, status: string, enrolled_at: string, done: int,
-     *                    last_activity: ?string, best: array<int, int>, submissions: array<int, string>}>
+     *                    last_activity: ?string, best: array<int, int>, submissions: array<int, string>,
+     *                    labs: array<int, array{score: int, passed: bool}>}>
      * }
      */
     public function forCourse(int $tenantId, int $courseId): array
@@ -56,6 +58,26 @@ final class ProgressReport
         );
         foreach ($latestRows as $r) {
             $submissions[(int) $r['enrolment_id']][(int) $r['lesson_id']] = (string) $r['status'];
+        }
+
+        $labs = array_map(static fn (array $r): array => [
+            'lesson_id' => (int) $r['id'],
+            'title' => (string) $r['title'],
+        ], $this->db->fetchAll(
+            "SELECT l.id, l.title FROM lessons l
+             JOIN course_modules m ON m.tenant_id = l.tenant_id AND m.id = l.module_id
+             WHERE l.tenant_id = ? AND l.course_id = ? AND l.type = 'lab' ORDER BY m.position, l.position",
+            [$tenantId, $courseId],
+        ));
+        $labBest = [];
+        foreach (
+            $labs === [] ? [] : $this->db->fetchAll(
+                "SELECT enrolment_id, lesson_id, MAX(score) AS score, MAX(passed) AS passed FROM lab_sessions
+             WHERE tenant_id = ? AND course_id = ? AND status = 'submitted' GROUP BY enrolment_id, lesson_id",
+                [$tenantId, $courseId],
+            ) as $r
+        ) {
+            $labBest[(int) $r['enrolment_id']][(int) $r['lesson_id']] = ['score' => (int) $r['score'], 'passed' => (bool) $r['passed']];
         }
 
         $total = (int) $this->db->fetchValue(
@@ -96,8 +118,9 @@ final class ProgressReport
             'last_activity' => $r['last_activity'] === null ? null : (string) $r['last_activity'],
             'best' => $best[(int) $r['enrolment_id']] ?? [],
             'submissions' => $submissions[(int) $r['enrolment_id']] ?? [],
+            'labs' => $labBest[(int) $r['enrolment_id']] ?? [],
         ], $learners);
 
-        return ['quizzes' => $quizzes, 'assignments' => $assignments, 'total' => $total, 'rows' => $rows];
+        return ['quizzes' => $quizzes, 'assignments' => $assignments, 'labs' => $labs, 'total' => $total, 'rows' => $rows];
     }
 }

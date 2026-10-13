@@ -38,13 +38,17 @@ final class CatalogueController
             return Response::redirect('/login');
         }
         $page = max(1, (int) ($request->query('page', '1') ?? '1'));
-        $courses = $this->courses->listPublished($tenant->id, self::PER_PAGE + 1, ($page - 1) * self::PER_PAGE);
+        $track = $request->query('track');
+        $track = $track !== null && isset(\App\Modules\Courses\Course::TRACKS[$track]) ? $track : null;
+        $courses = $this->courses->listPublished($tenant->id, self::PER_PAGE + 1, ($page - 1) * self::PER_PAGE, $track);
 
         return Response::html($this->view->render('courses/index', [
             'pageTitle' => 'Courses',
             'cards' => $this->cards->build($tenant->id, array_slice($courses, 0, self::PER_PAGE), RequestContext::optionalUser($request)?->user->id),
             'page' => $page,
             'hasMore' => count($courses) > self::PER_PAGE,
+            'track' => $track,
+            'trackCounts' => $this->courses->publishedTrackCounts($tenant->id),
         ]));
     }
 

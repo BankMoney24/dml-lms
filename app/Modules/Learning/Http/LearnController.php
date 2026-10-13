@@ -23,6 +23,8 @@ use App\Modules\Courses\LessonRepository;
 use App\Modules\Files\FileRepository;
 use App\Modules\Files\FileService;
 use App\Modules\Learning\LearningService;
+use App\Modules\VirtualLabs\LabCatalogue;
+use App\Modules\VirtualLabs\LabSessionRepository;
 
 final class LearnController
 {
@@ -38,6 +40,8 @@ final class LearnController
         private readonly SubmissionRepository $submissions,
         private readonly FileRepository $files,
         private readonly FileService $fileService,
+        private readonly LabCatalogue $labs,
+        private readonly LabSessionRepository $labSessions,
     ) {
     }
 
@@ -110,6 +114,18 @@ final class LearnController
             }
         }
 
+        $lab = null;
+        if ($lesson->isLab()) {
+            $history = $this->labSessions->history($course->tenantId, $enrolment->id, $lesson->id);
+            $submitted = array_values(array_filter($history, static fn ($s): bool => $s->score !== null));
+            $lab = [
+                'definition' => $this->labs->find($lesson->labKey)?->definition(),
+                'open' => $this->labSessions->openFor($course->tenantId, $enrolment->id, $lesson->id),
+                'history' => $history,
+                'best' => $submitted === [] ? null : max(array_map(static fn ($s): int => (int) $s->score, $submitted)),
+            ];
+        }
+
         $completedIds = $this->learning->completedLessonIds($enrolment);
         $submissions = $lesson->isAssignment() ? $this->submissions->history($course->tenantId, $enrolment->id, $lesson->id) : [];
 
@@ -125,6 +141,7 @@ final class LearnController
             'outline' => $this->lessons->outline($course->tenantId, $course->id),
             'completedIds' => $completedIds,
             'quiz' => $quiz,
+            'lab' => $lab,
             'submissions' => $submissions,
             'submissionFiles' => $this->files->forSubmissions($course->tenantId, array_map(static fn ($s): int => $s->id, $submissions)),
             'lessonFiles' => $this->files->forLesson($course->tenantId, $lesson->id),

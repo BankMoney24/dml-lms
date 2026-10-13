@@ -4,6 +4,7 @@
 /** @var list<array{id: int, title: string, lessons: list<\App\Modules\Courses\Lesson>}> $outline */
 /** @var array<string, string> $errors */
 /** @var array<string, string> $old */
+/** @var array<string, string> $labOptions */
 $base = '/teach/courses/' . $course->id;
 $o = static fn (string $k, string $d = ''): string => $old[$k] ?? $d;
 $tab = 'outline';
@@ -117,9 +118,14 @@ $n = 0;
             'value' => $o('media_url'), 'error' => $errors['media_url'] ?? null, 'optional' => true, 'inputmode' => 'url', 'maxlength' => 500,
             'hint' => 'A YouTube or Vimeo address.',
         ]) ?>
+        <?= $v->field('lab_key', 'Lab (lab lessons only)', [
+            'type' => 'select', 'options' => ['' => 'Choose a lab'] + $labOptions, 'value' => $o('lab_key'), 'error' => $errors['lab_key'] ?? null,
+            'hint' => 'Leave the title empty to use the lab’s own title.',
+        ]) ?>
+        <p class="small"><a href="/teach/labs">Browse and try the labs</a></p>
         <?= $v->field('body', 'Lesson text', [
             'type' => 'textarea', 'rows' => 8, 'value' => $o('body'), 'error' => $errors['body'] ?? null,
-            'hint' => 'Reading: the lesson itself. Video: notes under the video. Quiz: instructions. Assignment: the task and how it is judged.',
+            'hint' => 'Reading: the lesson itself. Video: notes under the video. Quiz: instructions. Assignment: the task and how it is judged. Lab: an optional introduction.',
         ]) ?>
         <?php include __DIR__ . '/_format_help.php'; ?>
         <details class="advanced"<?= isset($errors['pass_threshold']) || isset($errors['max_attempts']) ? ' open' : '' ?>>
@@ -141,13 +147,18 @@ $n = 0;
       </form>
     </section>
 
-    <?php $detailErrors = array_intersect_key($errors, array_flip(['title', 'summary', 'level', 'duration_hours', 'outcomes', 'prerequisites'])); ?>
+    <?php $detailErrors = array_intersect_key($errors, array_flip(['title', 'summary', 'level', 'duration_hours', 'outcomes', 'prerequisites', 'track'])); ?>
     <details class="panel"<?= $detailErrors !== [] || $o('details_open') === '1' ? ' open' : '' ?>>
       <summary>Course details</summary>
       <form method="post" action="<?= $base ?>/details" class="form" novalidate>
         <?= $v->csrfField() ?>
         <?= $v->field('title', 'Course title', ['value' => $o('title', $course->title), 'error' => $errors['title'] ?? null, 'maxlength' => 190]) ?>
         <?= $v->field('summary', 'Summary', ['type' => 'textarea', 'rows' => 4, 'value' => $o('summary', $course->summary), 'error' => $errors['summary'] ?? null, 'optional' => true]) ?>
+        <?= $v->field('track', 'Kind of course', [
+            'type' => 'select', 'options' => ['' => 'Not set'] + \App\Modules\Courses\Course::TRACKS,
+            'value' => $o('track', $course->track ?? ''), 'error' => $errors['track'] ?? null,
+            'hint' => 'School subject: part of a school curriculum (e.g. SS2 Physics). Skills: vocational or professional training. Learners can filter the course list by this.',
+        ]) ?>
         <?= $v->field('level', 'Level', [
             'type' => 'select', 'options' => ['' => 'Not set'] + \App\Modules\Courses\Course::LEVELS,
             'value' => $o('level', $course->level ?? ''), 'error' => $errors['level'] ?? null,

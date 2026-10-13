@@ -12,6 +12,7 @@ final class Lesson
     public const TYPE_QUIZ = 'quiz';
     public const TYPE_VIDEO = 'video';
     public const TYPE_ASSIGNMENT = 'assignment';
+    public const TYPE_LAB = 'lab';
 
     /** type => [label, one-line description for authors] */
     public const TYPES = [
@@ -19,6 +20,7 @@ final class Lesson
         self::TYPE_VIDEO => ['Video', 'A YouTube or Vimeo video with notes; loads only when the learner chooses'],
         self::TYPE_QUIZ => ['Quiz', 'Multiple choice, marked on the server, with explanations'],
         self::TYPE_ASSIGNMENT => ['Assignment', 'Learners submit work; a teacher approves it or asks for changes'],
+        self::TYPE_LAB => ['Lab', 'A hands-on simulation from the lab catalogue, marked automatically'],
     ];
 
     private const WORDS_PER_MINUTE = 200;
@@ -34,6 +36,7 @@ final class Lesson
         public readonly int $position,
         public readonly bool $mandatory,
         public readonly ?string $mediaUrl = null,
+        public readonly ?string $labKey = null,
     ) {
     }
 
@@ -51,6 +54,7 @@ final class Lesson
             (int) $row['position'],
             (bool) $row['is_mandatory'],
             isset($row['media_url']) && $row['media_url'] !== '' ? (string) $row['media_url'] : null,
+            isset($row['lab_key']) && $row['lab_key'] !== '' ? (string) $row['lab_key'] : null,
         );
     }
 
@@ -64,12 +68,17 @@ final class Lesson
         return $this->type === self::TYPE_VIDEO;
     }
 
+    public function isLab(): bool
+    {
+        return $this->type === self::TYPE_LAB;
+    }
+
     public function isAssignment(): bool
     {
         return $this->type === self::TYPE_ASSIGNMENT;
     }
 
-    /** Readings and videos are completed by the learner; quizzes and assignments by an outcome. */
+    /** Readings and videos are completed by the learner; quizzes, assignments and labs by an outcome. */
     public function learnerCompletes(): bool
     {
         return $this->type === self::TYPE_TEXT || $this->type === self::TYPE_VIDEO;

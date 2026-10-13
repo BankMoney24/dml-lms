@@ -90,7 +90,7 @@ final class LessonRepository
         );
     }
 
-    public function addLesson(int $tenantId, int $courseId, int $moduleId, string $type, string $title, string $body, ?string $mediaUrl = null): int
+    public function addLesson(int $tenantId, int $courseId, int $moduleId, string $type, string $title, string $body, ?string $mediaUrl = null, ?string $labKey = null): int
     {
         $now = $this->clock->sqlNow();
         $position = (int) $this->db->fetchValue(
@@ -99,9 +99,9 @@ final class LessonRepository
         );
 
         return $this->db->insert(
-            'INSERT INTO lessons (tenant_id, course_id, module_id, type, title, body, media_url, position, is_mandatory, is_preview, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?, ?)',
-            [$tenantId, $courseId, $moduleId, $type, $title, $body, $mediaUrl, $position, $now, $now],
+            'INSERT INTO lessons (tenant_id, course_id, module_id, type, title, body, media_url, lab_key, position, is_mandatory, is_preview, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?, ?)',
+            [$tenantId, $courseId, $moduleId, $type, $title, $body, $mediaUrl, $labKey, $position, $now, $now],
         );
     }
 

@@ -28,3 +28,8 @@ Lesson text uses the platform's Markdown subset: `##` headings, lists, `**bold**
 | Folder | Course | Level |
 |---|---|---|
 | `linux-server-administration` | Linux Server Administration: 8 modules, 21 readings, 7 module quizzes, 3 reviewed assignments, a 20-question final exam | Advanced, about 40 hours |
+| `ss2-science-practicals` | SS2 Science Practicals: Ohm's law, titration and straight-line graphs; 3 readings, 3 labs, 3 quizzes | School subject, about 6 hours |
+| `practical-tech-skills` | Practical Tech Skills: subnetting, a first JavaScript function and phishing; 3 readings, 3 labs, 3 quizzes | Skills, about 6 hours |
+
+Lab lessons use `"type": "lab"` with `"lab": "<key>"` (see `bin/console lab:list`) and an optional `"intro"`. A course can say `"track": "school"` (curriculum subject) or `"track": "skills"`; learners can filter the course list by it.
+

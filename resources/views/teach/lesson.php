@@ -14,6 +14,7 @@ $bodyLabel = match ($lesson->type) {
     'quiz' => 'Instructions shown above the questions',
     'video' => 'Notes shown under the video',
     'assignment' => 'The task: what to do, what to submit, how it is judged',
+    'lab' => 'Introduction shown above the lab',
     default => 'Lesson text',
 };
 $lessonErrors = array_diff_key($errors, $questionErrors, ['file' => true]);
@@ -38,6 +39,9 @@ $lessonErrors = array_diff_key($errors, $questionErrors, ['file' => true]);
     <form method="post" action="<?= $url ?>" class="form" novalidate>
       <?= $v->csrfField() ?>
       <?= $v->field('lesson_title', 'Lesson title', ['value' => $o('lesson_title'), 'error' => $errors['lesson_title'] ?? null, 'maxlength' => 190]) ?>
+      <?php if ($lesson->isLab()): ?>
+        <p class="notice">This lesson uses the lab <strong><?= $v->e((string) $lesson->labKey) ?></strong>. <a href="/teach/labs/<?= $v->e((string) $lesson->labKey) ?>">Try it</a>. To use a different lab, add a new lab lesson and delete this one.</p>
+      <?php endif; ?>
       <?php if ($lesson->isVideo()): ?>
         <?= $v->field('media_url', 'Video link', [
             'value' => $o('media_url'), 'error' => $errors['media_url'] ?? null, 'inputmode' => 'url', 'maxlength' => 500,
@@ -46,7 +50,7 @@ $lessonErrors = array_diff_key($errors, $questionErrors, ['file' => true]);
       <?php endif; ?>
       <?= $v->field('body', $bodyLabel, [
           'type' => 'textarea', 'rows' => $lesson->isQuiz() ? 3 : 16, 'value' => $o('body'), 'error' => $errors['body'] ?? null,
-          'optional' => $lesson->isQuiz() || $lesson->isVideo(), 'class' => 'field-code',
+          'optional' => $lesson->isQuiz() || $lesson->isVideo() || $lesson->isLab(), 'class' => 'field-code',
       ]) ?>
       <?php include __DIR__ . '/_format_help.php'; ?>
       <?php if ($lesson->isQuiz()): ?>

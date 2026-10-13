@@ -11,6 +11,7 @@ use App\Core\Http\Response;
 use App\Core\Session\Session;
 use App\Core\Validation\ValidationException;
 use App\Core\View\View;
+use App\Modules\VirtualLabs\LabCatalogue;
 use App\Modules\Assessments\AssessmentRepository;
 use App\Modules\Assignments\SubmissionRepository;
 use App\Modules\Courses\Course;
@@ -31,6 +32,7 @@ final class TeachController
         private readonly CourseAuthoring $authoring,
         private readonly ProgressReport $progress,
         private readonly SubmissionRepository $pendingReviews,
+        private readonly LabCatalogue $labs = new LabCatalogue([]),
     ) {
     }
 
@@ -73,7 +75,7 @@ final class TeachController
     {
         $course = $this->course($request);
         $old = [];
-        foreach (['title', 'summary', 'level', 'duration_hours', 'outcomes', 'prerequisites'] as $key) {
+        foreach (['title', 'summary', 'level', 'duration_hours', 'outcomes', 'prerequisites', 'track'] as $key) {
             $old[$key] = $request->input($key, '') ?? '';
         }
         try {
@@ -136,6 +138,7 @@ final class TeachController
                 'media_url' => $request->input('media_url', '') ?? '',
                 'pass_threshold' => $request->input('pass_threshold', '70') ?? '70',
                 'max_attempts' => $request->input('max_attempts', '') ?? '',
+                'lab_key' => $request->input('lab_key', '') ?? '',
             ]);
         } catch (ValidationException $e) {
             return $this->renderEdit($course, $e->errors, $this->old($request), 422);
@@ -234,6 +237,7 @@ final class TeachController
             'outline' => $outline,
             'questionCounts' => $questionCounts,
             'publishProblems' => $course->isPublished() ? [] : $this->authoring->publishProblems($course),
+            'labOptions' => $this->labs->options(),
             'errors' => $errors,
             'old' => $old,
         ]), $status);

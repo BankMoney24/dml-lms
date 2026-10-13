@@ -810,3 +810,151 @@ ul.plain { list-style: none; margin: 0 0 var(--space-2); padding: 0; }
   /* Logos are usually drawn for white paper: give them a light plate so dark lettering stays visible. */
   .brand-logo, .bp-bar img, .logo-current img, .settings-logo img { background: #f6f8fb; border-radius: var(--radius-s); padding: 0.15rem 0.35rem; }
 }
+
+/* ==========================================================================
+   Virtual labs. The stage is graph paper; meters read like real instruments.
+   ========================================================================== */
+.lab-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-3) var(--space-5); margin-bottom: var(--space-4); }
+.lab-head h1 { margin: 0; }
+.lab-kind { color: var(--primary); font-weight: 700; font-size: var(--step--1); margin: 0 0 var(--space-1); }
+.lab-clock { display: flex; align-items: center; gap: var(--space-4); }
+.lab-timer { margin: 0; padding: var(--space-1) var(--space-4); border: 2px solid var(--line); border-radius: 999px; font-weight: 650; background: var(--surface); white-space: nowrap; }
+.lab-timer-value { font-variant-numeric: tabular-nums; font-weight: 800; }
+.lab-timer.is-low { border-color: var(--lamp); background: var(--lamp-soft); }
+
+.lab-stage {
+  border: 1px solid var(--line); border-radius: var(--radius-m); padding: var(--space-5); margin-bottom: var(--space-6);
+  background-color: var(--surface);
+  background-image: linear-gradient(var(--paper) 1px, transparent 1px), linear-gradient(90deg, var(--paper) 1px, transparent 1px);
+  background-size: 24px 24px;
+  min-width: 0;
+}
+.lab-loading { color: var(--ink-soft); }
+.sim { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: var(--space-5); align-items: start; }
+.sim-figure { margin: 0; min-width: 0; }
+.sim-figure figcaption { margin-top: var(--space-2); }
+.sim-svg { display: block; width: 100%; height: auto; max-height: 22rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-s); }
+.sim-svg-tall { max-height: 26rem; }
+.sim-svg-square { max-width: 26rem; margin: 0 auto; }
+.sim-panel { display: grid; gap: var(--space-3); align-content: start; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-s); padding: var(--space-4); }
+.sim-panel h3 { font-size: var(--step-0); margin: 0; }
+.sim-control { display: grid; gap: var(--space-1); }
+.sim-control label { font-weight: 650; }
+.sim-control input[type="range"] { width: 100%; accent-color: var(--primary); min-height: 2.75rem; }
+.sim-output { font-weight: 800; font-variant-numeric: tabular-nums; }
+.sim-meters { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: var(--space-2); }
+.sim-readout { display: grid; gap: 0.1rem; padding: var(--space-2) var(--space-3); background: #14213d; color: #f5c533; border-radius: var(--radius-s); }
+.sim-readout-label { color: #a9b6cb; font-size: 0.8rem; font-weight: 650; }
+.sim-readout-value { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: var(--step-1); font-weight: 700; font-variant-numeric: tabular-nums; }
+.sim-buttons { flex-wrap: wrap; }
+.sim-results { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-5); margin-top: var(--space-5); align-items: start; }
+.sim-results h3 { font-size: var(--step-0); margin: 0 0 var(--space-2); }
+.sim-table { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-s); padding: var(--space-3) var(--space-4); min-width: 0; overflow-x: auto; }
+.sim-graph { margin: 0; min-width: 0; }
+.table-compact th, .table-compact td { padding: var(--space-1) var(--space-2); }
+.sim-runner { position: absolute; width: 1px; height: 1px; border: 0; opacity: 0; pointer-events: none; }
+
+/* Drawing */
+.sim-wire { fill: none; stroke: var(--ink); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.sim-svg.is-live .sim-wire { stroke: var(--primary); stroke-dasharray: 10 6; animation: sim-flow 1.2s linear infinite; }
+@keyframes sim-flow { to { stroke-dashoffset: -32; } }
+@media (prefers-reduced-motion: reduce) { .sim-svg.is-live .sim-wire { animation: none; stroke-dasharray: none; } }
+.sim-cell-long { stroke: var(--ink); stroke-width: 4; }
+.sim-cell-short { stroke: var(--ink); stroke-width: 8; }
+.sim-meter { fill: var(--surface); stroke: var(--ink); stroke-width: 3; }
+.sim-meter-letter { font: 800 20px var(--font-head); fill: var(--ink); }
+.sim-box { fill: var(--lamp-soft); stroke: var(--ink); stroke-width: 3; stroke-dasharray: 6 4; }
+.sim-box-text { font: 800 18px var(--font-head); fill: var(--ink); }
+.sim-label { font: 650 13px var(--font-body); fill: var(--ink); }
+.sim-tick { font: 11px var(--font-body); fill: var(--ink-soft); }
+.sim-axis { stroke: var(--ink-soft); stroke-width: 1.5; }
+.sim-grid { stroke: var(--line); stroke-width: 1; }
+.sim-point { fill: var(--primary); stroke: var(--surface); stroke-width: 2; }
+.sim-try-line { stroke: var(--lamp); stroke-width: 3; stroke-dasharray: 8 6; }
+.sim-glass { fill: none; stroke: var(--ink-soft); stroke-width: 2; }
+.sim-alkali { fill: #cfe3f7; }
+.sim-flask { stroke: var(--ink-soft); stroke-width: 2; fill: #eef3f8; transition: fill 200ms ease; }
+.sim-flask.is-faint { fill: #f9d3e6; }
+.sim-flask.is-pink { fill: #f08cc0; }
+.sim-flask.is-deep { fill: #c2337f; }
+@media (prefers-color-scheme: dark) { .sim-alkali { fill: #2b4c6f; } .sim-flask { fill: #26324a; } }
+.sim-equation { font-weight: 700; font-variant-numeric: tabular-nums; margin: 0; }
+.sim-coords { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); font-variant-numeric: tabular-nums; font-weight: 650; }
+
+/* Subnetting */
+.sim-subnet { grid-template-columns: minmax(0, 1fr); }
+.sim-ip-main { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: var(--step-3); font-weight: 800; margin: 0; overflow-wrap: anywhere; }
+.sim-bits-wrap { background: var(--surface); }
+.sim-bits { border-collapse: collapse; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+.sim-bits th, .sim-bits td { padding: var(--space-2); text-align: left; white-space: nowrap; border-bottom: 1px solid var(--line); }
+.sim-bits th[scope="row"] { font-family: var(--font-body); font-size: var(--step--1); }
+.bit { display: inline-block; width: 1.05em; text-align: center; }
+.bit-net { background: var(--primary-soft); color: var(--primary); font-weight: 800; }
+.bit-host { color: var(--ink); }
+.bit-dec { display: block; font-size: 0.75rem; color: var(--ink-soft); font-family: var(--font-body); }
+.sim-converter { max-width: 22rem; }
+
+/* Code */
+.sim-code { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); }
+.sim-result.is-ok { color: var(--primary); font-weight: 700; }
+.sim-result.is-wrong { color: var(--danger); font-weight: 700; }
+.sim-status { margin: 0; font-weight: 600; }
+.lab-code textarea { min-height: 18rem; tab-size: 2; }
+
+/* Phishing inbox */
+.sim-mail { grid-template-columns: minmax(0, 18rem) minmax(0, 1fr); }
+.mail-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+.mail-item { width: 100%; text-align: left; display: grid; gap: 0.1rem; padding: var(--space-2) var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; min-height: 2.75rem; }
+.mail-item[aria-current="true"] { outline: 3px solid var(--primary); outline-offset: -1px; }
+.mail-item-from { font-weight: 700; font-size: var(--step--1); }
+.mail-item-subject { font-size: var(--step--1); color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mail-tag { font-size: 0.75rem; font-weight: 700; justify-self: start; padding: 0 var(--space-2); border-radius: 999px; border: 1px solid var(--line); }
+.mail-tag.is-safe { background: var(--primary-soft); color: var(--primary); border-color: transparent; }
+.mail-tag.is-phishing { background: var(--danger-soft); color: var(--danger); border-color: transparent; }
+.mail-pane { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-s); padding: var(--space-4) var(--space-5); min-width: 0; }
+.mail-subject { margin: 0 0 var(--space-2); font-size: var(--step-1); }
+.mail-from { margin: 0 0 var(--space-3); overflow-wrap: anywhere; }
+.mail-address { color: var(--ink-soft); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: var(--step--1); }
+.mail-body { white-space: pre-wrap; padding: var(--space-3) 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.mail-link { margin: var(--space-3) 0; overflow-wrap: anywhere; }
+.mail-fake-button { display: inline-block; padding: var(--space-1) var(--space-3); background: #1d5fb8; color: #fff; border-radius: var(--radius-s); font-weight: 700; margin-right: var(--space-2); }
+.mail-attachment { font-weight: 650; }
+.mail-actions { margin-top: var(--space-3); }
+.mail-counter { margin: var(--space-3) 0 0; }
+
+/* Task, answers and report */
+.lab-bench { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-6); align-items: start; }
+.lab-task h2, .lab-answers h2 { font-size: var(--step-1); margin-top: 0; }
+.lab-task ol { padding-left: var(--space-5); }
+.lab-task li { margin-bottom: var(--space-2); }
+.lab-report { border: 2px solid var(--line); border-radius: var(--radius-m); padding: var(--space-5); margin-bottom: var(--space-6); background: var(--surface); max-width: 52rem; }
+.lab-report-head h2 { margin: 0; font-size: var(--step-2); }
+.lab-report-head p { margin: var(--space-1) 0 var(--space-4); }
+.lab-marks { list-style: none; margin: 0 0 var(--space-4); padding: 0; display: grid; gap: var(--space-2); }
+.lab-marks li { display: flex; gap: var(--space-3); align-items: flex-start; }
+.lab-mark { flex: none; width: 1.75rem; height: 1.75rem; border-radius: 50%; display: grid; place-items: center; font-weight: 800; }
+.lab-marks .is-ok .lab-mark { background: var(--primary-soft); color: var(--primary); }
+.lab-marks .is-wrong .lab-mark { background: var(--danger-soft); color: var(--danger); }
+.lab-evidence pre { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-s); padding: var(--space-3); overflow-x: auto; }
+.lab-report-actions { flex-wrap: wrap; align-items: center; }
+.lab-intro { border-left: 5px solid var(--lamp); padding: var(--space-2) 0 var(--space-2) var(--space-5); margin: var(--space-5) 0; }
+.lab-intro h2 { margin-top: 0; }
+.lab-facts { margin-bottom: var(--space-3); }
+.attempt-list { padding-left: var(--space-5); }
+.attempt-list li { padding: var(--space-1) 0; }
+
+/* Lab catalogue */
+.lab-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; border-top: 1px solid var(--line); max-width: 56rem; }
+.lab-item { display: flex; justify-content: space-between; align-items: center; gap: var(--space-5); padding: var(--space-4) 0; border-bottom: 1px solid var(--line); }
+.lab-item h3 { margin: 0 0 var(--space-1); font-size: var(--step-1); }
+.lab-item p { margin: 0 0 var(--space-1); }
+.course-card-track { margin: 0; font-size: var(--step--1); color: var(--primary); font-weight: 700; }
+.course-card-labs { font-weight: 650; }
+.tab-count { color: var(--ink-soft); font-weight: 400; }
+
+@media (max-width: 56rem) {
+  .sim, .sim-results, .lab-bench, .sim-code, .sim-mail { grid-template-columns: minmax(0, 1fr); }
+  .lab-stage { padding: var(--space-3); }
+  .lab-item { flex-direction: column; align-items: flex-start; }
+}
+.lab-item > .button { flex: none; white-space: nowrap; }

@@ -47,6 +47,31 @@ final class SystemStatus
             'mail' => $this->mailCheck(),
             'storage' => $this->storage(),
             'scanner' => $this->scannerCheck(),
+            'labs' => $this->labs($now),
+        ];
+    }
+
+    /** @return array{state: string, note: string, open: int, week: int, passed_week: int, stale: int} */
+    private function labs(DateTimeImmutable $now): array
+    {
+        $week = $now->modify('-7 days')->format('Y-m-d H:i:s');
+        $row = $this->db->fetchOne(
+            "SELECT SUM(status = 'open') AS open_now, SUM(started_at >= ?) AS week, SUM(started_at >= ? AND passed = 1) AS passed_week,
+                    SUM(status = 'open' AND expires_at < ?) AS stale
+             FROM lab_sessions",
+            [$week, $week, $now->modify('-1 hour')->format('Y-m-d H:i:s')],
+        ) ?? [];
+        $stale = (int) ($row['stale'] ?? 0);
+
+        return [
+            'state' => $stale > 0 ? 'warn' : 'ok',
+            'note' => $stale > 0
+                ? sprintf('%d lab sessions are past their time but still open: the lab:expire cron job is not running (deployment guide → Virtual labs).', $stale)
+                : 'Labs run in learners’ browsers, so they use no server capacity beyond normal page requests.',
+            'open' => (int) ($row['open_now'] ?? 0),
+            'week' => (int) ($row['week'] ?? 0),
+            'passed_week' => (int) ($row['passed_week'] ?? 0),
+            'stale' => $stale,
         ];
     }
 

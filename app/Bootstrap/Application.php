@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Bootstrap;
 
+use App\Modules\VirtualLabs\LabCatalogue;
+use App\Modules\VirtualLabs\LabGateway;
+use App\Modules\VirtualLabs\LabSessionRepository;
+use App\Modules\VirtualLabs\Http\LabController;
 use App\Modules\Platform\SchoolsController;
 use App\Modules\Platform\SchoolAdminService;
 use App\Modules\Files\VirusScanner;
@@ -203,6 +207,7 @@ final class Application
             $c->get(LessonRepository::class),
             $c->get(AssessmentRepository::class),
             $c->get(AuditLog::class),
+            $c->get(LabCatalogue::class),
         ));
         $c->set(CoursePackageImporter::class, static fn (Container $c) => new CoursePackageImporter(
             $c->get(Connection::class),
@@ -233,6 +238,18 @@ final class Application
             : new NoScanner());
         $c->set(LogoStore::class, static fn (Container $c) => new LogoStore($storage . '/uploads', $c->get(VirusScanner::class), $c->get(Logger::class)));
         $c->set(CoursePackages::class, static fn () => new CoursePackages(self::basePath('courses')));
+        $c->set(LabCatalogue::class, static fn () => LabCatalogue::builtIn());
+        $c->set(LabSessionRepository::class, static fn (Container $c) => new LabSessionRepository($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(LabGateway::class, static fn (Container $c) => new LabGateway(
+            $c->get(Connection::class),
+            $c->get(LabCatalogue::class),
+            $c->get(LabSessionRepository::class),
+            $c->get(LessonRepository::class),
+            $c->get(EnrolmentRepository::class),
+            $c->get(LearningService::class),
+            $c->get(AuditLog::class),
+            $c->get(Clock::class),
+        ));
         $c->set(WizardRunRepository::class, static fn (Container $c) => new WizardRunRepository($c->get(Connection::class), $c->get(Clock::class)));
         $c->set(FileService::class, static fn (Container $c) => new FileService(
             $c->get(FileRepository::class),
@@ -353,6 +370,18 @@ final class Application
             $c->get(SubmissionRepository::class),
             $c->get(FileRepository::class),
             $c->get(FileService::class),
+            $c->get(LabCatalogue::class),
+            $c->get(LabSessionRepository::class),
+        ));
+        $c->set(LabController::class, static fn (Container $c) => new LabController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(LabCatalogue::class),
+            $c->get(LabGateway::class),
+            $c->get(CourseRepository::class),
+            $c->get(LessonRepository::class),
+            $c->get(LearningService::class),
+            $appKey,
         ));
         $c->set(AttemptController::class, static fn (Container $c) => new AttemptController(
             $c->get(View::class),
@@ -373,6 +402,7 @@ final class Application
             $c->get(CourseAuthoring::class),
             new ProgressReport($c->get(Connection::class)),
             $c->get(SubmissionRepository::class),
+            $c->get(LabCatalogue::class),
         ));
         $c->set(ReviewController::class, static fn (Container $c) => new ReviewController(
             $c->get(View::class),

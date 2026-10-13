@@ -130,6 +130,23 @@ sudo -u dmldeploy -H php /var/www/dml-lms/current/bin/console course:import dml 
 
 Without `--publish` it arrives as a draft for teachers to review first. A course imported before its package had files gets them with `course:sync-files dml linux-server-administration linux-server-administration` (it skips files already there). Revoke a certificate issued by mistake with `bin/console certificate:revoke ABCD-EFGH-JKLM "reason"`; the reason is shown on the public `/verify` page.
 
+### Virtual labs
+
+Labs are a lesson type. Teachers add them from **Teaching → a course → Add a lesson → Lab**, and try every lab first at **Teaching → Lab catalogue** (practice runs are not saved). This release has six: Ohm's law, titration and straight-line graphs (school subjects), and subnetting, a JavaScript function and phishing (skills). `bin/console lab:list` lists them.
+
+Nothing extra runs on the server: simulations run in the learner's browser, and learner code runs in a sandboxed frame with no network access (ADR 0011). The server only starts sessions, checks they belong to the learner, and marks answers. One cron line closes sessions whose time ran out. **After this release, reinstall the cron file once:**
+
+```bash
+install -m 644 /var/www/dml-lms/current/deploy/cron/dml-lms /etc/cron.d/dml-lms
+```
+
+Two ready-made courses use the labs. Import them (as drafts, or add `--publish`):
+
+```bash
+sudo -u dmldeploy -H php /var/www/dml-lms/current/bin/console course:import dml ss2-science-practicals --author=you@example.com
+sudo -u dmldeploy -H php /var/www/dml-lms/current/bin/console course:import dml practical-tech-skills --author=you@example.com
+```
+
 ### Email (password reset, invitations)
 
 Until `MAIL_DRIVER=smtp` is set, nothing is emailed: admins get a one-time password to pass on, and *Forgotten your password?* tells people to ask an administrator. To turn email on:

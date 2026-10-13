@@ -23,7 +23,8 @@ final class SecurityHeaders implements Middleware
             'Content-Security-Policy' => "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
                 . "font-src 'self'; connect-src 'self'; "
                 // Video lessons: only the privacy-enhanced YouTube player and Vimeo.
-                . "frame-src https://www.youtube-nocookie.com https://player.vimeo.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; "
+                // and this site's own sandboxed code runner for programming labs.
+                . "frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; "
                 . "object-src 'none'",
             'X-Content-Type-Options' => 'nosniff',
             'X-Frame-Options' => 'DENY',
@@ -40,8 +41,8 @@ final class SecurityHeaders implements Middleware
         }
 
         foreach ($headers as $name => $value) {
-            if ($name === 'Content-Security-Policy' && $response->header($name) !== null) {
-                continue; // a stricter policy set by the controller (downloads) wins
+            if (in_array($name, ['Content-Security-Policy', 'X-Frame-Options'], true) && $response->header($name) !== null) {
+                continue; // a policy set by the controller for that response wins (downloads, the lab code runner)
             }
             $response = $response->withHeader($name, $value);
         }

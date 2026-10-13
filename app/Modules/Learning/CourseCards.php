@@ -21,7 +21,7 @@ final class CourseCards
 
     /**
      * @param list<Course> $courses
-     * @return list<array{course: Course, modules: list<array{title: string, lessons: int, done: int}>, lessons: int, done: int, enrolled: bool, completed: bool}>
+     * @return list<array{course: Course, modules: list<array{title: string, lessons: int, done: int, labs: int}>, lessons: int, labs: int, done: int, enrolled: bool, completed: bool}>
      */
     public function build(int $tenantId, array $courses, ?int $userId = null): array
     {
@@ -35,12 +35,13 @@ final class CourseCards
         foreach (
             $this->db->fetchAll(
                 "SELECT m.course_id, m.id, m.title,
-                    (SELECT COUNT(*) FROM lessons l WHERE l.tenant_id = m.tenant_id AND l.module_id = m.id AND l.is_mandatory = 1) AS lessons
+                    (SELECT COUNT(*) FROM lessons l WHERE l.tenant_id = m.tenant_id AND l.module_id = m.id AND l.is_mandatory = 1) AS lessons,
+                    (SELECT COUNT(*) FROM lessons l WHERE l.tenant_id = m.tenant_id AND l.module_id = m.id AND l.type = 'lab') AS labs
              FROM course_modules m WHERE m.tenant_id = ? AND m.course_id IN ($in) ORDER BY m.position, m.id",
                 array_merge([$tenantId], $ids),
             ) as $row
         ) {
-            $modules[(int) $row['course_id']][(int) $row['id']] = ['title' => (string) $row['title'], 'lessons' => (int) $row['lessons'], 'done' => 0];
+            $modules[(int) $row['course_id']][(int) $row['id']] = ['title' => (string) $row['title'], 'lessons' => (int) $row['lessons'], 'done' => 0, 'labs' => (int) $row['labs']];
         }
 
         $enrolments = [];
@@ -79,6 +80,7 @@ final class CourseCards
                 'course' => $course,
                 'modules' => $list,
                 'lessons' => array_sum(array_column($list, 'lessons')),
+                'labs' => array_sum(array_column($list, 'labs')),
                 'done' => array_sum(array_column($list, 'done')),
                 'enrolled' => isset($enrolments[$course->id]),
                 'completed' => ($enrolments[$course->id] ?? '') === Enrolment::STATUS_COMPLETED,

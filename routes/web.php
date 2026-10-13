@@ -22,6 +22,7 @@ use App\Modules\Platform\HomeController;
 use App\Modules\Platform\SchoolsController;
 use App\Modules\Platform\SystemController;
 use App\Modules\Tenancy\Http\PeopleController;
+use App\Modules\VirtualLabs\Http\LabController;
 use App\Modules\Tenancy\Http\SchoolController;
 use App\Modules\Wizards\Http\WizardController;
 
@@ -59,6 +60,13 @@ return static function (Router $r): void {
     $r->get('/courses/{slug}/lessons/{lesson:int}/attempts/{attempt:int}', [AttemptController::class, 'result'], $learn);
     $r->post('/courses/{slug}/lessons/{lesson:int}/submissions', [LearnController::class, 'submitAssignment'], $learn);
 
+    // Virtual labs: the gateway checks on every request that the session is this learner's.
+    $r->post('/courses/{slug}/lessons/{lesson:int}/lab', [LabController::class, 'start'], $learn);
+    $r->get('/labs/runner', [LabController::class, 'runner'], [Kernel::BARE]);
+    $r->get('/labs/{session:int}', [LabController::class, 'show'], ['tenant', 'auth']);
+    $r->post('/labs/{session:int}/submit', [LabController::class, 'submit'], ['tenant', 'auth']);
+    $r->post('/labs/{session:int}/end', [LabController::class, 'end'], ['tenant', 'auth']);
+
     $r->get('/files/{file:int}', [FileController::class, 'download'], ['tenant', 'auth']);
     $r->get('/certificates/{code:code}', [CertificateController::class, 'show'], ['tenant', 'auth']);
     $r->get('/verify', [CertificateController::class, 'verify'], ['tenant']);
@@ -88,6 +96,9 @@ return static function (Router $r): void {
     $r->post('/teach/courses/{course:int}/lessons/{lesson:int}/questions/{question:int}/explanation', [LessonEditorController::class, 'updateExplanation'], $teach);
     $r->post('/teach/courses/{course:int}/lessons/{lesson:int}/files', [LessonEditorController::class, 'uploadFile'], $teach);
     $r->post('/teach/courses/{course:int}/lessons/{lesson:int}/files/{file:int}/delete', [LessonEditorController::class, 'removeFile'], $teach);
+    $r->get('/teach/labs', [LabController::class, 'catalogue'], $teach);
+    $r->get('/teach/labs/{key}', [LabController::class, 'try'], $teach);
+    $r->post('/teach/labs/{key}', [LabController::class, 'checkTry'], $teach);
     $r->get('/teach/reviews', [ReviewController::class, 'index'], $teach);
     $r->get('/teach/reviews/{submission:int}', [ReviewController::class, 'show'], $teach);
     $r->post('/teach/reviews/{submission:int}', [ReviewController::class, 'decide'], $teach);

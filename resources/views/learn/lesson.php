@@ -7,6 +7,7 @@
 /** @var array<string, string> $old */
 /** @var list<\App\Modules\Files\StoredFile> $lessonFiles */
 /** @var array<int, list<\App\Modules\Files\StoredFile>> $submissionFiles */
+/** @var ?array<string, mixed> $lab */
 $base = '/courses/' . $v->e($course->slug);
 $latest = $submissions[0] ?? null;
 ?>
@@ -117,6 +118,9 @@ $latest = $submissions[0] ?? null;
       </details>
       <?php endif; ?>
     </section>
+
+  <?php elseif ($lesson->isLab() && $lab !== null): ?>
+    <?php include __DIR__ . '/_lab.php'; ?>
 
   <?php elseif ($quiz === null || $quiz['questions'] === []): ?>
     <p class="notice">This quiz is not ready yet. Your teacher still needs to add questions.</p>

@@ -73,7 +73,7 @@ final class RichCourseTest extends AppTestCase
         $this->assertStringContainsString('data-embed="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0"', $page->body);
         $this->assertStringNotContainsString('<iframe', $page->body, 'nothing loads until the learner asks');
         $this->assertStringContainsString('Notes <strong>below</strong>', $page->body);
-        $this->assertStringContainsString('frame-src https://www.youtube-nocookie.com https://player.vimeo.com', (string) $page->header('Content-Security-Policy'));
+        $this->assertStringContainsString("frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com", (string) $page->header('Content-Security-Policy'));
 
         $this->assertRedirectTo('/courses/servers', $this->post(self::HOST, '/courses/servers/lessons/' . $id . '/complete'), 'last lesson: back to the course');
     }

@@ -29,6 +29,9 @@ $completed = count(array_filter($rows, static fn ($r) => $r['status'] === 'compl
       <?php foreach ($report['assignments'] as $assignment): ?>
         <th scope="col" class="hide-narrow"><?= $v->e($assignment['title']) ?></th>
       <?php endforeach; ?>
+      <?php foreach ($report['labs'] ?? [] as $labCol): ?>
+        <th scope="col" class="num hide-narrow"><?= $v->e($labCol['title']) ?><span class="visually-hidden">, best lab score</span></th>
+      <?php endforeach; ?>
       <th scope="col" class="hide-narrow">Last active</th>
     </tr>
   </thead>
@@ -59,11 +62,18 @@ $completed = count(array_filter($rows, static fn ($r) => $r['status'] === 'compl
           <?php else: ?><?= $v->badge('Changes asked', 'danger') ?><?php endif; ?>
         </td>
       <?php endforeach; ?>
+      <?php foreach ($report['labs'] ?? [] as $labCol): $lb = $r['labs'][$labCol['lesson_id']] ?? null; ?>
+        <td class="num hide-narrow">
+          <?php if ($lb === null): ?><span class="muted">–</span>
+          <?php elseif ($lb['passed']): ?><?= $v->badge('✓ ' . $lb['score'] . '%', 'ok') ?><span class="visually-hidden"> passed</span>
+          <?php else: ?><?= $v->badge($lb['score'] . '%', 'draft') ?><span class="visually-hidden"> not passed yet</span><?php endif; ?>
+        </td>
+      <?php endforeach; ?>
       <td class="hide-narrow"><?= $r['last_activity'] === null ? '<span class="muted">Not started</span>' : $v->datetime($r['last_activity']) ?></td>
     </tr>
   <?php endforeach; ?>
   </tbody>
 </table>
 </div>
-<p class="small muted">Quiz columns show each learner’s best score; ✓ means it reached the pass mark. Assignment columns show the latest submission.</p>
+<p class="small muted">Quiz and lab columns show each learner’s best score; ✓ means it reached the pass mark. Assignment columns show the latest submission.</p>
 <?php endif; ?>

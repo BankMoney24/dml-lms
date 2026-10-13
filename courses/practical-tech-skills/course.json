@@ -1,0 +1,208 @@
+{
+  "title": "Practical Tech Skills: Networks, Code and Staying Safe",
+  "summary": "Three job-ready skills, learned by doing: work out subnets like a network technician, write and test your first JavaScript function, and catch phishing emails before they catch you. Each topic has a short reading, a hands-on lab and a quiz.",
+  "track": "skills",
+  "level": "beginner",
+  "duration_hours": 6,
+  "outcomes": [
+    "Find the network address, broadcast address and size of an IPv4 subnet, and tell whether two devices share it",
+    "Write a JavaScript function with if / else if decisions and test it, including the boundary values",
+    "Recognise phishing messages and respond to them safely"
+  ],
+  "prerequisites": "Comfortable using a computer or smartphone. No previous programming or networking experience is needed.",
+  "modules": [
+    {
+      "title": "Networking: subnets",
+      "lessons": [
+        {
+          "type": "text",
+          "title": "Network, broadcast and hosts",
+          "file": "lessons/01-subnetting.md"
+        },
+        {
+          "type": "lab",
+          "title": "Lab: work out the subnet",
+          "lab": "subnetting",
+          "intro": "Use the binary view to find the network and broadcast addresses. Keep a pen and paper handy."
+        },
+        {
+          "type": "quiz",
+          "title": "Subnetting quiz",
+          "pass_threshold": 70,
+          "intro": "Four questions on subnets.",
+          "questions": [
+            {
+              "prompt": "How many usable host addresses does a /27 network have?",
+              "options": [
+                "32",
+                "30",
+                "27",
+                "62"
+              ],
+              "correct": 1,
+              "explanation": "/27 leaves 5 host bits: 2⁵ − 2 = 30."
+            },
+            {
+              "prompt": "What is the network address of 192.168.1.130/25?",
+              "options": [
+                "192.168.1.0",
+                "192.168.1.130",
+                "192.168.1.255",
+                "192.168.1.128"
+              ],
+              "correct": 3,
+              "explanation": "/25 splits the last octet at 128. 130 is in the block 128–255, so the network is 192.168.1.128."
+            },
+            {
+              "prompt": "Which subnet mask is the same as /24?",
+              "options": [
+                "255.255.255.0",
+                "255.255.0.0",
+                "255.255.255.128",
+                "255.0.0.0"
+              ],
+              "correct": 0,
+              "explanation": "24 bits of ones: three full octets of 255."
+            },
+            {
+              "prompt": "Are 10.0.0.14/28 and 10.0.0.17/28 on the same network?",
+              "options": [
+                "Yes: both start with 10.0.0",
+                "Yes: /28 networks have 256 addresses",
+                "No: they are in 10.0.0.0 and 10.0.0.16",
+                "It depends on the router"
+              ],
+              "correct": 2,
+              "explanation": "/28 blocks are 16 addresses: 0–15 and 16–31. 14 and 17 fall in different blocks."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Programming: functions and decisions",
+      "lessons": [
+        {
+          "type": "text",
+          "title": "Functions and if / else if",
+          "file": "lessons/02-js-functions.md"
+        },
+        {
+          "type": "lab",
+          "title": "Lab: scores into grades",
+          "lab": "js-grades",
+          "intro": "Write the function, run the examples, then check it on fresh scores. Your code runs only in your browser."
+        },
+        {
+          "type": "quiz",
+          "title": "Functions quiz",
+          "pass_threshold": 70,
+          "intro": "Three questions on functions and conditions.",
+          "questions": [
+            {
+              "prompt": "What does this return for 70?  if (s > 70) return \"A\"; else return \"B\";",
+              "options": [
+                "\"A\"",
+                "\"B\"",
+                "Nothing",
+                "An error"
+              ],
+              "correct": 1,
+              "explanation": "70 > 70 is false, so the else branch runs. To include 70 use >=."
+            },
+            {
+              "prompt": "What does the return keyword do?",
+              "options": [
+                "Sends a value back and ends the function",
+                "Prints a value on the screen",
+                "Repeats the function",
+                "Declares a variable"
+              ],
+              "correct": 0,
+              "explanation": "return ends the function immediately and gives its value to whoever called it."
+            },
+            {
+              "prompt": "Why should you test scores like 39, 40, 44 and 45?",
+              "options": [
+                "They are the most common scores",
+                "JavaScript treats them differently",
+                "Mistakes are most likely at the boundaries between grades",
+                "To make the code faster"
+              ],
+              "correct": 2,
+              "explanation": "A wrong operator such as > instead of >= only shows up on the boundary value."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Cybersecurity: phishing",
+      "lessons": [
+        {
+          "type": "text",
+          "title": "How to spot phishing",
+          "file": "lessons/03-phishing.md"
+        },
+        {
+          "type": "lab",
+          "title": "Lab: sort the inbox",
+          "lab": "phishing",
+          "intro": "Open every email, check who sent it and where its link goes, then mark it safe or phishing."
+        },
+        {
+          "type": "quiz",
+          "title": "Phishing quiz",
+          "pass_threshold": 70,
+          "intro": "Four questions on staying safe.",
+          "questions": [
+            {
+              "prompt": "An SMS from \"your bank\" asks for the one-time code you just received. What should you do?",
+              "options": [
+                "Reply with the code quickly",
+                "Forward it to a friend to check",
+                "Share only half of it",
+                "Never share it; call the bank on its official number"
+              ],
+              "correct": 3,
+              "explanation": "One-time codes let someone take over your account. Banks never ask for them."
+            },
+            {
+              "prompt": "Which sender address is most likely genuine for Jumia?",
+              "options": [
+                "jumia-support@gmail.com",
+                "no-reply@jumia.com.ng",
+                "orders@jumia-ng-delivery.xyz",
+                "jumia@outlook.com"
+              ],
+              "correct": 1,
+              "explanation": "Genuine messages come from the company's own domain."
+            },
+            {
+              "prompt": "What is the safest way to check a link in an email that looks real?",
+              "options": [
+                "Click it quickly and close the page",
+                "Reply and ask if it is real",
+                "Forward it to everyone",
+                "Type the website address yourself instead of clicking"
+              ],
+              "correct": 3,
+              "explanation": "Going to the site yourself avoids look-alike addresses entirely."
+            },
+            {
+              "prompt": "You clicked a phishing link and typed your school password. What first?",
+              "options": [
+                "Change the password on the real site and report it",
+                "Do nothing and hope",
+                "Delete the email and forget it",
+                "Turn off your phone"
+              ],
+              "correct": 0,
+              "explanation": "Acting quickly limits the damage: change the password, then tell the ICT unit."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

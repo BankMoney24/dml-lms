@@ -1,7 +1,9 @@
-# DML Learning Platform: send queued emails (password resets, invitations).
+# DML Learning Platform: send queued emails (password resets, invitations)
+# and close lab sessions whose time ran out.
 # Installed to /etc/cron.d/dml-lms. Runs as the PHP user, which can read
 # shared/.env and write shared/storage but cannot change the code.
 # Pages also try to send right after the response; this catches retries.
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/bin:/bin
 * * * * * dmllms php /var/www/dml-lms/current/bin/console mail:work >/dev/null
+*/10 * * * * dmllms php /var/www/dml-lms/current/bin/console lab:expire >/dev/null

@@ -11,6 +11,7 @@ use App\Modules\Assessments\AssessmentRepository;
 use App\Modules\Audit\AuditLog;
 use App\Modules\Identity\CurrentUser;
 use App\Modules\Identity\Permission;
+use App\Modules\VirtualLabs\LabCatalogue;
 
 /**
  * Educator use cases for building, editing and publishing a course.
@@ -27,6 +28,7 @@ final class CourseAuthoring
         private readonly LessonRepository $lessons,
         private readonly AssessmentRepository $assessments,
         private readonly AuditLog $audit,
+        private readonly LabCatalogue $labs = new LabCatalogue([]),
     ) {
     }
 
@@ -41,7 +43,7 @@ final class CourseAuthoring
     }
 
     /**
-     * @param array{title: string, summary: string, level?: string, duration_hours?: string, outcomes?: string, prerequisites?: string} $input
+     * @param array{title: string, summary: string, level?: string, duration_hours?: string, outcomes?: string, prerequisites?: string, track?: string} $input
      */
     public function updateDetails(Course $course, CurrentUser $author, array $input): void
     {
@@ -64,14 +66,14 @@ final class CourseAuthoring
         }
         $this->db->transaction(function () use ($course, $title, $summary, $profile): void {
             $this->courses->updateDetails($course->tenantId, $course->id, $title, $summary);
-            $this->courses->updateProfile($course->tenantId, $course->id, $profile['level'], $profile['hours'], $profile['outcomes'], $profile['prerequisites']);
+            $this->courses->updateProfile($course->tenantId, $course->id, $profile['level'], $profile['hours'], $profile['outcomes'], $profile['prerequisites'], $profile['track']);
         });
         $this->audit->record($course->tenantId, $author->user->id, 'course.updated', 'course', $course->id);
     }
 
     /**
-     * @param array{level?: string, duration_hours?: string, outcomes?: string, prerequisites?: string} $input
-     * @return array{level: ?string, hours: ?int, outcomes: list<string>, prerequisites: string}
+     * @param array{level?: string, duration_hours?: string, outcomes?: string, prerequisites?: string, track?: string} $input
+     * @return array{level: ?string, hours: ?int, outcomes: list<string>, prerequisites: string, track: ?string}
      */
     public function validProfile(array $input): array
     {
@@ -79,6 +81,10 @@ final class CourseAuthoring
         $level = trim($input['level'] ?? '');
         if ($level !== '' && !isset(Course::LEVELS[$level])) {
             $errors['level'] = 'Choose beginner, intermediate or advanced.';
+        }
+        $track = trim($input['track'] ?? '');
+        if ($track !== '' && !isset(Course::TRACKS[$track])) {
+            $errors['track'] = 'Choose school subject or skills.';
         }
         $rawHours = trim($input['duration_hours'] ?? '');
         $hours = null;
@@ -106,7 +112,7 @@ final class CourseAuthoring
             throw new ValidationException($errors);
         }
 
-        return ['level' => $level === '' ? null : $level, 'hours' => $hours, 'outcomes' => $outcomes, 'prerequisites' => $prerequisites];
+        return ['level' => $level === '' ? null : $level, 'hours' => $hours, 'outcomes' => $outcomes, 'prerequisites' => $prerequisites, 'track' => $track === '' ? null : $track];
     }
 
     public function addModule(Course $course, CurrentUser $author, string $title): int
@@ -138,7 +144,7 @@ final class CourseAuthoring
     }
 
     /**
-     * @param array{type: string, title: string, body: string, media_url?: string, pass_threshold?: string, max_attempts?: string} $input
+     * @param array{type: string, title: string, body: string, media_url?: string, pass_threshold?: string, max_attempts?: string, lab_key?: string} $input
      */
     public function addLesson(Course $course, CurrentUser $author, int $moduleId, array $input): int
     {
@@ -153,7 +159,7 @@ final class CourseAuthoring
         $valid = $this->validLesson($type, $input);
 
         return $this->db->transaction(function () use ($course, $moduleId, $type, $valid): int {
-            $lessonId = $this->lessons->addLesson($course->tenantId, $course->id, $moduleId, $type, $valid['title'], $valid['body'], $valid['media_url']);
+            $lessonId = $this->lessons->addLesson($course->tenantId, $course->id, $moduleId, $type, $valid['title'], $valid['body'], $valid['media_url'], $valid['lab_key']);
             if ($type === Lesson::TYPE_QUIZ) {
                 $this->assessments->create($course->tenantId, $lessonId, $valid['threshold'], $valid['max_attempts']);
             }
@@ -170,7 +176,8 @@ final class CourseAuthoring
     {
         $this->authoriseFor($course, $author);
         $lesson = $this->requireLesson($course, $lessonId);
-        $valid = $this->validLesson($lesson->type, $input + ['type' => $lesson->type]);
+        // A lab lesson keeps its lab; to use another lab, add a new lesson.
+        $valid = $this->validLesson($lesson->type, ['lab_key' => (string) $lesson->labKey] + $input + ['type' => $lesson->type]);
 
         $this->db->transaction(function () use ($course, $lesson, $valid, $author): void {
             $this->lessons->updateLesson($course->tenantId, $course->id, $lesson->id, $valid['title'], $valid['body'], $valid['media_url']);
@@ -306,6 +313,9 @@ final class CourseAuthoring
             if ($lesson->isVideo() && $lesson->video() === null) {
                 $problems[] = sprintf('Add a YouTube or Vimeo link to the video lesson “%s”.', $lesson->title);
             }
+            if ($lesson->isLab() && $this->labs->find($lesson->labKey) === null) {
+                $problems[] = sprintf('The lab lesson “%s” uses a lab this version does not have. Delete it or choose another lab.', $lesson->title);
+            }
             if (!$lesson->isQuiz()) {
                 continue;
             }
@@ -395,14 +405,24 @@ final class CourseAuthoring
     }
 
     /**
-     * @param array{type: string, title: string, body: string, media_url?: string, pass_threshold?: string, max_attempts?: string} $input
-     * @return array{title: string, body: string, media_url: ?string, threshold: int, max_attempts: ?int}
+     * @param array{type: string, title: string, body: string, media_url?: string, pass_threshold?: string, max_attempts?: string, lab_key?: string} $input
+     * @return array{title: string, body: string, media_url: ?string, threshold: int, max_attempts: ?int, lab_key: ?string}
      */
     private function validLesson(string $type, array $input): array
     {
         $title = self::clean($input['title']);
         $body = trim($input['body']);
         $errors = [];
+        $labKey = null;
+        if ($type === Lesson::TYPE_LAB) {
+            $lab = $this->labs->find(trim($input['lab_key'] ?? ''));
+            if ($lab === null) {
+                $errors['lab_key'] = 'Choose a lab from the catalogue.';
+            } else {
+                $labKey = $lab->definition()->key;
+                $title = $title === '' ? $lab->definition()->title : $title;
+            }
+        }
         if (mb_strlen($title) < 2 || mb_strlen($title) > 190) {
             $errors['lesson_title'] = 'Give the lesson a title between 2 and 190 characters.';
         }
@@ -448,7 +468,7 @@ final class CourseAuthoring
             throw new ValidationException($errors);
         }
 
-        return ['title' => $title, 'body' => $body, 'media_url' => $mediaUrl, 'threshold' => $threshold, 'max_attempts' => $maxAttempts];
+        return ['title' => $title, 'body' => $body, 'media_url' => $mediaUrl, 'threshold' => $threshold, 'max_attempts' => $maxAttempts, 'lab_key' => $labKey];
     }
 
     private function uniqueSlug(int $tenantId, string $title): string

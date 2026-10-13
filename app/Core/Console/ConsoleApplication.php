@@ -49,6 +49,8 @@ final class ConsoleApplication
                 'user:create' => $this->userCreate($args),
                 'seed:demo' => $this->seedDemo($args),
                 'mail:work' => $this->mailWork(),
+                'lab:expire' => $this->labExpire(),
+                'lab:list' => $this->labList(),
                 'mail:status' => $this->mailStatus(),
                 'mail:test' => $this->mailTest($args),
                 'course:packages' => $this->coursePackages(),
@@ -89,6 +91,8 @@ final class ConsoleApplication
           course:sync-files <tenant-slug> <package> <course-slug>
                                                     Add a package's lesson files to a course imported earlier
           certificate:revoke <code> "<reason>"      Revoke a certificate; the reason shows on /verify
+          lab:list                                  The labs in this release (use the key in course packages)
+          lab:expire                                Close lab sessions whose time ran out (cron, every 10 minutes)
           user:platform-admin <email> [--revoke]    Let a user see the System page (they must use two-step sign-in)
 
         TXT;
@@ -349,6 +353,25 @@ final class ConsoleApplication
         [$code, $reason] = $this->requireArgs($args, 2, 'certificate:revoke <code> "<reason>"');
         $certificate = $this->container->get(CertificateService::class)->revoke($code, $reason);
         printf("Revoked %s (%s, %s).\n", $certificate->displayCode(), $certificate->learnerName, $certificate->courseTitle);
+
+        return 0;
+    }
+
+    private function labExpire(): int
+    {
+        $n = $this->container->get(\App\Modules\VirtualLabs\LabGateway::class)->expireStale();
+        if ($n > 0) {
+            echo "Expired {$n} lab session(s).\n";
+        }
+
+        return 0;
+    }
+
+    private function labList(): int
+    {
+        foreach ($this->container->get(\App\Modules\VirtualLabs\LabCatalogue::class)->definitions() as $d) {
+            printf("%-16s v%-3d %-14s %-6s %s\n", $d->key, $d->version, $d->subject, $d->level, $d->title);
+        }
 
         return 0;
     }

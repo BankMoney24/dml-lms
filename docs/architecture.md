@@ -29,6 +29,7 @@ Health endpoints (`/health`, `/health/ready`) skip session, tenant and auth.
 | Assessments | assessments, questions, attempts, scoring | Learning (to record a passed quiz) |
 | Audit | audit_events | Core |
 | Wizards | wizard_runs and the generic wizard screens (ADR 0010) | Identity, Audit |
+| VirtualLabs | lab catalogue, lab_sessions, the lab gateway and code runner (ADR 0011) | Courses, Learning, Audit |
 | Platform | home page, health, System page, Schools (platform administrators) | Tenancy, Identity; otherwise read-only |
 
 Controllers stay thin: parse input, call a use case, render. Business rules live in services (`CourseAuthoring`, `LearningService`, `AttemptService`) and pure classes (`QuizScorer`, `CompletionRule`) that are unit-tested without a database.

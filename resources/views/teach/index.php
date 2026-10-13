@@ -5,6 +5,7 @@
     <p class="lead">Build courses, publish them, and follow how learners are doing.</p>
   </div>
   <p class="actions">
+    <a class="button button-quiet" href="/teach/labs">Lab catalogue</a>
     <a class="button button-quiet" href="/teach/reviews">Reviews<?= $pendingReviews > 0 ? ' (' . (int) $pendingReviews . ')' : '' ?></a>
     <a class="button" href="/teach/courses/new">New course</a>
   </p>

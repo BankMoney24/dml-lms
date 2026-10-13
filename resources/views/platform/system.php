@@ -13,7 +13,7 @@ $tone = static fn (string $state): string => match ($state) {
     default => 'danger',
 };
 $bytes = static fn (?int $b): string => $b === null ? '–' : \App\Modules\Files\StoredFile::formatBytes($b);
-['app' => $app, 'backup' => $backup, 'restore' => $restore, 'mail' => $mail, 'storage' => $storage, 'scanner' => $scanner] = $report;
+['app' => $app, 'backup' => $backup, 'restore' => $restore, 'mail' => $mail, 'storage' => $storage, 'scanner' => $scanner, 'labs' => $labs] = $report;
 ?>
 <header class="page-head">
   <h1>System</h1>
@@ -88,6 +88,15 @@ $bytes = static fn (?int $b): string => $b === null ? '–' : \App\Modules\Files
     </table>
     </div>
     <?php endif; ?>
+  </section>
+
+  <section class="status-card status-<?= $v->e($labs['state']) ?>" aria-labelledby="st-labs">
+    <h2 id="st-labs">Virtual labs <?= $v->badge($label($labs['state']), $tone($labs['state'])) ?></h2>
+    <p><?= $v->e($labs['note']) ?></p>
+    <dl class="facts">
+      <dt>Open now</dt><dd><?= (int) $labs['open'] ?></dd>
+      <dt>Last 7 days</dt><dd><?= (int) $labs['week'] ?> started, <?= (int) $labs['passed_week'] ?> passed</dd>
+    </dl>
   </section>
 
   <section class="status-card status-<?= $v->e($scanner['state']) ?>" aria-labelledby="st-scan">

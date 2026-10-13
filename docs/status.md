@@ -37,7 +37,7 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 | IAM-005 MFA for privileged admins | Built | Authenticator-app codes (TOTP, RFC 6238) with replay protection, 10 hashed recovery codes, secret encrypted at rest; required for owners/admins (`TWO_FACTOR_REQUIRED_ROLES`); owner can reset a member who lost their phone. ADR 0006 |
 | IAM-006 invalidate sessions on credential/membership change | Built | session_version |
 | IAM-007 generic auth errors | Built | Constant-time path for unknown accounts |
-| CRS-001/002 courses, modules, ordered lessons | Built | Reading (Markdown: headings, lists, code blocks with copy, callouts, tables), video (YouTube/Vimeo, privacy-enhanced, loads only on request), quiz and assignment lessons; edit, reorder, preview, unpublish; level, hours, outcomes and prerequisites. Files on any lesson (PDFs, handouts, configs, scripts), shown with their size. Course packages import with `course:import`, including files. Lab lessons and price next |
+| CRS-001/002 courses, modules, ordered lessons | Built | Lab lessons from the lab catalogue. School subject / Skills track on courses, filterable in the course list. Reading (Markdown: headings, lists, code blocks with copy, callouts, tables), video (YouTube/Vimeo, privacy-enhanced, loads only on request), quiz and assignment lessons; edit, reorder, preview, unpublish; level, hours, outcomes and prerequisites. Files on any lesson (PDFs, handouts, configs, scripts), shown with their size. Course packages import with `course:import`, including files. Lab lessons and price next |
 | CRS-003 preview/gated content | Partial | Enrolment gate ✔; preview lessons next |
 | CRS-004 progress and resume | Built | "Continue" goes to the first incomplete lesson |
 | ASM-001 MCQ, server scoring, thresholds | Built | Floor rounding; answers never sent to the browser; per-question explanations shown once the learner passes (or runs out of attempts) |
@@ -45,7 +45,7 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 | ASM-003 file/text submissions | Built | Assignment lessons: text answer (Markdown), a link and up to 3 files; teacher review queue with approve / ask for changes, feedback, full history, email to the learner |
 | ASM-004 configurable completion rule | Partial | All mandatory lessons, quizzes need their pass mark; per-course rule config next |
 | ASM-005 certificates | Built | Issued automatically on completion, printable (A4 landscape), 12-character code checked on the public `/verify` page, revocable (`certificate:revoke`). ADR 0007 |
-| LAB-001…007 virtual labs | Next | Separate service per PRD §10.1; not in this slice |
+| LAB-001…008 virtual labs | Built (browser labs) | Versioned catalogue of 6 labs: Ohm's law, titration, straight-line graphs (school subjects); subnetting, a JavaScript function, phishing (skills). Lab lessons; gateway with enrolment check, per-learner bindings re-checked on every request, one open session per lesson, 30 launches/hour, time limits with expiry (`lab:expire` cron), row-locked marking on the server from a per-session seed, capped evidence, audit events. Learner code runs only in a sandboxed, network-less iframe + Web Worker with a 2 s limit. Teacher catalogue with unsaved practice runs; lab columns in progress reports; System page usage. ADR 0011. Server-side isolated execution (shells, network emulation) for later |
 | PAY-001…005 payments (Paystack) | Next | |
 | PAR-* guardians | Next | Guardian role exists with no permissions |
 | ADM-001 tenant reports | Partial | Per-course learner progress (lessons done, best quiz score per quiz, last activity). Tenant-wide reports and export next |
@@ -75,5 +75,5 @@ Shared components rendered by `ViewHelpers` (labelled fields with inline errors,
 2. Choose the email provider for the server and add SPF/DKIM for the domain (code is ready; see deployment.md → Email).
 3. Turn on ClamAV scanning on the server (deployment.md → Uploaded files).
 4. Paystack adapter with verified, idempotent webhooks, then the billing step of the setup wizard.
-5. First lab provider behind the lab-session contract.
+5. Isolated execution service for real-machine labs (Linux shell, network emulation) behind the same lab-session contract.
 6. Terminology per school and grouping learners by class or level (builds on the academic year from setup).

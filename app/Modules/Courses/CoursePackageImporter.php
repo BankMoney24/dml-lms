@@ -63,6 +63,7 @@ final class CoursePackageImporter
                 'duration_hours' => isset($package['duration_hours']) ? (string) self::int($package, 'duration_hours', 'course') : '',
                 'outcomes' => implode("\n", self::strings($package, 'outcomes', 'course')),
                 'prerequisites' => self::str($package, 'prerequisites', 'course', ''),
+                'track' => self::str($package, 'track', 'course', ''),
             ]));
 
             $counts = ['modules' => 0, 'lessons' => 0, 'questions' => 0, 'files' => 0];
@@ -161,7 +162,7 @@ final class CoursePackageImporter
         $type = self::str($lesson, 'type', $at);
         $body = isset($lesson['file'])
             ? (string) file_get_contents($this->resolve($directory, self::str($lesson, 'file', $at), $at))
-            : self::str($lesson, $type === 'quiz' ? 'intro' : 'body', $at, '');
+            : self::str($lesson, in_array($type, ['quiz', 'lab'], true) ? 'intro' : 'body', $at, '');
 
         $lessonId = $this->step($at, fn (): int => $this->authoring->addLesson($course, $author, $moduleId, [
             'type' => $type,
@@ -170,6 +171,7 @@ final class CoursePackageImporter
             'media_url' => self::str($lesson, 'url', $at, ''),
             'pass_threshold' => (string) ($lesson['pass_threshold'] ?? 70),
             'max_attempts' => isset($lesson['max_attempts']) ? (string) $lesson['max_attempts'] : '',
+            'lab_key' => self::str($lesson, 'lab', $at, ''),
         ]));
 
         $attachments = self::strings($lesson, 'attachments', $at);

@@ -11,6 +11,9 @@ final class Course
 
     public const LEVELS = ['beginner' => 'Beginner', 'intermediate' => 'Intermediate', 'advanced' => 'Advanced'];
 
+    /** Formal curriculum subjects (e.g. SS1–SS3) or vocational and professional skills. */
+    public const TRACKS = ['school' => 'School subject', 'skills' => 'Skills'];
+
     /** @param list<string> $outcomes */
     public function __construct(
         public readonly int $id,
@@ -23,6 +26,7 @@ final class Course
         public readonly ?int $durationHours = null,
         public readonly array $outcomes = [],
         public readonly string $prerequisites = '',
+        public readonly ?string $track = null,
     ) {
     }
 
@@ -42,12 +46,18 @@ final class Course
             isset($row['duration_hours']) ? (int) $row['duration_hours'] : null,
             self::lines((string) ($row['outcomes'] ?? '')),
             (string) ($row['prerequisites'] ?? ''),
+            isset($row['track']) && isset(self::TRACKS[(string) $row['track']]) ? (string) $row['track'] : null,
         );
     }
 
     public function isPublished(): bool
     {
         return $this->status === self::STATUS_PUBLISHED;
+    }
+
+    public function trackLabel(): ?string
+    {
+        return $this->track === null ? null : self::TRACKS[$this->track];
     }
 
     public function levelLabel(): ?string
