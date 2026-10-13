@@ -9,6 +9,8 @@ use App\Core\Http\HttpException;
 use App\Core\Mail\MailSettings;
 use App\Core\Validation\ValidationException;
 use App\Modules\Audit\AuditLog;
+use App\Modules\Groups\GroupRepository;
+use App\Modules\Notifications\Notifier;
 use App\Core\Http\UploadedFile;
 use App\Modules\Courses\Course;
 use App\Modules\Files\FileRepository;
@@ -50,6 +52,8 @@ final class AssignmentService
         private readonly EmailComposer $composer,
         private readonly FileService $files,
         private readonly FileRepository $fileRecords,
+        private readonly ?Notifier $notifier = null,
+        private readonly ?GroupRepository $groups = null,
     ) {
     }
 
@@ -103,6 +107,7 @@ final class AssignmentService
                 $id = $latest->id;
             } else {
                 $id = $this->submissions->insert($enrolment->tenantId, $lesson->id, $enrolment->id, $enrolment->userId, $body, $linkOrNull);
+                $this->tellReviewers($enrolment, $lesson, $id);
             }
             if ($prepared !== []) {
                 $this->files->persist($enrolment->tenantId, $enrolment->userId, $prepared, null, $id);
@@ -161,9 +166,44 @@ final class AssignmentService
         });
     }
 
+    /** The course's author and the learner's teachers hear that new work is waiting. */
+    private function tellReviewers(Enrolment $enrolment, Lesson $lesson, int $submissionId): void
+    {
+        if ($this->notifier === null) {
+            return;
+        }
+        $course = $this->courses->findById($enrolment->tenantId, $lesson->courseId);
+        $learner = $this->users->findById($enrolment->userId);
+        if ($course === null || $learner === null) {
+            return;
+        }
+        $recipients = $this->groups?->teachersFor($enrolment->tenantId, $enrolment->userId, $course->id) ?? [];
+        $author = $this->courses->authorId($enrolment->tenantId, $course->id);
+        if ($author !== null) {
+            $recipients[] = $author;
+        }
+        $recipients = array_values(array_filter(array_unique($recipients), static fn (int $id): bool => $id !== $enrolment->userId));
+        $this->notifier->notifyMany(
+            $enrolment->tenantId,
+            $recipients,
+            Notifier::ASSIGNMENT_SUBMITTED,
+            'New work to review: ' . $lesson->title,
+            sprintf('%s handed it in for %s.', $learner->displayName, $course->title),
+            '/teach/reviews/' . $submissionId,
+        );
+    }
+
     /** Queued in the same transaction as the review, so the email exists only if the review does. */
     private function notify(Tenant $tenant, Course $course, Lesson $lesson, int $learnerId, string $status, string $feedback, CurrentUser $reviewer, string $baseUrl): void
     {
+        $this->notifier?->notify(
+            $course->tenantId,
+            $learnerId,
+            Notifier::ASSIGNMENT_REVIEWED,
+            ($status === Submission::APPROVED ? 'Approved: ' : 'Changes requested: ') . $lesson->title,
+            sprintf('%s reviewed your work in %s.', $reviewer->user->displayName, $course->title),
+            '/courses/' . $course->slug . '/lessons/' . $lesson->id,
+        );
         if (!$this->mail->deliveryAvailable()) {
             return;
         }

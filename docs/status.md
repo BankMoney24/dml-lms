@@ -53,7 +53,8 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 | Operations overview | Built | **System** page for platform administrators: backups, restore test, migrations, email, disk and per-school storage, virus scanner; red/amber/green with the fix written out |
 | ADM-002 audit events | Built | Recorded for sign-in, people changes, course and lesson changes, enrolment, attempts, completion; readable **Activity** page for owners/admins |
 | NTF-002 transactional email | Partial | SMTP (STARTTLS/SSL) through a durable outbox with retry/backoff, `mail:work` cron, bodies erased after send. Account emails only; course/enrolment notifications and preferences next |
-| NTF-001/003+, SUP-001 | Next | In-app notifications, SMS/WhatsApp, support desk |
+| NTF-001 in-app notifications | Built | Bell with unread count and a Notifications page: new work to review (course author and class teachers), review decisions, joining a class, courses set or due dates changed, becoming a class teacher, payment confirmed, certificate ready, class announcements. Safe same-site links, current members only, read ones cleared after 90 days. Class announcements on the class page and learners' home pages. ADR 0015 |
+| NTF-003, SUP-001 | Next | SMS/WhatsApp after consent review; support desk |
 | §8 offline | Partial | Offline banner, static-asset service worker, quiz drafts on device until server confirms, idempotent submit. IndexedDB outbox and conflict handling next |
 | §9 public API v1 | Next | |
 | §12 accessibility | Partial | Semantic HTML, labels, error association, focus styles, reduced motion, 44px targets. Not yet audited with assistive technology |

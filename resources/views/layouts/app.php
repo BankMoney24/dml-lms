@@ -82,6 +82,12 @@ $themeKey = $tenant?->theme ?? \App\Modules\Tenancy\SchoolTheme::DEFAULT;
         <?php if ($user->isPlatformAdmin): ?><?= $v->navLink('/system', 'System') ?><?php endif; ?>
       </nav>
       <div class="account">
+        <?php $unread = (int) $v->shared('unread', 0); ?>
+        <a class="bell<?= $unread > 0 ? ' has-new' : '' ?>" href="/notifications"<?= $v->shared('path') === '/notifications' ? ' aria-current="page"' : '' ?>>
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>
+          <span class="visually-hidden">Notifications<?= $unread > 0 ? ', ' . $v->e($unread >= 100 ? 'over 99' : (string) $unread) . ' new' : '' ?></span>
+          <?php if ($unread > 0): ?><span class="bell-count" aria-hidden="true"><?= $unread >= 100 ? '99+' : $unread ?></span><?php endif; ?>
+        </a>
         <a class="account-me" href="/account"<?= $v->shared('path') === '/account' ? ' aria-current="page"' : '' ?>>
           <span class="account-name"><?= $v->e($user->displayName) ?></span><?php if ($role !== null): ?> <span class="role"><?= $v->e($role->label()) ?></span><?php endif; ?>
         </a>

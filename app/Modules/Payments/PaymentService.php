@@ -46,6 +46,7 @@ final class PaymentService
         private readonly AuditLog $audit,
         private readonly Logger $logger,
         private readonly Clock $clock,
+        private readonly ?\App\Modules\Notifications\Notifier $notifier = null,
     ) {
     }
 
@@ -340,5 +341,13 @@ final class PaymentService
             return;
         }
         $this->learning->enrol($course, new CurrentUser($user, $membership));
+        $this->notifier?->notify(
+            $tenant->id,
+            $user->id,
+            \App\Modules\Notifications\Notifier::PAYMENT_PAID,
+            'Payment received for ' . $course->title,
+            'You are enrolled. Start whenever you are ready.',
+            '/courses/' . $course->slug,
+        );
     }
 }

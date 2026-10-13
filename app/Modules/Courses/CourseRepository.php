@@ -159,6 +159,13 @@ final class CourseRepository
         );
     }
 
+    public function authorId(int $tenantId, int $courseId): ?int
+    {
+        $id = $this->db->fetchValue('SELECT created_by FROM courses WHERE tenant_id = ? AND id = ?', [$tenantId, $courseId]);
+
+        return $id === null ? null : (int) $id;
+    }
+
     public function updatePrice(int $tenantId, int $courseId, ?int $priceMinor, ?string $currency): void
     {
         $this->db->execute(

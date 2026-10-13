@@ -1200,3 +1200,28 @@ ul.plain { list-style: none; margin: 0 0 var(--space-2); padding: 0; }
 /* Header: room between an uploaded logo and the school's name. */
 .brand { gap: var(--space-3); }
 .brand-logo { height: 2rem; }
+
+/* Notifications: the bell in the top bar and the list */
+.bell { position: relative; display: inline-grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: var(--radius-s); color: var(--ink-soft); }
+.bell:hover, .bell[aria-current="page"] { color: var(--ink); background: var(--paper); }
+.bell svg { width: 1.375rem; height: 1.375rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+.bell.has-new { color: var(--ink); }
+.bell-count { position: absolute; top: 0.1rem; right: 0.05rem; min-width: 1.15rem; height: 1.15rem; padding: 0 0.25rem; border-radius: 3px; background: var(--accent); color: #fff; font-size: 0.6875rem; font-weight: 800; line-height: 1.15rem; text-align: center; font-variant-numeric: tabular-nums; }
+.notice-list { list-style: none; padding: 0; margin: 0 0 var(--space-4); display: grid; gap: var(--space-2); max-width: 46rem; }
+.notice-item a { position: relative; display: grid; gap: 2px; padding: var(--space-3) var(--space-4) var(--space-3) var(--space-6); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); text-decoration: none; color: var(--ink); }
+.notice-item a:hover { border-color: var(--primary); }
+.notice-item a::before { content: ""; position: absolute; left: var(--space-4); top: 1.15rem; width: 0.5rem; height: 0.5rem; border-radius: 2px; background: var(--line); }
+.notice-item.is-new a { border-left: 4px solid var(--accent); padding-left: calc(var(--space-6) - 3px); }
+.notice-item.is-new a::before { background: var(--accent); left: calc(var(--space-4) - 3px); }
+.notice-title { font-weight: 650; }
+.notice-item:not(.is-new) .notice-title { font-weight: 500; }
+.notice-body { color: var(--ink-soft); font-size: var(--step--1); }
+.notice-time { color: var(--ink-soft); font-size: 0.8125rem; }
+/* Announcements */
+.announce-form { max-width: 46rem; margin-bottom: var(--space-4); }
+.ann-list { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-3); max-width: 46rem; }
+.ann { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--lamp); border-radius: var(--radius-m); padding: var(--space-3) var(--space-4); }
+.ann p { margin: var(--space-1) 0; }
+.ann-meta { display: flex; gap: var(--space-2); align-items: baseline; flex-wrap: wrap; }
+.ann-home { margin: 0 0 var(--space-3); background: var(--paper); }
+@media (max-width: 48rem) { .account .bell { width: 2.25rem; height: 2.25rem; } }

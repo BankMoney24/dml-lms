@@ -30,6 +30,7 @@ Health endpoints (`/health`, `/health/ready`) skip session, tenant and auth.
 | Audit | audit_events | Core |
 | Wizards | wizard_runs and the generic wizard screens (ADR 0010) | Identity, Audit |
 | VirtualLabs | lab catalogue, lab_sessions, the lab gateway and code runner (ADR 0011) | Courses, Learning, Audit |
+| Notifications | email outbox; in-app notifications and the Notifier other modules call (ADR 0015) | Identity, Tenancy |
 | Groups | learner_groups (classes, cohorts), members, courses set for a group, progress grid (ADR 0013) | Courses, Learning, Identity, Audit |
 | Payments | course prices, payment_accounts (sealed Paystack keys), payments, payment_events, checkout, verify and webhook handling (ADR 0012) | Courses, Learning, Identity, Audit |
 | Platform | home page, health, System page, Schools (platform administrators) | Tenancy, Identity; otherwise read-only |

@@ -27,6 +27,7 @@ final class CertificateService
         private readonly UserRepository $users,
         private readonly AuditLog $audit,
         private readonly TenantRepository $tenants,
+        private readonly ?\App\Modules\Notifications\Notifier $notifier = null,
     ) {
     }
 
@@ -55,6 +56,14 @@ final class CertificateService
                 $certificate = $this->certificates->findForEnrolment($enrolment->tenantId, $enrolment->id)
                     ?? throw new RuntimeException('Certificate not stored.');
                 $this->audit->record($enrolment->tenantId, $enrolment->userId, 'certificate.issued', 'certificate', $certificate->id);
+                $this->notifier?->notify(
+                    $enrolment->tenantId,
+                    $user->id,
+                    \App\Modules\Notifications\Notifier::CERTIFICATE,
+                    'Your certificate for ' . $course->title . ' is ready',
+                    'Well done on finishing the course. Print it, or share its number so anyone can check it.',
+                    '/certificates/' . $certificate->displayCode(),
+                );
 
                 return $certificate;
             }

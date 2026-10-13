@@ -15,6 +15,7 @@ use App\Modules\Identity\Permission;
 use App\Modules\Identity\Role;
 use App\Modules\Identity\UserRepository;
 use App\Modules\Learning\LearningService;
+use App\Modules\Notifications\Notifier;
 use App\Modules\Tenancy\MembershipRepository;
 use App\Modules\Tenancy\Tenant;
 
@@ -41,6 +42,7 @@ final class GroupService
         private readonly LearningService $learning,
         private readonly AuditLog $audit,
         private readonly Clock $clock,
+        private readonly ?Notifier $notifier = null,
     ) {
     }
 
@@ -154,6 +156,14 @@ final class GroupService
                 return $count;
             });
             $result['added'][] = $user->displayName;
+            $this->notifier?->notify(
+                $tenant->id,
+                $user->id,
+                Notifier::GROUP_JOINED,
+                sprintf('You are now in %s', $group->name),
+                $courses === [] ? null : sprintf('Your courses for this %s are on your home page.', $tenant->groupWord()),
+                '/',
+            );
             $result['enrolments'] += $enrolled;
         }
         if ($result['added'] !== []) {
@@ -196,6 +206,9 @@ final class GroupService
             foreach ($chosen as $id) {
                 if ($this->groups->roleOf($tenant->id, $group->id, $id) !== GroupRepository::TEACHER) {
                     $this->groups->addMember($tenant->id, $group->id, $id, GroupRepository::TEACHER, $admin->user->id);
+                    if ($id !== $admin->user->id) {
+                        $this->notifier?->notify($tenant->id, $id, Notifier::GROUP_TEACHING, sprintf('You now teach %s', $group->name), null, '/groups/' . $group->id);
+                    }
                 }
             }
         });
@@ -226,6 +239,7 @@ final class GroupService
         }
         /** @var \App\Modules\Courses\Course $course */
         $learners = $this->groups->members($tenant->id, $group->id, GroupRepository::LEARNER);
+        $wasSet = in_array($course->id, array_map(static fn (array $c): int => $c['course']->id, $this->groups->courses($tenant->id, $group->id)), true);
 
         $enrolled = $this->db->transaction(function () use ($tenant, $group, $actor, $course, $due, $learners): int {
             $this->groups->assignCourse($tenant->id, $group->id, $course->id, $due ?: null, $actor->user->id);
@@ -241,8 +255,55 @@ final class GroupService
             return $count;
         });
         $this->audit->record($tenant->id, $actor->user->id, 'group.course_set', 'group', $group->id, ['course' => $course->id, 'due' => $due ?: null], $clientIp);
+        $this->notifier?->notifyMany(
+            $tenant->id,
+            array_column($learners, 'user_id'),
+            Notifier::COURSE_SET,
+            $wasSet ? sprintf('Due date changed: %s', $course->title) : sprintf('New course for %s: %s', $group->name, $course->title),
+            $due ? 'Due ' . (new \DateTimeImmutable((string) $due))->format('j F Y') . '.' : ($wasSet ? 'There is no due date now.' : null),
+            '/courses/' . $course->slug,
+        );
 
         return $enrolled;
+    }
+
+    public const MAX_ANNOUNCEMENT = 2000;
+
+    /** A message from the group's teachers to its learners, on their home page and in their notifications. */
+    public function announce(Tenant $tenant, LearnerGroup $group, CurrentUser $actor, string $body, string $clientIp): int
+    {
+        $this->authoriseTeaching($tenant, $group, $actor);
+        $body = trim(str_replace("\r\n", "\n", $body));
+        if (mb_strlen($body) < 2) {
+            throw ValidationException::single('announcement', 'Write the announcement first.');
+        }
+        if (mb_strlen($body) > self::MAX_ANNOUNCEMENT) {
+            throw ValidationException::single('announcement', 'Keep announcements under 2,000 characters.');
+        }
+        $learners = array_column($this->groups->members($tenant->id, $group->id, GroupRepository::LEARNER), 'user_id');
+        $id = $this->db->transaction(function () use ($tenant, $group, $actor, $body, $learners): int {
+            $id = $this->groups->addAnnouncement($tenant->id, $group->id, $actor->user->id, $body);
+            $this->notifier?->notifyMany(
+                $tenant->id,
+                $learners,
+                Notifier::ANNOUNCEMENT,
+                sprintf('%s posted in %s', $actor->user->displayName, $group->name),
+                $body,
+                '/#my-group-' . $group->id,
+            );
+
+            return $id;
+        });
+        $this->audit->record($tenant->id, $actor->user->id, 'group.announced', 'group', $group->id, ['announcement' => $id, 'learners' => count($learners)], $clientIp);
+
+        return $id;
+    }
+
+    public function deleteAnnouncement(Tenant $tenant, LearnerGroup $group, CurrentUser $actor, int $announcementId, string $clientIp): void
+    {
+        $this->authoriseTeaching($tenant, $group, $actor);
+        $this->groups->deleteAnnouncement($tenant->id, $group->id, $announcementId);
+        $this->audit->record($tenant->id, $actor->user->id, 'group.announcement_deleted', 'group', $group->id, ['announcement' => $announcementId], $clientIp);
     }
 
     /** Learners keep the course and their progress; it just stops being set for the group. */

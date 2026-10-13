@@ -163,6 +163,53 @@ final class GroupRepository
         ));
     }
 
+    /**
+     * Teachers of the current groups this learner is in that have this course set,
+     * so they hear when the learner hands in work.
+     *
+     * @return list<int>
+     */
+    public function teachersFor(int $tenantId, int $learnerId, int $courseId): array
+    {
+        return array_map('intval', array_column($this->db->fetchAll(
+            "SELECT DISTINCT t.user_id FROM learner_group_members t
+             JOIN learner_groups g ON g.tenant_id = t.tenant_id AND g.id = t.group_id AND g.archived_at IS NULL
+             JOIN learner_group_members l ON l.tenant_id = t.tenant_id AND l.group_id = t.group_id AND l.role = 'learner' AND l.user_id = ?
+             JOIN learner_group_courses c ON c.tenant_id = t.tenant_id AND c.group_id = t.group_id AND c.course_id = ?
+             WHERE t.tenant_id = ? AND t.role = 'teacher'",
+            [$learnerId, $courseId, $tenantId],
+        ), 'user_id'));
+    }
+
+    public function addAnnouncement(int $tenantId, int $groupId, int $authorId, string $body): int
+    {
+        return $this->db->insert(
+            'INSERT INTO group_announcements (tenant_id, group_id, author_id, body, created_at) VALUES (?, ?, ?, ?, ?)',
+            [$tenantId, $groupId, $authorId, $body, $this->clock->sqlNow()],
+        );
+    }
+
+    /** @return list<array{id: int, body: string, author: string, author_id: ?int, created_at: string}> newest first */
+    public function announcements(int $tenantId, int $groupId, int $limit = 10): array
+    {
+        return array_map(static fn (array $r): array => [
+            'id' => (int) $r['id'],
+            'body' => (string) $r['body'],
+            'author' => (string) ($r['display_name'] ?? 'A former teacher'),
+            'author_id' => $r['author_id'] === null ? null : (int) $r['author_id'],
+            'created_at' => (string) $r['created_at'],
+        ], $this->db->fetchAll(
+            'SELECT a.*, u.display_name FROM group_announcements a LEFT JOIN users u ON u.id = a.author_id
+             WHERE a.tenant_id = ? AND a.group_id = ? ORDER BY a.id DESC LIMIT ' . max(1, min($limit, 50)),
+            [$tenantId, $groupId],
+        ));
+    }
+
+    public function deleteAnnouncement(int $tenantId, int $groupId, int $id): void
+    {
+        $this->db->execute('DELETE FROM group_announcements WHERE tenant_id = ? AND group_id = ? AND id = ?', [$tenantId, $groupId, $id]);
+    }
+
     /** @return ?string the member's role in the group, if any */
     public function roleOf(int $tenantId, int $groupId, int $userId): ?string
     {
@@ -215,7 +262,8 @@ final class GroupRepository
     /**
      * The groups a learner is in (not archived), with teachers and courses, for their home page.
      *
-     * @return list<array{group: LearnerGroup, teachers: list<string>, courses: list<array{course: Course, due_on: ?string}>}>
+     * @return list<array{group: LearnerGroup, teachers: list<string>, courses: list<array{course: Course, due_on: ?string}>,
+     *                    announcements: list<array{id: int, body: string, author: string, author_id: ?int, created_at: string}>}>
      */
     public function forLearner(int $tenantId, int $userId): array
     {
@@ -230,6 +278,7 @@ final class GroupRepository
             'group' => LearnerGroup::fromRow($r),
             'teachers' => $teachers[(int) $r['id']] ?? [],
             'courses' => array_values(array_filter($this->courses($tenantId, (int) $r['id']), static fn (array $c): bool => $c['course']->isPublished())),
+            'announcements' => $this->announcements($tenantId, (int) $r['id'], 3),
         ], $rows);
     }
 

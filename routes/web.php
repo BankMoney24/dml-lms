@@ -20,6 +20,7 @@ use App\Modules\Identity\Http\TwoFactorController;
 use App\Modules\Learning\Http\LearnController;
 use App\Modules\Payments\Http\PaymentAdminController;
 use App\Modules\Payments\Http\PaymentController;
+use App\Modules\Notifications\Http\NotificationController;
 use App\Modules\Platform\HealthController;
 use App\Modules\Platform\HomeController;
 use App\Modules\Platform\SchoolsController;
@@ -133,6 +134,10 @@ return static function (Router $r): void {
     $r->post('/people/{user:int}/send-link', [PeopleController::class, 'sendLink'], $people);
     $r->post('/people/{user:int}/reset-two-step', [PeopleController::class, 'resetTwoStep'], $people);
 
+    $r->get('/notifications', [NotificationController::class, 'index'], ['tenant', 'auth']);
+    $r->get('/notifications/{notification:int}', [NotificationController::class, 'open'], ['tenant', 'auth']);
+    $r->post('/notifications/read-all', [NotificationController::class, 'readAll'], ['tenant', 'auth']);
+
     // Classes, cohorts or groups (ADR 0013). The service decides who may see each group.
     $groups = ['tenant', 'auth'];
     $r->get('/groups', [GroupController::class, 'index'], $groups);
@@ -146,6 +151,8 @@ return static function (Router $r): void {
     $r->post('/groups/{group:int}/learners/{user:int}/remove', [GroupController::class, 'removeLearner'], $groups);
     $r->post('/groups/{group:int}/courses', [GroupController::class, 'assignCourse'], $groups);
     $r->post('/groups/{group:int}/courses/{course:int}/remove', [GroupController::class, 'unassignCourse'], $groups);
+    $r->post('/groups/{group:int}/announcements', [GroupController::class, 'announce'], $groups);
+    $r->post('/groups/{group:int}/announcements/{announcement:int}/delete', [GroupController::class, 'deleteAnnouncement'], $groups);
 
     $school = ['tenant', 'auth', 'can:school.manage'];
     $r->get('/school', [SchoolController::class, 'index'], $school);

@@ -9,6 +9,7 @@ use App\Core\Http\Request;
 use App\Core\Http\Response;
 use App\Core\View\View;
 use App\Modules\Identity\AuthService;
+use App\Modules\Notifications\NotificationRepository;
 use App\Modules\Tenancy\TenantContext;
 
 /**
@@ -28,6 +29,7 @@ final class AuthenticateSession implements Middleware
         private readonly TenantContext $tenants,
         private readonly View $view,
         private readonly array $twoStepRequiredRoles = [],
+        private readonly ?NotificationRepository $notifications = null,
     ) {
     }
 
@@ -43,6 +45,7 @@ final class AuthenticateSession implements Middleware
                 $this->view->share('user', $current->user);
                 $this->view->share('role', $current->membership?->role);
                 $this->view->share('permissions', $current->permissionNames());
+                $this->view->share('unread', $this->notifications?->unreadCount($tenant->id, $current->user->id) ?? 0);
 
                 if ($current->user->mustChangePassword && !in_array($request->path, self::ALLOWED_WHILE_PASSWORD_PENDING, true)) {
                     return Response::redirect('/account');

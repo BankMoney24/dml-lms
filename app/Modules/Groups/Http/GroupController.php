@@ -203,6 +203,33 @@ final class GroupController
         return $this->back($group);
     }
 
+    public function announce(Request $request): Response
+    {
+        [$tenant, $group] = $this->group($request);
+        $body = $request->input('announcement', '') ?? '';
+        try {
+            $this->service->announce($tenant, $group, RequestContext::user($request), $body, $request->clientIp);
+        } catch (ValidationException $e) {
+            return $this->render($request, $e->errors, ['announcement' => $body], 422);
+        }
+        $this->session->flash('success', 'Posted. Learners see it on their home page and in their notifications.');
+
+        return $this->back($group);
+    }
+
+    public function deleteAnnouncement(Request $request): Response
+    {
+        [$tenant, $group] = $this->group($request);
+        try {
+            $this->service->deleteAnnouncement($tenant, $group, RequestContext::user($request), $request->routeInt('announcement'), $request->clientIp);
+            $this->session->flash('success', 'Announcement deleted.');
+        } catch (ValidationException $e) {
+            $this->session->flash('error', implode(' ', $e->errors));
+        }
+
+        return $this->back($group);
+    }
+
     /** Progress as a spreadsheet, one row per learner and a column per course. */
     public function export(Request $request): Response
     {
@@ -268,6 +295,7 @@ final class GroupController
             'unplaced' => $this->groups->learnersWithoutGroup($tenant->id),
             'staff' => $all ? $this->groups->staff($tenant->id) : [],
             'managesAll' => $all,
+            'announcements' => $this->groups->announcements($tenant->id, $group->id),
             'today' => $this->clock->now()->setTimezone(new \DateTimeZone($tenant->timezone))->format('Y-m-d'),
             'errors' => $errors,
             'old' => $old,

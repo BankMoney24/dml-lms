@@ -12,6 +12,9 @@ use App\Modules\Groups\GroupProgress;
 use App\Modules\Groups\GroupRepository;
 use App\Modules\Groups\GroupService;
 use App\Modules\Groups\Http\GroupController;
+use App\Modules\Notifications\Http\NotificationController;
+use App\Modules\Notifications\NotificationRepository;
+use App\Modules\Notifications\Notifier;
 use App\Modules\Payments\Http\PaymentAdminController;
 use App\Modules\Payments\Http\PaymentController;
 use App\Modules\Payments\HttpPaystackApi;
@@ -228,12 +231,15 @@ final class Application
             $c->get(FileRepository::class),
             $c->get(LessonRepository::class),
         ));
+        $c->set(NotificationRepository::class, static fn (Container $c) => new NotificationRepository($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(Notifier::class, static fn (Container $c) => new Notifier($c->get(NotificationRepository::class)));
         $c->set(CertificateService::class, static fn (Container $c) => new CertificateService(
             new CertificateRepository($c->get(Connection::class), $c->get(Clock::class)),
             $c->get(CourseRepository::class),
             $c->get(UserRepository::class),
             $c->get(AuditLog::class),
             $c->get(TenantRepository::class),
+            $c->get(Notifier::class),
         ));
         $c->set(LearningService::class, static fn (Container $c) => new LearningService(
             $c->get(Connection::class),
@@ -278,6 +284,7 @@ final class Application
             $c->get(AuditLog::class),
             $c->get(Logger::class),
             $c->get(Clock::class),
+            $c->get(Notifier::class),
         ));
         $c->set(GroupRepository::class, static fn (Container $c) => new GroupRepository($c->get(Connection::class), $c->get(Clock::class)));
         $c->set(GroupService::class, static fn (Container $c) => new GroupService(
@@ -289,6 +296,7 @@ final class Application
             $c->get(LearningService::class),
             $c->get(AuditLog::class),
             $c->get(Clock::class),
+            $c->get(Notifier::class),
         ));
         $c->set(WizardRunRepository::class, static fn (Container $c) => new WizardRunRepository($c->get(Connection::class), $c->get(Clock::class)));
         $c->set(FileService::class, static fn (Container $c) => new FileService(
@@ -316,6 +324,8 @@ final class Application
             $c->get(EmailComposer::class),
             $c->get(FileService::class),
             $c->get(FileRepository::class),
+            $c->get(Notifier::class),
+            $c->get(GroupRepository::class),
         ));
         $c->set(AttemptService::class, static fn (Container $c) => new AttemptService(
             $c->get(Connection::class),
@@ -338,6 +348,7 @@ final class Application
             $c->get(TenantContext::class),
             $c->get(View::class),
             self::twoStepRoles($config),
+            $c->get(NotificationRepository::class),
         ));
         $c->set(VerifyCsrf::class, static fn (Container $c) => new VerifyCsrf($c->get(Csrf::class)));
 
@@ -581,6 +592,11 @@ final class Application
             $c->get(Clock::class),
         ));
         $c->set(SeoController::class, static fn (Container $c) => new SeoController($c->get(CourseRepository::class)));
+        $c->set(NotificationController::class, static fn (Container $c) => new NotificationController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(NotificationRepository::class),
+        ));
         $c->set(ActivityController::class, static fn (Container $c) => new ActivityController(
             $c->get(View::class),
             $c->get(AuditLog::class),

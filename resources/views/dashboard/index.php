@@ -5,7 +5,7 @@
 /** @var list<array<string, mixed>> $suggestedCards */
 /** @var list<\App\Modules\Certificates\Certificate> $certificates */
 /** @var bool $setupPending */
-/** @var list<array{group: \App\Modules\Groups\LearnerGroup, teachers: list<string>, courses: list<array{course: \App\Modules\Courses\Course, due_on: ?string}>, progress: array{lessons: array<int, int>, cells: array<int, array{status: string, done: int}>}}> $myGroups */
+/** @var list<array{group: \App\Modules\Groups\LearnerGroup, teachers: list<string>, courses: list<array{course: \App\Modules\Courses\Course, due_on: ?string}>, announcements?: list<array{id: int, body: string, author: string, author_id: ?int, created_at: string}>, progress: array{lessons: array<int, int>, cells: array<int, array{status: string, done: int}>}}> $myGroups */
 /** @var string $today */
 /** @var ?array{groups?: list<array{group: \App\Modules\Groups\LearnerGroup, learners: int, courses: int, teachers: list<string>}>, published: int, drafts: int, reviews: int, courses: list<array{course: \App\Modules\Courses\Course, lessons: int, enrolled: int, completed: int, active: int}>} $teaching */
 $user = $v->shared('user');
@@ -50,6 +50,12 @@ $hasLearning = $continue !== null || $myCards !== [];
     <h2 id="my-group-<?= $g->id ?>">Your <?= $v->e($tenantNow?->groupWord() ?? 'class') ?>: <?= $v->e($g->name) ?></h2>
     <?php if ($mg['teachers'] !== []): ?><p class="small muted">Taught by <?= $v->e(implode(', ', $mg['teachers'])) ?></p><?php endif; ?>
   </div>
+  <?php foreach (array_slice($mg['announcements'] ?? [], 0, 2) as $a): ?>
+    <div class="ann ann-home">
+      <div class="ann-meta"><strong><?= $v->e($a['author']) ?></strong> <span class="muted small"><?= $v->datetime($a['created_at']) ?></span></div>
+      <?= $v->paragraphs($a['body']) ?>
+    </div>
+  <?php endforeach; ?>
   <?php if ($mg['courses'] === []): ?>
     <p class="muted">Your teacher has not set any courses yet.</p>
   <?php else: ?>

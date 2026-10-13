@@ -13,6 +13,7 @@
  * @var list<array{user_id: int, name: string, email: string}> $unplaced learners in no group
  * @var list<array{user_id: int, name: string, role: string}> $staff
  * @var bool $managesAll
+ * @var list<array{id: int, body: string, author: string, author_id: ?int, created_at: string}> $announcements
  * @var string $today Y-m-d in the school's time zone
  * @var array<string, string> $errors
  * @var array<string, string> $old
@@ -102,6 +103,38 @@ $behind = [];
     </table>
   </div>
   <p class="small muted"><?= $v->e($v->plural(count($learners), 'learner')) ?>. Lessons done out of each course's lessons.<?= $behind !== [] ? ' ' . $v->e(sprintf('%s a course past its due date.', $v->plural(count($behind), 'learner has', 'learners have'))) : '' ?></p>
+  <?php endif; ?>
+</section>
+
+<section class="section announcements" aria-labelledby="ann-h">
+  <h2 id="ann-h">Announcements</h2>
+  <?php if (!$archived): ?>
+  <form method="post" action="<?= $base ?>/announcements" class="form announce-form" novalidate>
+    <?= $v->csrfField() ?>
+    <?= $v->field('announcement', 'Message to the learners in ' . $group->name, [
+        'type' => 'textarea', 'rows' => 3, 'value' => $o('announcement'), 'error' => $errors['announcement'] ?? null,
+        'hint' => 'They see it on their home page and get a notification. Keep marks and private matters out of it.',
+    ]) ?>
+    <button type="submit" class="button button-small">Post announcement</button>
+  </form>
+  <?php endif; ?>
+  <?php if ($announcements === []): ?>
+    <p class="muted small">Nothing posted yet.</p>
+  <?php else: ?>
+  <ol class="ann-list">
+    <?php foreach ($announcements as $a): ?>
+    <li class="ann">
+      <div class="ann-meta"><strong><?= $v->e($a['author']) ?></strong> <span class="muted small"><?= $v->datetime($a['created_at']) ?></span></div>
+      <?= $v->paragraphs($a['body']) ?>
+      <?php if (!$archived): ?>
+      <form method="post" action="<?= $base ?>/announcements/<?= $a['id'] ?>/delete" class="inline">
+        <?= $v->csrfField() ?>
+        <button type="submit" class="linklike small">Delete<span class="visually-hidden"> this announcement</span></button>
+      </form>
+      <?php endif; ?>
+    </li>
+    <?php endforeach; ?>
+  </ol>
   <?php endif; ?>
 </section>
 
