@@ -5,7 +5,7 @@
  * @var array<string, string> $errors
  * @var array{themes: array<string, string>, domains: list<array{host: string, primary: bool, verified: bool}>, logoPreview: ?string, maxLogoKb: int} $extra
  */
-$theme = (string) ($values['theme'] ?? 'teal');
+$theme = (string) ($values['theme'] ?? \App\Modules\Tenancy\SchoolTheme::DEFAULT);
 $name = (string) ($values['name'] ?? '');
 $tagline = (string) ($values['tagline'] ?? '');
 ?>
@@ -24,7 +24,7 @@ $tagline = (string) ($values['tagline'] ?? '');
       <div class="swatches">
         <?php foreach ($extra['themes'] as $key => $label): ?>
         <label class="swatch-choice">
-          <input type="radio" name="theme" value="<?= $v->e($key) ?>"<?= $theme === $key ? ' checked' : '' ?><?= $key === 'teal' ? ' id="theme"' : '' ?> data-theme-pick>
+          <input type="radio" name="theme" value="<?= $v->e($key) ?>"<?= $theme === $key ? ' checked' : '' ?><?= $key === \App\Modules\Tenancy\SchoolTheme::DEFAULT ? ' id="theme"' : '' ?> data-theme-pick>
           <span class="swatch theme-<?= $v->e($key) ?>" aria-hidden="true"></span>
           <span><?= $v->e($label) ?></span>
         </label>
@@ -60,7 +60,7 @@ $tagline = (string) ($values['tagline'] ?? '');
         <?php if ($extra['logoPreview'] !== null): ?>
           <img src="<?= $v->e($extra['logoPreview']) ?>" alt="" height="28">
         <?php else: ?>
-          <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="3"/><path d="M8 12h5l3-5h3"/><circle cx="20" cy="7" r="2"/><path d="M13 12l3 5h3"/><circle cx="20" cy="17" r="2"/></svg>
+          <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><rect class="px-soft" x="1" y="2" width="4.5" height="4.5"/><rect x="6.5" y="2" width="4.5" height="4.5"/><rect x="12" y="2" width="4.5" height="4.5"/><rect class="px-accent" x="17.5" y="2" width="4.5" height="4.5"/><rect x="6.5" y="7.5" width="4.5" height="4.5"/><rect class="px-soft" x="12" y="7.5" width="4.5" height="4.5"/><rect x="17.5" y="7.5" width="4.5" height="4.5"/><rect x="12" y="13" width="4.5" height="4.5"/><rect class="px-accent" x="17.5" y="13" width="4.5" height="4.5"/><rect x="17.5" y="18.5" width="4.5" height="4.5"/></svg>
         <?php endif; ?>
         <span data-preview-name><?= $v->e($name !== '' ? $name : 'Your school') ?></span>
       </div>

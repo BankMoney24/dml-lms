@@ -11,12 +11,12 @@ $school = $v->shared('tenant');
       <path d="M0 160 H130 L150 140 H320"/>
       <path d="M40 0 V40 L70 70 H120 L140 50 H220"/>
       <path class="is-lit" d="M100 110 H170 L200 80 H260"/>
-      <circle cx="100" cy="110" r="5"/>
-      <circle cx="170" cy="110" r="5"/>
-      <circle class="is-lit" cx="260" cy="80" r="7"/>
-      <circle cx="150" cy="140" r="5"/>
-      <circle cx="70" cy="70" r="5"/>
-      <circle cx="220" cy="50" r="5"/>
+      <rect x="95" y="105" width="10" height="10"/>
+      <rect x="165" y="105" width="10" height="10"/>
+      <rect class="is-lit" x="253" y="73" width="14" height="14"/>
+      <rect x="145" y="135" width="10" height="10"/>
+      <rect x="65" y="65" width="10" height="10"/>
+      <rect x="215" y="45" width="10" height="10"/>
     </svg>
     <ul class="auth-points">
       <li>Lessons you can follow on a phone</li>

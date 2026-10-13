@@ -106,6 +106,15 @@ final class TenantRepository
         );
     }
 
+    /** Colour theme and tagline, for the school:brand console command. */
+    public function setBrand(int $tenantId, string $theme, ?string $tagline): void
+    {
+        $this->db->execute(
+            'UPDATE tenants SET theme = ?, tagline = COALESCE(?, tagline), updated_at = ? WHERE id = ?',
+            [$theme, $tagline, $this->clock->sqlNow(), $tenantId],
+        );
+    }
+
     /** First completion only; later runs of the wizard keep the original date. */
     public function markSetUp(int $tenantId): void
     {

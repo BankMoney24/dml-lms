@@ -20,6 +20,7 @@ use App\Modules\Payments\PaymentRepository;
 use App\Modules\Payments\PaymentService;
 use App\Modules\Payments\PaystackApi;
 use App\Modules\Platform\SchoolsController;
+use App\Modules\Platform\SeoController;
 use App\Modules\Platform\SchoolAdminService;
 use App\Modules\Files\VirusScanner;
 use App\Modules\Tenancy\LogoStore;
@@ -579,6 +580,7 @@ final class Application
             $c->get(CourseRepository::class),
             $c->get(Clock::class),
         ));
+        $c->set(SeoController::class, static fn (Container $c) => new SeoController($c->get(CourseRepository::class)));
         $c->set(ActivityController::class, static fn (Container $c) => new ActivityController(
             $c->get(View::class),
             $c->get(AuditLog::class),

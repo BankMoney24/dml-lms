@@ -1,24 +1,64 @@
 <?php
-/** @var \App\Core\View\ViewHelpers $v */
-/** @var string $content */
+/**
+ * @var \App\Core\View\ViewHelpers $v
+ * @var string $content
+ *
+ * Optional, from controllers, for search engines and link previews:
+ * @var ?string $metaDescription one or two sentences about the page
+ * @var ?bool $indexable true only for public pages (welcome, course list, course pages)
+ * @var ?array<string, mixed> $jsonLd structured data for the page
+ */
 $tenant = $v->shared('tenant');
 $user = $v->shared('user');
 $role = $v->shared('role');
 $siteName = $tenant?->name ?? 'DML Learning Platform';
 $title = ($pageTitle ?? '') !== '' && ($pageTitle ?? '') !== $siteName ? $pageTitle . ' – ' . $siteName : $siteName;
+$baseUrl = (string) $v->shared('base_url', '');
+$path = (string) $v->shared('path', '/');
+$description = trim((string) ($metaDescription ?? ''));
+if ($description === '') {
+    $description = $tenant !== null
+        ? ($tenant->tagline !== '' ? $tenant->tagline . '. ' : '') . 'Courses, hands-on labs and certificates from ' . $tenant->name . '.'
+        : 'DML Learning Platform by DML Technologies: courses, virtual labs and certificates for schools and training centres.';
+}
+$description = mb_strimwidth($description, 0, 300, '…');
+$robotsOk = ($indexable ?? false) === true;
+$canonical = $baseUrl . ($path === '/' ? '/' : $path);
+$ogImage = $tenant !== null && $tenant->hasLogo() ? $baseUrl . '/logo?v=' . $tenant->logoVersion() : $baseUrl . '/assets/brand/og-image.jpg';
+$ogImageIsLarge = !($tenant !== null && $tenant->hasLogo());
+$themeKey = $tenant?->theme ?? \App\Modules\Tenancy\SchoolTheme::DEFAULT;
 ?><!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= $v->e($title) ?></title>
-<meta name="theme-color" content="<?= $v->e(\App\Modules\Tenancy\SchoolTheme::colour($tenant?->theme ?? 'teal')) ?>">
+<meta name="description" content="<?= $v->e($description) ?>">
+<?php if ($robotsOk): ?>
+<link rel="canonical" href="<?= $v->e($canonical) ?>">
+<?php else: ?>
+<meta name="robots" content="noindex, nofollow">
+<?php endif; ?>
+<meta property="og:site_name" content="<?= $v->e($siteName) ?>">
+<meta property="og:title" content="<?= $v->e($pageTitle ?? $siteName) ?>">
+<meta property="og:description" content="<?= $v->e($description) ?>">
+<meta property="og:type" content="website">
+<meta property="og:url" content="<?= $v->e($canonical) ?>">
+<meta property="og:image" content="<?= $v->e($ogImage) ?>">
+<meta name="twitter:card" content="<?= $ogImageIsLarge ? 'summary_large_image' : 'summary' ?>">
+<meta name="application-name" content="<?= $v->e($siteName) ?>">
+<meta name="theme-color" content="<?= $v->e(\App\Modules\Tenancy\SchoolTheme::colour($themeKey)) ?>">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/brand/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png">
 <link rel="stylesheet" href="<?= $v->asset('app.css') ?>">
 <script src="<?= $v->asset('app.js') ?>" defer></script>
+<?php if (isset($jsonLd) && is_array($jsonLd) && $robotsOk): ?>
+<script type="application/ld+json"><?= json_encode($jsonLd, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?></script>
+<?php endif; ?>
 </head>
-<body class="theme-<?= $v->e($tenant?->theme ?? 'teal') ?>">
+<body class="theme-<?= $v->e($themeKey) ?>">
 <a class="skip" href="#main">Skip to content</a>
 <header class="topbar">
   <div class="wrap topbar-inner">
@@ -26,7 +66,7 @@ $title = ($pageTitle ?? '') !== '' && ($pageTitle ?? '') !== $siteName ? $pageTi
       <?php if ($tenant?->hasLogo()): ?>
         <img class="brand-logo" src="/logo?v=<?= $v->e($tenant->logoVersion()) ?>" alt="" height="36">
       <?php else: ?>
-        <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="3"/><path d="M8 12h5l3-5h3"/><circle cx="20" cy="7" r="2"/><path d="M13 12l3 5h3"/><circle cx="20" cy="17" r="2"/></svg>
+        <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><rect class="px-soft" x="1" y="2" width="4.5" height="4.5"/><rect x="6.5" y="2" width="4.5" height="4.5"/><rect x="12" y="2" width="4.5" height="4.5"/><rect class="px-accent" x="17.5" y="2" width="4.5" height="4.5"/><rect x="6.5" y="7.5" width="4.5" height="4.5"/><rect class="px-soft" x="12" y="7.5" width="4.5" height="4.5"/><rect x="17.5" y="7.5" width="4.5" height="4.5"/><rect x="12" y="13" width="4.5" height="4.5"/><rect class="px-accent" x="17.5" y="13" width="4.5" height="4.5"/><rect x="17.5" y="18.5" width="4.5" height="4.5"/></svg>
       <?php endif; ?>
       <span><?= $v->e($siteName) ?></span>
     </a>
@@ -74,8 +114,9 @@ $title = ($pageTitle ?? '') !== '' && ($pageTitle ?? '') !== $siteName ? $pageTi
       <li><a href="/verify">Check a certificate</a></li>
     </ul>
     <?php else: ?>
-    <p class="footer-links">Learn it. Practise it. Prove it.</p>
+    <p class="footer-links">Learn. Build. Grow.</p>
     <?php endif; ?>
+    <p class="footer-credit"><?php $pixelClass = 'pixels-light'; include __DIR__ . '/../partials/pixels.php'; ?>DML Technologies learning platform, powered by TridaxLabs</p>
   </div>
 </footer>
 </body>

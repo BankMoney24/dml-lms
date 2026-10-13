@@ -20,7 +20,7 @@ Options -Indexes +FollowSymLinks
 </Files>
 
 <IfModule mod_headers.c>
-    <FilesMatch "\.(css|js|svg)$">
+    <FilesMatch "\.(css|js|svg|png|jpg|webp)$">
         Header set Cache-Control "public, max-age=2592000"
     </FilesMatch>
 </IfModule>

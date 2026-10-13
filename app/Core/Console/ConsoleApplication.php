@@ -58,6 +58,7 @@ final class ConsoleApplication
                 'course:sync-files' => $this->courseSyncFiles($args),
                 'certificate:revoke' => $this->certificateRevoke($args),
                 'user:platform-admin' => $this->platformAdmin($args),
+                'school:brand' => $this->schoolBrand($args),
                 default => $this->help(),
             };
         } catch (Throwable $e) {
@@ -94,6 +95,9 @@ final class ConsoleApplication
           lab:list                                  The labs in this release (use the key in course packages)
           lab:expire                                Close lab sessions whose time ran out (cron, every 10 minutes)
           user:platform-admin <email> [--revoke]    Let a user see the System page (they must use two-step sign-in)
+          school:brand <tenant-slug> [--logo=<png>] [--theme=<key>] [--tagline="<text>"]
+                                                    Set a school's logo, colour theme and tagline in one go.
+                                                    The DML logo ships in public/assets/brand/dml-mark.png
 
         TXT;
 
@@ -130,6 +134,45 @@ final class ConsoleApplication
             return $tenant;
         });
         printf("Created tenant #%d %s on %s\n", $tenant->id, $tenant->slug, $host);
+
+        return 0;
+    }
+
+    /** @param list<string> $args */
+    private function schoolBrand(array $args): int
+    {
+        [$positional, $options] = self::options($args);
+        [$slug] = $this->requireArgs($positional, 1, 'school:brand <tenant-slug> [--logo=<png>] [--theme=<key>] [--tagline="<text>"]');
+        $tenants = $this->container->get(TenantRepository::class);
+        $tenant = $tenants->findBySlug($slug) ?? throw new \RuntimeException('No tenant with that slug.');
+        $theme = $options['theme'] ?? $tenant->theme;
+        if (!\App\Modules\Tenancy\SchoolTheme::exists($theme)) {
+            throw new \RuntimeException('Unknown theme. Choose one of: ' . implode(', ', array_keys(\App\Modules\Tenancy\SchoolTheme::options())));
+        }
+        $tagline = isset($options['tagline']) ? mb_substr(trim($options['tagline']), 0, 120) : null;
+        if (isset($options['logo'])) {
+            $source = $options['logo'];
+            if (!is_file($source)) {
+                throw new \RuntimeException('No such logo file: ' . $source);
+            }
+            // The store moves the file it is given, so hand it a copy.
+            $copy = tempnam(sys_get_temp_dir(), 'logo');
+            if ($copy === false || !copy($source, $copy)) {
+                throw new \RuntimeException('Could not read the logo file.');
+            }
+            $logos = $this->container->get(\App\Modules\Tenancy\LogoStore::class);
+            try {
+                $stored = $logos->store($tenant->id, \App\Core\Http\UploadedFile::fromLocalPath($copy, basename($source)));
+            } catch (\App\Core\Validation\ValidationException $e) {
+                @unlink($copy);
+                throw new \RuntimeException(implode(' ', $e->errors));
+            }
+            $tenants->setLogo($tenant->id, $stored['key'], $stored['type']);
+            $logos->delete($tenant->logoKey);
+            echo "Logo set.\n";
+        }
+        $tenants->setBrand($tenant->id, $theme, $tagline);
+        printf("%s now uses the %s theme%s.\n", $tenant->name, \App\Modules\Tenancy\SchoolTheme::label($theme), $tagline !== null ? ' and the tagline "' . $tagline . '"' : '');
 
         return 0;
     }

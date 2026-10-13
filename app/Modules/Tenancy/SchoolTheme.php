@@ -13,10 +13,11 @@ namespace App\Modules\Tenancy;
  */
 final class SchoolTheme
 {
-    public const DEFAULT = 'teal';
+    public const DEFAULT = 'dml';
 
     /** key => [label, primary colour in light mode] */
     private const THEMES = [
+        'dml' => ['DML blue', '#1670ad'],
         'teal' => ['Teal', '#0b7a6b'],
         'blue' => ['Blue', '#1d5fb8'],
         'green' => ['Green', '#2f7a2f'],

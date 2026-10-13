@@ -11,6 +11,7 @@ use App\Core\Http\Response;
 use App\Core\View\View;
 use App\Modules\Certificates\CertificateService;
 use App\Modules\Courses\CourseRepository;
+use App\Modules\Courses\CourseSchema;
 use App\Modules\Courses\LessonRepository;
 use App\Modules\Learning\CourseCards;
 use App\Modules\Learning\EnrolmentRepository;
@@ -53,6 +54,8 @@ final class CatalogueController
             'hasMore' => count($courses) > self::PER_PAGE,
             'track' => $track,
             'trackCounts' => $this->courses->publishedTrackCounts($tenant->id),
+            'indexable' => $tenant->publicCatalogue && $page === 1 && $track === null,
+            'metaDescription' => sprintf('Courses from %s: practical lessons, hands-on labs and quizzes you can follow on a phone.', $tenant->name),
         ]));
     }
 
@@ -78,6 +81,9 @@ final class CatalogueController
             'enrolment' => $enrolment,
             'certificate' => $this->certificates->forEnrolment($enrolment),
             'completedIds' => $enrolment === null ? [] : $this->progress->completedLessonIds($tenant->id, $enrolment->id),
+            'indexable' => $tenant->publicCatalogue,
+            'metaDescription' => $course->summary !== '' ? $course->summary : sprintf('%s, a course from %s.', $course->title, $tenant->name),
+            'jsonLd' => CourseSchema::course($course, $tenant, $request->baseUrl()),
             'mustPay' => $mustPay,
             'payOnline' => $mustPay && $this->payments->isConnected($tenant),
             'waiting' => $mustPay && $user !== null ? $this->payments->waiting($tenant, $user->user->id, $course) : null,

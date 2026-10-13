@@ -41,6 +41,7 @@ final class Kernel
         $this->view->resetShared();
         $this->view->share('request_id', $requestId);
         $this->view->share('path', $request->path);
+        $this->view->share('base_url', $request->baseUrl());
 
         try {
             try {

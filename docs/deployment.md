@@ -147,6 +147,18 @@ sudo -u dmldeploy -H php /var/www/dml-lms/current/bin/console course:import dml 
 sudo -u dmldeploy -H php /var/www/dml-lms/current/bin/console course:import dml practical-tech-skills --author=you@example.com
 ```
 
+### Brand (DML Technologies)
+
+The DML logo, icons and share image ship in `public/assets/brand/`. Apply the logo, the DML blue theme and the tagline to the DML school once:
+
+```bash
+sudo -u dmldeploy -H php /var/www/dml-lms/current/bin/console school:brand dml --logo=/var/www/dml-lms/current/public/assets/brand/dml-mark.png --theme=dml --tagline="Developing leaders through specialised education"
+```
+
+### Search engines
+
+Each school address serves `/robots.txt` and `/sitemap.xml` (public pages only). Once `dmlschooloftechnology.com` is on HTTPS, add it in Google Search Console and submit `https://dmlschooloftechnology.com/sitemap.xml`. Signed-in pages tell search engines not to index them.
+
 ### Classes and cohorts
 
 Nothing to install. Choose what your school calls them (class, cohort, group, stream or set) under **School → Settings → Type and academic year**, then create them from the new menu item. Learners in a class are enrolled in the courses set for it.

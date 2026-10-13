@@ -23,6 +23,7 @@ use App\Modules\Payments\Http\PaymentController;
 use App\Modules\Platform\HealthController;
 use App\Modules\Platform\HomeController;
 use App\Modules\Platform\SchoolsController;
+use App\Modules\Platform\SeoController;
 use App\Modules\Platform\SystemController;
 use App\Modules\Tenancy\Http\PeopleController;
 use App\Modules\VirtualLabs\Http\LabController;
@@ -38,6 +39,9 @@ use App\Modules\Wizards\Http\WizardController;
  */
 return static function (Router $r): void {
     $r->get('/health', [HealthController::class, 'live'], [Kernel::BARE]);
+    // Search engines: no session, no cookies; the school comes from the verified host (none on the platform host).
+    $r->get('/robots.txt', [SeoController::class, 'robots'], [Kernel::BARE, 'host-tenant']);
+    $r->get('/sitemap.xml', [SeoController::class, 'sitemap'], [Kernel::BARE, 'host-tenant']);
     $r->get('/health/ready', [HealthController::class, 'ready'], [Kernel::BARE]);
 
     $r->get('/', [HomeController::class, 'index']);

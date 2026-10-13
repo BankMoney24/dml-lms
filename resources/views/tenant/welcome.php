@@ -5,25 +5,26 @@ $tenant = $v->shared('tenant');
 ?>
 <section class="welcome" aria-labelledby="welcome-h">
   <div class="welcome-text">
+    <?php $pixelClass = 'pixels-hero'; include __DIR__ . '/../partials/pixels.php'; ?>
     <h1 id="welcome-h"><?= $v->e($tenant->name) ?></h1>
     <?php if ($tenant->tagline !== ''): ?><p class="welcome-tagline"><?= $v->e($tenant->tagline) ?></p><?php endif; ?>
-    <p class="lead">Courses in technology you can follow on a phone, on a slow connection, at your own pace. Your teachers see your progress and review your work.</p>
-    <p class="actions"><a class="button" href="/login">Sign in</a> <?php if ($tenant->publicCatalogue): ?><a class="button button-quiet" href="/courses">See the courses</a><?php endif; ?></p>
+    <p class="lead">Practical courses you can follow on a phone, on a slow connection, at your own pace. Your teachers see your progress and review your work.</p>
+    <p class="actions"><a class="button button-accent" href="/login">Sign in</a> <?php if ($tenant->publicCatalogue): ?><a class="button button-on-dark" href="/courses">See the courses</a><?php endif; ?></p>
   </div>
   <ol class="promise" aria-label="How each course works">
     <li class="promise-step">
       <span class="promise-node" aria-hidden="true"></span>
-      <h2>Learn it</h2>
+      <h2>Learn</h2>
       <p>Short readings and videos, with the commands and examples you need. Videos load only when you press play.</p>
     </li>
     <li class="promise-step">
       <span class="promise-node" aria-hidden="true"></span>
-      <h2>Practise it</h2>
-      <p>Quizzes that explain every answer, and hands-on assignments a teacher reviews.</p>
+      <h2>Build</h2>
+      <p>Hands-on labs, quizzes that explain every answer, and assignments a teacher reviews.</p>
     </li>
     <li class="promise-step">
       <span class="promise-node" aria-hidden="true"></span>
-      <h2>Prove it</h2>
+      <h2>Grow</h2>
       <p><?= $tenant->certificatesEnabled ? 'Finish a course and get a certificate anyone can check online.' : 'Finish each course with a final check that shows what you can do.' ?></p>
     </li>
   </ol>

@@ -11,6 +11,7 @@ use App\Core\View\View;
 use App\Modules\Assignments\SubmissionRepository;
 use App\Modules\Certificates\CertificateService;
 use App\Modules\Courses\CourseRepository;
+use App\Modules\Courses\CourseSchema;
 use App\Modules\Groups\GroupProgress;
 use App\Modules\Groups\GroupRepository;
 use App\Modules\Identity\Permission;
@@ -41,7 +42,13 @@ final class HomeController
     {
         $tenant = $request->attribute('tenant');
         if (!$tenant instanceof Tenant) {
-            return Response::html($this->view->render('platform/home', ['pageTitle' => 'DML Learning Platform']));
+            return Response::html($this->view->render('platform/home', [
+                'pageTitle' => 'DML Learning Platform',
+                'indexable' => true,
+                'metaDescription' => 'DML Technologies gives schools, universities and training centres their own learning space: '
+                    . 'courses, virtual labs, quizzes and certificates that work on a slow connection.',
+                'jsonLd' => CourseSchema::organisation('DML Technologies', $request->baseUrl(), 'Developing leaders through specialised education', $request->baseUrl() . '/assets/brand/dml-logo.png'),
+            ]));
         }
 
         $user = RequestContext::optionalUser($request);
@@ -49,6 +56,16 @@ final class HomeController
             return Response::html($this->view->render('tenant/welcome', [
                 'pageTitle' => $tenant->name,
                 'cards' => $tenant->publicCatalogue ? $this->cards->build($tenant->id, $this->courses->listPublished($tenant->id, 6)) : [],
+                'indexable' => true,
+                'jsonLd' => CourseSchema::organisation(
+                    $tenant->name,
+                    $request->baseUrl(),
+                    $tenant->tagline,
+                    $tenant->hasLogo() ? $request->baseUrl() . '/logo?v=' . $tenant->logoVersion() : null,
+                    $tenant->contactEmail,
+                    $tenant->contactPhone,
+                    $tenant->website,
+                ),
             ]));
         }
 
