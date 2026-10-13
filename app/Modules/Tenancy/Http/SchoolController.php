@@ -29,6 +29,7 @@ final class SchoolController
         private readonly LogoStore $logos,
         private readonly MembershipRepository $memberships,
         private readonly CourseRepository $courses,
+        private readonly ?\App\Modules\Payments\PaymentAccountRepository $paymentAccounts = null,
     ) {
     }
 
@@ -49,6 +50,7 @@ final class SchoolController
             'domains' => $this->tenants->domains($tenant->id),
             'memberCount' => count($this->memberships->listActive($tenant->id)),
             'courseCount' => count($this->courses->titles($tenant->id)),
+            'payments' => $this->paymentAccounts?->find($tenant->id),
         ]));
     }
 

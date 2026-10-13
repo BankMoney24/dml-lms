@@ -42,8 +42,8 @@ $title = ($pageTitle ?? '') !== '' && ($pageTitle ?? '') !== $siteName ? $pageTi
         <?php if ($user->isPlatformAdmin): ?><?= $v->navLink('/system', 'System') ?><?php endif; ?>
       </nav>
       <div class="account">
-        <a href="/account"<?= $v->shared('path') === '/account' ? ' aria-current="page"' : '' ?>>
-          <?= $v->e($user->displayName) ?><?php if ($role !== null): ?> <span class="role">· <?= $v->e($role->label()) ?></span><?php endif; ?>
+        <a class="account-me" href="/account"<?= $v->shared('path') === '/account' ? ' aria-current="page"' : '' ?>>
+          <span class="account-name"><?= $v->e($user->displayName) ?></span><?php if ($role !== null): ?> <span class="role"><?= $v->e($role->label()) ?></span><?php endif; ?>
         </a>
         <form method="post" action="/logout" class="inline">
           <?= $v->csrfField() ?>

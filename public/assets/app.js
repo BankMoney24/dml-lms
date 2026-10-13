@@ -163,6 +163,48 @@
     button.addEventListener('click', function () { window.print(); });
   });
 
+  // Add-a-lesson form: show only the fields the chosen lesson type uses.
+  // Without scripts every field shows, each labelled with the type it is for.
+  Array.prototype.forEach.call(document.querySelectorAll('[data-type-switch]'), function (form) {
+    var parts = form.querySelectorAll('[data-lesson-type]');
+    var update = function () {
+      var checked = form.querySelector('input[name="type"]:checked');
+      var type = checked ? checked.value : '';
+      Array.prototype.forEach.call(parts, function (part) {
+        var wanted = (part.getAttribute('data-lesson-type') || '').split(' ');
+        var show = wanted.indexOf(type) !== -1;
+        part.hidden = !show;
+        Array.prototype.forEach.call(part.querySelectorAll('input, select, textarea'), function (el) { el.disabled = !show; });
+      });
+    };
+    Array.prototype.forEach.call(form.querySelectorAll('input[name="type"]'), function (radio) {
+      radio.addEventListener('change', update);
+    });
+    update();
+  });
+
+  // "Find" boxes that narrow a long list as you type (people, ticked learner lists).
+  Array.prototype.forEach.call(document.querySelectorAll('[data-filter]'), function (input) {
+    var target = document.getElementById(input.getAttribute('data-filter'));
+    var status = document.getElementById(input.getAttribute('data-filter') + '-count');
+    if (!target) { return; }
+    input.hidden = false;
+    var label = input.labels && input.labels[0];
+    if (label) { label.hidden = false; }
+    var rows = target.querySelectorAll('[data-filter-row]');
+    input.addEventListener('input', function () {
+      var q = input.value.trim().toLowerCase();
+      var shown = 0;
+      Array.prototype.forEach.call(rows, function (row) {
+        var text = row.getAttribute('data-filter-row') || row.textContent || '';
+        var match = q === '' || text.toLowerCase().indexOf(q) !== -1;
+        row.hidden = !match;
+        if (match) { shown++; }
+      });
+      if (status) { status.textContent = q === '' ? '' : shown + (shown === 1 ? ' match' : ' matches'); }
+    });
+  });
+
   // Service worker caches only public static assets and an offline page.
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
     navigator.serviceWorker.register('/sw.js').catch(function () { /* optional */ });

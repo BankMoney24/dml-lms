@@ -157,10 +157,17 @@ $behind = [];
       <form method="post" action="<?= $base ?>/learners" class="form" novalidate>
         <?= $v->csrfField() ?>
         <?php if ($unplaced !== []): ?>
-        <fieldset class="field tick-list">
+        <fieldset class="field tick-list" id="unplaced-list">
           <legend>Learners not in any <?= $v->e($one) ?> yet</legend>
+          <?php if (count($unplaced) > 8): ?>
+          <p class="filter-row">
+            <label for="unplaced-find" hidden>Find a learner</label>
+            <input type="search" id="unplaced-find" data-filter="unplaced-list" placeholder="Name or email" autocomplete="off" hidden>
+            <span id="unplaced-list-count" class="small muted" role="status"></span>
+          </p>
+          <?php endif; ?>
           <?php foreach ($unplaced as $u): ?>
-            <label class="choice choice-tight"><input type="checkbox" name="learners[]" value="<?= $u['user_id'] ?>"><span><?= $v->e($u['name']) ?> <span class="small muted"><?= $v->e($u['email']) ?></span></span></label>
+            <label class="choice choice-tight" data-filter-row><input type="checkbox" name="learners[]" value="<?= $u['user_id'] ?>"><span><?= $v->e($u['name']) ?> <span class="small muted"><?= $v->e($u['email']) ?></span></span></label>
           <?php endforeach; ?>
         </fieldset>
         <?php endif; ?>

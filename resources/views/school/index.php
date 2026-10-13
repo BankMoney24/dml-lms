@@ -8,6 +8,7 @@
  * @var list<array{host: string, primary: bool, verified: bool}> $domains
  * @var int $memberCount
  * @var int $courseCount
+ * @var ?array{mode: string} $payments
  */
 $schoolTab = 'overview';
 $setup = '/setup/school';
@@ -139,6 +140,7 @@ $none = '<span class="muted">Not set</span>';
       <dt>Certificates</dt><dd><?= $school->certificatesEnabled ? 'Issued when a learner completes a course' : 'Off' ?></dd>
       <dt>Course list</dt><dd><?= $school->publicCatalogue ? 'Visitors can browse it' : 'Members only' ?></dd>
       <dt>Courses</dt><dd><a href="/teach"><?= $v->e($v->plural($courseCount, 'course')) ?></a></dd>
+      <dt>Payments</dt><dd><a href="/school/payments"><?= $payments === null ? 'Not set up' : ($payments['mode'] === 'live' ? 'Paystack, live' : 'Paystack, test mode') ?></a></dd>
     </dl>
   </section>
 

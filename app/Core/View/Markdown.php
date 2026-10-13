@@ -138,7 +138,8 @@ final class Markdown
         $indent = $indent === PHP_INT_MAX ? 0 : $indent;
         $text = implode("\n", array_map(static fn (string $l): string => (string) substr($l, $indent), $code));
         $language = strtolower($language);
-        $label = $language === '' ? '' : sprintf('<span class="code-lang">%s</span>', $this->e($language));
+        // "text" or "plain" says nothing a reader needs, so only real languages get a label.
+        $label = in_array($language, ['', 'text', 'plain', 'txt'], true) ? '' : sprintf('<span class="code-lang">%s</span>', $this->e($language));
 
         return sprintf(
             '<div class="code-block">%s<pre><code%s>%s</code></pre></div>',

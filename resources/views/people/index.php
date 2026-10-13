@@ -34,15 +34,22 @@ foreach ($members as $m) {
 <div class="teach-layout">
   <section aria-labelledby="members-h">
     <h2 id="members-h"><?= $v->e($v->plural(count($members), 'member')) ?></h2>
-    <p class="muted small"><?php $parts = []; foreach ($counts as $label => $c) { $parts[] = $c . ' ' . strtolower($label) . ($c === 1 ? '' : 's'); } echo $v->e(implode(' · ', $parts)); ?></p>
+    <p class="muted small"><?php $parts = []; foreach ($counts as $label => $c) { $parts[] = $c . ' ' . strtolower($label) . ($c === 1 ? '' : 's'); } echo $v->e(implode(', ', $parts)); ?></p>
+    <?php if (count($members) > 8): ?>
+    <p class="filter-row">
+      <label for="people-find" hidden>Find a person</label>
+      <input type="search" id="people-find" data-filter="people-rows" placeholder="Name or email" autocomplete="off" hidden>
+      <span id="people-rows-count" class="small muted" role="status"></span>
+    </p>
+    <?php endif; ?>
     <div class="table-wrap">
-    <table class="table">
+    <table class="table people-table">
       <thead><tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
-      <tbody>
+      <tbody id="people-rows">
       <?php foreach ($members as $m):
         $isMe = $m['user_id'] === $meId;
         $locked = $isMe || ($m['role']->value === 'owner' && !$iAmOwner); ?>
-        <tr>
+        <tr data-filter-row="<?= $v->e($m['name'] . ' ' . $m['email']) ?>">
           <td><?= $v->e($m['name']) ?><?= $isMe ? ' ' . $v->badge('You') : '' ?>
             <?= $m['pending'] ? ' ' . $v->badge('Not signed in yet', 'draft') : '' ?>
             <?= $m['two_step'] ? ' ' . $v->badge('Two-step on', 'ok') : '' ?>

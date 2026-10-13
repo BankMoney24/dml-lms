@@ -29,7 +29,7 @@ $bytes = static fn (?int $b): string => $b === null ? '–' : \App\Modules\Files
     <?php if ($backup['data'] !== null): $d = $backup['data']; ?>
     <dl class="facts">
       <dt>Last good backup</dt><dd><?= $d['last_success_at'] !== '' ? $v->datetime((string) $d['last_success_at']) . ' (' . $v->e($v->plural((int) $backup['age_hours'], 'hour')) . ' ago)' : 'none' ?></dd>
-      <dt>File</dt><dd><code><?= $v->e((string) ($d['last_success_file'] ?? '')) ?></code> · <?= $v->e($bytes((int) ($d['last_success_bytes'] ?? 0))) ?></dd>
+      <dt>File</dt><dd><code><?= $v->e((string) ($d['last_success_file'] ?? '')) ?></code>, <?= $v->e($bytes((int) ($d['last_success_bytes'] ?? 0))) ?></dd>
       <dt>Off the server</dt><dd><?= $v->e((string) ($d['last_success_offsite'] ?? '')) ?></dd>
       <dt>Last run</dt><dd><?= $v->datetime((string) ($d['last_run_at'] ?? '')) ?>: <?= $v->e((string) ($d['last_result'] ?? '')) ?></dd>
       <dt>Kept for</dt><dd><?= (int) ($d['keep_days'] ?? 0) ?> days on this server</dd>
@@ -65,7 +65,7 @@ $bytes = static fn (?int $b): string => $b === null ? '–' : \App\Modules\Files
     <p><?= $v->e($mail['note']) ?></p>
     <dl class="facts">
       <dt>Driver</dt><dd><?= $v->e($mail['driver']) ?></dd>
-      <dt>Last 7 days</dt><dd><?= (int) ($mail['counts']['sent'] ?? 0) ?> sent · <?= (int) ($mail['counts']['queued'] ?? 0) ?> waiting · <?= (int) ($mail['counts']['failed'] ?? 0) ?> failed</dd>
+      <dt>Last 7 days</dt><dd><?= (int) ($mail['counts']['sent'] ?? 0) ?> sent, <?= (int) ($mail['counts']['queued'] ?? 0) ?> waiting, <?= (int) ($mail['counts']['failed'] ?? 0) ?> failed</dd>
     </dl>
   </section>
 

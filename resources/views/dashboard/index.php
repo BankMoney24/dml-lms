@@ -79,20 +79,37 @@ $hasLearning = $continue !== null || $myCards !== [];
 <?php if ($teaching !== null): ?>
 <section class="section teaching-strip" aria-labelledby="teaching">
   <h2 id="teaching">Teaching</h2>
-  <ul class="todo-list">
-    <?php if ($teaching['reviews'] > 0): ?>
-      <li class="todo-urgent"><a href="/teach/reviews"><?= $v->e($v->plural($teaching['reviews'], 'assignment')) ?> waiting for your review</a></li>
+  <?php $tgroups = $teaching['groups'] ?? []; $groupWord = $v->shared('tenant')?->groupWord(true) ?? 'groups'; ?>
+  <div class="staff-grid<?= $tgroups === [] ? ' is-single' : '' ?>">
+    <div>
+      <h3 class="staff-sub">To do</h3>
+      <ul class="todo-list">
+        <?php if ($teaching['reviews'] > 0): ?>
+          <li class="todo-urgent"><a href="/teach/reviews"><?= $v->e($v->plural($teaching['reviews'], 'assignment')) ?> waiting for your review</a></li>
+        <?php endif; ?>
+        <?php if ($teaching['drafts'] > 0): ?>
+          <li><a href="/teach"><?= $v->e($v->plural($teaching['drafts'], 'draft course')) ?> to finish and publish</a></li>
+        <?php endif; ?>
+        <li><a href="/teach/courses/new">Start a new course</a></li>
+        <?php if ($v->can('members.manage')): ?><li><a href="/people">Add people</a></li><?php endif; ?>
+      </ul>
+    </div>
+    <?php if ($tgroups !== []): ?>
+    <div>
+      <h3 class="staff-sub">Your <?= $v->e($groupWord) ?></h3>
+      <ul class="mini-groups">
+        <?php foreach (array_slice($tgroups, 0, 6) as $tg): ?>
+        <li><a href="/groups/<?= $tg['group']->id ?>"><span class="mini-group-name"><?= $v->e($tg['group']->name) ?></span><span class="small muted"><?= $v->e($v->plural($tg['learners'], 'learner') . ', ' . $v->plural($tg['courses'], 'course')) ?></span></a></li>
+        <?php endforeach; ?>
+      </ul>
+      <?php if (count($tgroups) > 6): ?><p class="small"><a href="/groups">All <?= $v->e($groupWord) ?></a></p><?php endif; ?>
+    </div>
     <?php endif; ?>
-    <li><a href="/teach"><?= $v->e($v->plural($teaching['published'], 'published course')) ?><?= $teaching['drafts'] > 0 ? ', ' . $v->e($v->plural($teaching['drafts'], 'draft')) : '' ?></a></li>
-    <li><a href="/teach/courses/new">Start a new course</a></li>
-    <?php if ($v->can('members.manage')): ?><li><a href="/people">Add people</a></li><?php endif; ?>
-    <?php foreach (array_slice($teaching['groups'] ?? [], 0, 6) as $tg): ?>
-      <li><a href="/groups/<?= $tg['group']->id ?>"><?= $v->e($tg['group']->name . ': ' . $v->plural($tg['learners'], 'learner') . ', ' . $v->plural($tg['courses'], 'course')) ?></a></li>
-    <?php endforeach; ?>
-  </ul>
+  </div>
   <?php if ($teaching['courses'] !== []): ?>
+  <h3 class="staff-sub staff-sub-gap">Courses <span class="muted small"><?= $v->e($v->plural($teaching['published'], 'published course')) ?><?= $teaching['drafts'] > 0 ? ', ' . $v->e($v->plural($teaching['drafts'], 'draft')) : '' ?></span></h3>
   <div class="table-wrap teaching-table">
-  <table class="table">
+  <table class="table table-stack">
     <caption class="visually-hidden">Learners in each course</caption>
     <thead><tr>
       <th scope="col">Course</th>
@@ -109,10 +126,10 @@ $hasLearning = $continue !== null || $myCards !== [];
           <?php if (!$tc->isPublished()): ?> <?= $v->badge('Draft', 'draft') ?><?php endif; ?>
           <span class="small muted teaching-lessons"><?= $v->e($v->plural($row['lessons'], 'lesson')) ?></span>
         </td>
-        <td class="num"><?= $row['enrolled'] ?></td>
-        <td class="num"><?= $row['completed'] ?></td>
-        <td class="num"><?= $row['active'] ?></td>
-        <td class="num"><?php if ($row['enrolled'] > 0 && $v->can('reports.view')): ?><a href="/teach/courses/<?= $tc->id ?>/progress">Progress</a><?php endif; ?></td>
+        <td class="num" data-label="Learners"><?= $row['enrolled'] ?></td>
+        <td class="num" data-label="Finished"><?= $row['completed'] ?></td>
+        <td class="num" data-label="This week"><?= $row['active'] ?></td>
+        <td class="num table-stack-action"><?php if ($row['enrolled'] > 0 && $v->can('reports.view')): ?><a href="/teach/courses/<?= $tc->id ?>/progress">Progress</a><?php endif; ?></td>
       </tr>
     <?php endforeach; ?>
     </tbody>

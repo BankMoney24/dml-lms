@@ -15,7 +15,7 @@ $removeUrl ??= null;
     <span class="file-icon" aria-hidden="true"><?= $v->e($f->iconLabel()) ?></span>
     <span class="file-main">
       <a href="/files/<?= $f->id ?>"<?= $opens ? '' : ' download' ?>><?= $v->e($f->originalName) ?></a>
-      <span class="small muted"><?= $v->e($f->kindLabel()) ?> · <?= $v->e($f->humanSize()) ?><?php if ($opens): ?> · <a href="/files/<?= $f->id ?>?download=1" download>Download<span class="visually-hidden"> <?= $v->e($f->originalName) ?></span></a><?php endif; ?></span>
+      <span class="small muted"><?= $v->e($f->kindLabel()) ?>, <?= $v->e($f->humanSize()) ?><?php if ($opens): ?>. <a href="/files/<?= $f->id ?>?download=1" download>Download<span class="visually-hidden"> <?= $v->e($f->originalName) ?></span></a><?php endif; ?></span>
     </span>
     <?php if ($removeUrl !== null): ?>
     <form method="post" action="<?= $v->e($removeUrl($f)) ?>" class="inline">

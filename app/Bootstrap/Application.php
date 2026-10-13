@@ -552,6 +552,7 @@ final class Application
             $c->get(LogoStore::class),
             $c->get(MembershipRepository::class),
             $c->get(CourseRepository::class),
+            $c->get(PaymentAccountRepository::class),
         ));
         $c->set(PaymentController::class, static fn (Container $c) => new PaymentController(
             $c->get(View::class),

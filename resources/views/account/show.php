@@ -11,7 +11,7 @@ $passwordErrors = array_intersect_key($errors, array_flip(['current_password', '
 <section class="narrow">
   <header class="page-head">
     <h1><?= $mustChange ? 'Choose your password' : 'Your account' ?></h1>
-    <p class="lead"><?= $v->e($me->user->email) ?> · <?= $v->e($me->membership?->role->label() ?? '') ?></p>
+    <p class="lead"><?= $v->e($me->user->email) ?>, <?= $v->e($me->membership?->role->label() ?? '') ?></p>
   </header>
 
   <?php if ($mustChange): ?>

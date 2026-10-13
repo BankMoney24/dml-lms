@@ -44,22 +44,23 @@ $done = count(array_intersect($lessonIds, $completedIds));
     <p class="small muted course-counts"><?= $v->e($parts === [] ? (string) $last : implode(', ', $parts) . ' and ' . $last) ?></p>
     <?php endif; ?>
 
+    <div class="start-box<?= $enrolment !== null && $enrolment->isCompleted() ? ' is-done' : '' ?><?= $mustPay ? ' is-paid' : '' ?>" id="start">
     <?php if ($certificate !== null): ?>
-      <div class="notice notice-done cert-callout">
-        <p><strong>You have completed this course.</strong> Your certificate is ready.</p>
-        <p><a class="button button-small" href="/certificates/<?= $v->e($certificate->displayCode()) ?>">View and print your certificate</a></p>
-      </div>
+      <p class="start-title">You completed this course</p>
+      <p>Your certificate is ready. Anyone can check it online with its number.</p>
+      <p><a class="button" href="/certificates/<?= $v->e($certificate->displayCode()) ?>">View and print your certificate</a></p>
     <?php elseif ($enrolment !== null && $enrolment->isCompleted()): ?>
-      <p class="notice notice-done">You have completed this course.</p>
+      <p class="start-title">You completed this course</p>
+      <p class="muted">Open any lesson below to go over it again.</p>
     <?php elseif ($enrolment !== null && $firstOpen !== null): ?>
-      <p class="small"><?= $done ?> of <?= $lessonCount ?> lessons done</p>
+      <p class="start-progress"><strong><?= $done ?> of <?= $lessonCount ?></strong> lessons done</p>
       <progress class="meter" max="<?= max(1, $lessonCount) ?>" value="<?= $done ?>" aria-label="Your progress"></progress>
-      <p><a class="button" href="/courses/<?= $v->e($course->slug) ?>/lessons/<?= $firstOpen->id ?>"><?= $done === 0 ? 'Start' : 'Continue' ?>: <?= $v->e($firstOpen->title) ?></a></p>
+      <p class="start-action"><a class="button" href="/courses/<?= $v->e($course->slug) ?>/lessons/<?= $firstOpen->id ?>"><?= $done === 0 ? 'Start' : 'Continue' ?>: <?= $v->e($firstOpen->title) ?></a></p>
     <?php elseif ($user === null): ?>
       <?php if ($course->isPaid()): ?><p class="course-price"><strong><?= $v->e((string) $course->priceLabel()) ?></strong> for the whole course</p><?php endif; ?>
-      <p><a class="button" href="/login">Sign in to enrol</a></p>
+      <p class="start-action"><a class="button" href="/login">Sign in to enrol</a></p>
     <?php elseif ($v->can('course.learn') && $mustPay): ?>
-      <div class="pay-box" id="pay">
+      <div id="pay">
         <p class="course-price"><strong><?= $v->e((string) $course->priceLabel()) ?></strong> for the whole course</p>
         <?php if ($waiting !== null): ?>
           <p class="notice">You started a payment of <?= $v->e($waiting->amount()) ?> on <?= $v->e($v->datetime($waiting->createdAt)) ?>.
@@ -77,11 +78,15 @@ $done = count(array_intersect($lessonIds, $completedIds));
         <?php endif; ?>
       </div>
     <?php elseif ($v->can('course.learn')): ?>
-      <form method="post" action="/courses/<?= $v->e($course->slug) ?>/enrol">
+      <form method="post" action="/courses/<?= $v->e($course->slug) ?>/enrol" class="start-action">
         <?= $v->csrfField() ?>
         <button type="submit" class="button">Enrol and start</button>
       </form>
+      <p class="small muted"><?= $course->isPaid() ? 'You can open it without paying because you build courses here.' : 'Free. Your progress is saved as you go.' ?></p>
+    <?php else: ?>
+      <p class="muted">You can look through the outline. Learners enrol from this page.</p>
     <?php endif; ?>
+    </div>
 
     <?php if ($course->outcomes !== []): ?>
     <section class="outcomes" aria-labelledby="outcomes-h">

@@ -30,7 +30,7 @@ $tenant = $v->shared('tenant');
     <?php if ($course !== null && ($course->levelLabel() !== null || $course->durationHours !== null)): ?>
     <p class="cert-detail">
       <?= $course->levelLabel() !== null ? $v->e($course->levelLabel() . ' level') : '' ?>
-      <?= $course->levelLabel() !== null && $course->durationHours !== null ? ' · ' : '' ?>
+      <?= $course->levelLabel() !== null && $course->durationHours !== null ? ', ' : '' ?>
       <?= $course->durationHours !== null ? $v->e('about ' . $v->plural($course->durationHours, 'hour') . ' of study') : '' ?>
     </p>
     <?php endif; ?>

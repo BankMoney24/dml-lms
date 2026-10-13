@@ -80,7 +80,7 @@ final class FilesTest extends AppTestCase
         $this->asLearner();
         $page = $this->get(self::HOST, '/courses/servers/lessons/' . $this->readingId)->body;
         $this->assertStringContainsString('Week 1 notes.pdf', $page);
-        $this->assertMatchesRegularExpression('/PDF · \d+ bytes/', $page, 'size shown before downloading');
+        $this->assertMatchesRegularExpression('/PDF, \d+ bytes/', $page, 'size shown before downloading');
 
         $download = $this->get(self::HOST, '/files/' . $id);
         $this->assertSame(200, $download->status);

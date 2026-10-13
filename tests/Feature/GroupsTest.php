@@ -140,7 +140,9 @@ final class GroupsTest extends AppTestCase
         $this->post(self::HOST, '/groups/' . $id . '/learners', ['emails' => 'amaka@school.test']);
         $this->post(self::HOST, '/groups/' . $id . '/courses', ['course_id' => (string) $this->physics->id]);
         $this->assertTrue($this->enrolled($this->amaka, $this->physics));
-        $this->assertStringContainsString('SS 2 Gold: 1 learner, 1 course', $this->get(self::HOST, '/')->body, 'on the teacher home page');
+        $home = $this->get(self::HOST, '/')->body;
+        $this->assertStringContainsString('Your classes', $home, 'on the teacher home page');
+        $this->assertStringContainsString('1 learner, 1 course', $home);
 
         // Another school cannot see it at all.
         $elsewhere = $this->makeTenant('elsewhere', 'elsewhere.test');

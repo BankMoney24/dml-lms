@@ -68,7 +68,7 @@ Parameterised SQL everywhere · uploads checked by content, stored outside the w
 
 ## Interface
 
-Shared components rendered by `ViewHelpers` (labelled fields with inline errors, error summary linking to fields, badges, empty states, breadcrumbs), role-aware navigation with the current section marked, the same page-header pattern on every screen, two-step confirmation for destructive actions, and course tabs (Outline / Learner progress) in the teaching workspace.
+Shared components rendered by `ViewHelpers` (labelled fields with inline errors, error summary linking to fields, badges, empty states, breadcrumbs), role-aware navigation with the current section marked, the same page-header pattern on every screen, two-step confirmation for destructive actions, and course tabs (Outline / Learner progress) in the teaching workspace. Course cards share one layout (module trace, kind of course, title, summary, a footer with facts and progress or price); one start box on the course page for every state; lesson pager cards; sign-in page with the school beside the form; staff home split into a to-do list, their classes and their courses; find-as-you-type on People and learner lists; add-a-lesson shows only the fields the chosen type uses; tables that stack into records on phones.
 
 ## Recommended next slice
 

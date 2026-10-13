@@ -97,7 +97,7 @@ $n = 0;
     <?php if ($outline !== []): ?>
     <section class="panel" aria-labelledby="add-lesson-h">
       <h2 id="add-lesson-h">Add a lesson</h2>
-      <form method="post" action="<?= $base ?>/lessons" class="form" novalidate>
+      <form method="post" action="<?= $base ?>/lessons" class="form" novalidate data-type-switch>
         <?= $v->csrfField() ?>
         <?php
           $moduleOptions = [];
@@ -114,21 +114,25 @@ $n = 0;
           <?php endforeach; ?>
         </fieldset>
         <?= $v->field('lesson_title', 'Lesson title', ['value' => $o('lesson_title'), 'error' => $errors['lesson_title'] ?? null, 'maxlength' => 190]) ?>
+        <div data-lesson-type="video">
         <?= $v->field('media_url', 'Video link (video lessons only)', [
             'value' => $o('media_url'), 'error' => $errors['media_url'] ?? null, 'optional' => true, 'inputmode' => 'url', 'maxlength' => 500,
             'hint' => 'A YouTube or Vimeo address.',
         ]) ?>
+        </div>
+        <div data-lesson-type="lab">
         <?= $v->field('lab_key', 'Lab (lab lessons only)', [
             'type' => 'select', 'options' => ['' => 'Choose a lab'] + $labOptions, 'value' => $o('lab_key'), 'error' => $errors['lab_key'] ?? null,
             'hint' => 'Leave the title empty to use the lab’s own title.',
         ]) ?>
         <p class="small"><a href="/teach/labs">Browse and try the labs</a></p>
+        </div>
         <?= $v->field('body', 'Lesson text', [
             'type' => 'textarea', 'rows' => 8, 'value' => $o('body'), 'error' => $errors['body'] ?? null,
             'hint' => 'Reading: the lesson itself. Video: notes under the video. Quiz: instructions. Assignment: the task and how it is judged. Lab: an optional introduction.',
         ]) ?>
         <?php include __DIR__ . '/_format_help.php'; ?>
-        <details class="advanced"<?= isset($errors['pass_threshold']) || isset($errors['max_attempts']) ? ' open' : '' ?>>
+        <details class="advanced" data-lesson-type="quiz"<?= isset($errors['pass_threshold']) || isset($errors['max_attempts']) ? ' open' : '' ?>>
           <summary>Quiz settings</summary>
           <?= $v->field('pass_threshold', 'Pass mark (%)', ['value' => $o('pass_threshold', '70'), 'inputmode' => 'numeric', 'error' => $errors['pass_threshold'] ?? null]) ?>
           <?= $v->field('max_attempts', 'Attempts allowed', ['value' => $o('max_attempts'), 'inputmode' => 'numeric', 'hint' => 'Leave blank for unlimited.', 'error' => $errors['max_attempts'] ?? null]) ?>
