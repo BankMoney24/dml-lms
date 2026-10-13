@@ -7,6 +7,7 @@
 /** @var bool $setupPending */
 /** @var list<array{group: \App\Modules\Groups\LearnerGroup, teachers: list<string>, courses: list<array{course: \App\Modules\Courses\Course, due_on: ?string}>, announcements?: list<array{id: int, body: string, author: string, author_id: ?int, created_at: string}>, progress: array{lessons: array<int, int>, cells: array<int, array{status: string, done: int}>}}> $myGroups */
 /** @var string $today */
+/** @var list<\App\Modules\Guardians\GuardianLink> $children */
 /** @var ?array{groups?: list<array{group: \App\Modules\Groups\LearnerGroup, learners: int, courses: int, teachers: list<string>}>, published: int, drafts: int, reviews: int, courses: list<array{course: \App\Modules\Courses\Course, lessons: int, enrolled: int, completed: int, active: int}>} $teaching */
 $user = $v->shared('user');
 $firstName = explode(' ', trim($user->displayName))[0];
@@ -15,7 +16,7 @@ $hasLearning = $continue !== null || $myCards !== [];
 <header class="page-head">
   <h1>Hello, <?= $v->e($firstName) ?></h1>
   <?php if ($continue === null && $teaching === null): ?>
-    <p class="lead"><?= $hasLearning ? 'You have finished everything you started. Pick something new below.' : 'Choose a course to begin.' ?></p>
+    <p class="lead"><?= $hasLearning ? 'You have finished everything you started. Pick something new below.' : ($children !== [] ? 'See how your ' . (count($children) === 1 ? 'child is' : 'children are') . ' getting on.' : 'Choose a course to begin.') ?></p>
   <?php endif; ?>
 </header>
 
@@ -41,6 +42,13 @@ $hasLearning = $continue !== null || $myCards !== [];
       <span class="muted small"><?= $v->e($next->typeLabel()) ?><?= $next->type === 'text' ? ', ' . $next->readingMinutes() . ' min read' : '' ?></span>
     </p>
   <?php endif; ?>
+</section>
+<?php endif; ?>
+
+<?php if ($children !== []): ?>
+<section class="section" aria-labelledby="children-h">
+  <h2 id="children-h"><?= count($children) === 1 ? 'Your child' : 'Your children' ?></h2>
+  <?php include __DIR__ . '/../guardians/_child_list.php'; ?>
 </section>
 <?php endif; ?>
 

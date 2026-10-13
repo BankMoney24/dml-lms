@@ -43,6 +43,7 @@ final class GroupService
         private readonly AuditLog $audit,
         private readonly Clock $clock,
         private readonly ?Notifier $notifier = null,
+        private readonly ?\App\Modules\Guardians\GuardianRepository $guardians = null,
     ) {
     }
 
@@ -291,6 +292,17 @@ final class GroupService
                 $body,
                 '/#my-group-' . $group->id,
             );
+            // Guardians who may see class notices hear about it too, by the child's name only.
+            foreach ($this->guardians?->noticeRecipients($tenant->id, $learners) ?? [] as $g) {
+                $this->notifier?->notify(
+                    $tenant->id,
+                    $g['guardian_id'],
+                    Notifier::ANNOUNCEMENT,
+                    sprintf('News from %s\'s %s', explode(' ', trim($g['learner_name']))[0], $tenant->groupWord()),
+                    $body,
+                    '/children',
+                );
+            }
 
             return $id;
         });

@@ -35,6 +35,7 @@ final class HomeController
         private readonly ProgressRepository $progress,
         private readonly ?GroupRepository $groups = null,
         private readonly ?GroupProgress $groupProgress = null,
+        private readonly ?\App\Modules\Guardians\GuardianRepository $guardians = null,
     ) {
     }
 
@@ -135,6 +136,7 @@ final class HomeController
 
         return Response::html($this->view->render('dashboard/index', [
             'myGroups' => $myGroups,
+            'children' => $this->guardians?->childrenOf($tenant->id, $user->user->id) ?? [],
             'today' => (new \DateTimeImmutable('now', new \DateTimeZone($tenant->timezone)))->format('Y-m-d'),
             'pageTitle' => 'Home',
             'continue' => $continue,

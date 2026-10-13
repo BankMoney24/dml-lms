@@ -13,6 +13,8 @@ use App\Modules\Courses\Http\LessonEditorController;
 use App\Modules\Courses\Http\TeachController;
 use App\Modules\Files\Http\FileController;
 use App\Modules\Groups\Http\GroupController;
+use App\Modules\Guardians\Http\ChildController;
+use App\Modules\Guardians\Http\GuardianAdminController;
 use App\Modules\Identity\Http\AccountController;
 use App\Modules\Identity\Http\LoginController;
 use App\Modules\Identity\Http\PasswordResetController;
@@ -130,10 +132,18 @@ return static function (Router $r): void {
     $r->get('/people', [PeopleController::class, 'index'], $people);
     $r->post('/people', [PeopleController::class, 'store'], $people);
     $r->post('/people/{user:int}/role', [PeopleController::class, 'updateRole'], $people);
+    // Parents and guardians (ADR 0016): linked by people who manage members.
+    $r->get('/people/{user:int}/guardians', [GuardianAdminController::class, 'show'], $people);
+    $r->post('/people/{user:int}/guardians', [GuardianAdminController::class, 'store'], $people);
+    $r->post('/people/{user:int}/guardians/{link:int}', [GuardianAdminController::class, 'update'], $people);
+    $r->post('/people/{user:int}/guardians/{link:int}/revoke', [GuardianAdminController::class, 'revoke'], $people);
     $r->post('/people/{user:int}/remove', [PeopleController::class, 'remove'], $people);
     $r->post('/people/{user:int}/send-link', [PeopleController::class, 'sendLink'], $people);
     $r->post('/people/{user:int}/reset-two-step', [PeopleController::class, 'resetTwoStep'], $people);
 
+    // A guardian's view of their linked learners; the link is checked on every request.
+    $r->get('/children', [ChildController::class, 'index'], ['tenant', 'auth']);
+    $r->get('/children/{learner:int}', [ChildController::class, 'show'], ['tenant', 'auth']);
     $r->get('/notifications', [NotificationController::class, 'index'], ['tenant', 'auth']);
     $r->get('/notifications/{notification:int}', [NotificationController::class, 'open'], ['tenant', 'auth']);
     $r->post('/notifications/read-all', [NotificationController::class, 'readAll'], ['tenant', 'auth']);

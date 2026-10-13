@@ -28,6 +28,7 @@ final class CertificateService
         private readonly AuditLog $audit,
         private readonly TenantRepository $tenants,
         private readonly ?\App\Modules\Notifications\Notifier $notifier = null,
+        private readonly ?\App\Modules\Guardians\GuardianRepository $guardians = null,
     ) {
     }
 
@@ -63,6 +64,14 @@ final class CertificateService
                     'Your certificate for ' . $course->title . ' is ready',
                     'Well done on finishing the course. Print it, or share its number so anyone can check it.',
                     '/certificates/' . $certificate->displayCode(),
+                );
+                $this->notifier?->notifyMany(
+                    $enrolment->tenantId,
+                    $this->guardians?->progressRecipients($enrolment->tenantId, $user->id) ?? [],
+                    \App\Modules\Notifications\Notifier::CERTIFICATE,
+                    sprintf('%s finished %s', explode(' ', trim($user->displayName))[0], $course->title),
+                    'A certificate was issued for the course.',
+                    '/children/' . $user->id,
                 );
 
                 return $certificate;

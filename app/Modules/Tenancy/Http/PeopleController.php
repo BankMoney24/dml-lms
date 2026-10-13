@@ -32,6 +32,7 @@ final class PeopleController
         private readonly UserRepository $users,
         private readonly TwoFactorService $twoFactor,
         private readonly MailSettings $mail,
+        private readonly ?\App\Modules\Guardians\GuardianRepository $guardians = null,
     ) {
     }
 
@@ -160,6 +161,7 @@ final class PeopleController
             'iAmOwner' => $me->membership?->role === Role::Owner,
             'emailing' => $this->mail->deliveryAvailable(),
             'newMember' => $newMember,
+            'guardianCounts' => $this->guardians?->counts($tenant->id) ?? [],
             'errors' => $errors,
             'old' => $old + ['name' => '', 'email' => '', 'role' => 'learner'],
         ]), $status);

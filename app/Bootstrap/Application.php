@@ -9,6 +9,11 @@ use App\Modules\VirtualLabs\LabGateway;
 use App\Modules\VirtualLabs\LabSessionRepository;
 use App\Modules\VirtualLabs\Http\LabController;
 use App\Modules\Groups\GroupProgress;
+use App\Modules\Guardians\ChildReport;
+use App\Modules\Guardians\GuardianRepository;
+use App\Modules\Guardians\GuardianService;
+use App\Modules\Guardians\Http\ChildController;
+use App\Modules\Guardians\Http\GuardianAdminController;
 use App\Modules\Groups\GroupRepository;
 use App\Modules\Groups\GroupService;
 use App\Modules\Groups\Http\GroupController;
@@ -240,6 +245,7 @@ final class Application
             $c->get(AuditLog::class),
             $c->get(TenantRepository::class),
             $c->get(Notifier::class),
+            $c->get(GuardianRepository::class),
         ));
         $c->set(LearningService::class, static fn (Container $c) => new LearningService(
             $c->get(Connection::class),
@@ -297,6 +303,16 @@ final class Application
             $c->get(AuditLog::class),
             $c->get(Clock::class),
             $c->get(Notifier::class),
+            $c->get(GuardianRepository::class),
+        ));
+        $c->set(GuardianRepository::class, static fn (Container $c) => new GuardianRepository($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(GuardianService::class, static fn (Container $c) => new GuardianService(
+            $c->get(Connection::class),
+            $c->get(GuardianRepository::class),
+            $c->get(UserRepository::class),
+            $c->get(MembershipRepository::class),
+            $c->get(MemberService::class),
+            $c->get(AuditLog::class),
         ));
         $c->set(WizardRunRepository::class, static fn (Container $c) => new WizardRunRepository($c->get(Connection::class), $c->get(Clock::class)));
         $c->set(FileService::class, static fn (Container $c) => new FileService(
@@ -396,6 +412,7 @@ final class Application
             $c->get(ProgressRepository::class),
             $c->get(GroupRepository::class),
             new GroupProgress($c->get(Connection::class)),
+            $c->get(GuardianRepository::class),
         ));
         $c->set(LoginController::class, static fn (Container $c) => new LoginController(
             $c->get(View::class),
@@ -519,6 +536,7 @@ final class Application
             $c->get(UserRepository::class),
             $c->get(TwoFactorService::class),
             $c->get(MailSettings::class),
+            $c->get(GuardianRepository::class),
         ));
         $c->set(PasswordResetController::class, static fn (Container $c) => new PasswordResetController(
             $c->get(View::class),
@@ -596,6 +614,23 @@ final class Application
             $c->get(View::class),
             $c->get(Session::class),
             $c->get(NotificationRepository::class),
+        ));
+        $c->set(GuardianAdminController::class, static fn (Container $c) => new GuardianAdminController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(GuardianService::class),
+            $c->get(GuardianRepository::class),
+            $c->get(UserRepository::class),
+            $c->get(AccountLinkService::class),
+            $c->get(MailSettings::class),
+        ));
+        $c->set(ChildController::class, static fn (Container $c) => new ChildController(
+            $c->get(View::class),
+            $c->get(GuardianService::class),
+            $c->get(GuardianRepository::class),
+            new ChildReport($c->get(Connection::class)),
+            $c->get(GroupRepository::class),
+            $c->get(CertificateService::class),
         ));
         $c->set(ActivityController::class, static fn (Container $c) => new ActivityController(
             $c->get(View::class),

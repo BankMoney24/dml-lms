@@ -2,6 +2,7 @@
 /** @var \App\Core\View\ViewHelpers $v */
 /** @var list<array{user_id: int, name: string, email: string, role: \App\Modules\Identity\Role, joined_at: string}> $members */
 /** @var array<string, string> $roles */
+/** @var array<int, int> $guardianCounts learner id => linked guardians */
 /** @var array<string, string> $errors */
 /** @var array<string, string> $old */
 $counts = [];
@@ -53,7 +54,10 @@ foreach ($members as $m) {
           <td><?= $v->e($m['name']) ?><?= $isMe ? ' ' . $v->badge('You') : '' ?>
             <?= $m['pending'] ? ' ' . $v->badge('Not signed in yet', 'draft') : '' ?>
             <?= $m['two_step'] ? ' ' . $v->badge('Two-step on', 'ok') : '' ?>
-            <span class="small muted"><?= $v->e($m['email']) ?></span></td>
+            <span class="small muted"><?= $v->e($m['email']) ?></span>
+            <?php if ($m['role']->value === 'learner'): $gc = $guardianCounts[$m['user_id']] ?? 0; ?>
+              <a class="small people-guardians" href="/people/<?= $m['user_id'] ?>/guardians"><?= $gc === 0 ? 'Link a parent or guardian' : $v->e($v->plural($gc, 'parent or guardian', 'parents or guardians')) ?><span class="visually-hidden"> for <?= $v->e($m['name']) ?></span></a>
+            <?php endif; ?></td>
           <td>
             <?php if ($locked): ?>
               <?= $v->e($m['role']->label()) ?>
