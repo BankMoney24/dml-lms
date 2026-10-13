@@ -6,6 +6,7 @@
   <h1>Activity</h1>
   <p class="lead">Sign-ins, changes to people and courses, and learner milestones, newest first. Times are in <?= $v->e($v->shared('tenant')?->timezone ?? 'UTC') ?>.</p>
 </header>
+<?php $schoolTab = 'activity'; include __DIR__ . '/../school/_tabs.php'; ?>
 <?php if ($rows === []): ?>
   <?= $v->emptyState('Nothing yet', 'Activity appears here as people sign in, build courses and learn.') ?>
 <?php else: ?>

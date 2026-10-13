@@ -636,3 +636,177 @@ input[type=file] { padding: var(--space-2); background: var(--surface); }
   .teaching-strip .todo-list { display: grid; }
 }
 .page-head.narrow .lead + .actions { margin-top: var(--space-5); }
+
+/* ==========================================================================
+   School colour themes (SchoolTheme). Each pair checked for WCAG AA:
+   links on the page, white text on buttons, and the dark-mode equivalents.
+   ========================================================================== */
+.theme-teal { --primary: #0b7a6b; --primary-soft: #e3f2ef; }
+.theme-blue { --primary: #1d5fb8; --primary-soft: #e4eefa; }
+.theme-green { --primary: #2f7a2f; --primary-soft: #e6f2e6; }
+.theme-plum { --primary: #7a3d8f; --primary-soft: #f2e8f6; }
+.theme-red { --primary: #b0302a; --primary-soft: #fbe9e8; }
+.theme-amber { --primary: #9a5800; --primary-soft: #fbf0e0; }
+.theme-navy { --primary: #14213d; --primary-soft: #e6e9f0; }
+@media (prefers-color-scheme: dark) {
+  .theme-teal { --primary: #3bbfa9; --primary-soft: #133a35; --primary-ink: #06221d; }
+  .theme-blue { --primary: #6ea8f0; --primary-soft: #17304f; --primary-ink: #06121f; }
+  .theme-green { --primary: #6cc46c; --primary-soft: #1b3a1f; --primary-ink: #06180a; }
+  .theme-plum { --primary: #c58ad8; --primary-soft: #33213f; --primary-ink: #1a0b21; }
+  .theme-red { --primary: #f08a80; --primary-soft: #42201f; --primary-ink: #230806; }
+  .theme-amber { --primary: #f0a840; --primary-soft: #3f2c12; --primary-ink: #231503; }
+  .theme-navy { --primary: #a9b6cb; --primary-soft: #26324a; --primary-ink: #06121f; }
+}
+
+.brand-logo { height: 2.25rem; width: auto; max-width: 9rem; object-fit: contain; }
+
+/* Footer with the school's contact details */
+.footer-inner { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-2) var(--space-5); }
+.footer-name { margin: 0; font-weight: 650; color: var(--ink); }
+.footer-tagline { font-weight: 400; color: var(--ink-soft); margin-left: var(--space-2); }
+.footer-links { list-style: none; display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); margin: 0; padding: 0; }
+
+/* ==========================================================================
+   Wizard engine: the steps are drawn as a trace, like a course outline.
+   ========================================================================== */
+.wizard { display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: var(--space-7); align-items: start; }
+.wizard-rail { position: sticky; top: var(--space-4); padding-top: var(--space-2); }
+.wizard-name { font-family: var(--font-head); font-weight: 800; color: var(--ink-soft); margin: 0 0 var(--space-4); }
+.wizard-steps { list-style: none; margin: 0; padding: 0; }
+.wstep { position: relative; display: flex; gap: var(--space-3); align-items: flex-start; padding-bottom: var(--space-4); }
+.wstep:last-child { padding-bottom: 0; }
+.wstep::before { content: ""; position: absolute; left: calc(0.875rem - 2px); top: 1.75rem; bottom: 0; width: 4px; border-radius: 2px; background: var(--line); }
+.wstep:last-child::before { display: none; }
+.wstep.is-done::before { background: var(--lamp); }
+.wstep-dot {
+  flex: none; width: 1.75rem; height: 1.75rem; border-radius: 50%; display: grid; place-items: center;
+  font-family: var(--font-head); font-weight: 800; font-size: 0.8rem;
+  background: var(--surface); color: var(--ink-soft); border: 3px solid var(--line); position: relative; z-index: 1;
+}
+.wstep.is-done .wstep-dot { background: var(--lamp); border-color: var(--lamp); color: #2b2100; }
+.wstep.is-current .wstep-dot { border-color: var(--primary); color: var(--primary); box-shadow: 0 0 0 4px var(--primary-soft); }
+.wstep.is-skipped .wstep-dot { border-style: dashed; }
+.wstep-text { display: flex; flex-direction: column; padding-top: 0.1rem; line-height: 1.35; }
+.wstep-text a { color: var(--ink); font-weight: 600; }
+.wstep-text a:hover { color: var(--primary); }
+.wstep.is-current .wstep-text > span:first-child { font-weight: 800; color: var(--ink); }
+.wstep.is-todo .wstep-text > span:first-child { color: var(--ink-soft); }
+.wstep-note { font-size: 0.8rem; color: var(--ink-soft); }
+.wstep-note:empty { display: none; }
+
+.wizard-main { min-width: 0; max-width: 46rem; }
+.wizard-count { color: var(--primary); font-weight: 700; font-size: var(--step--1); margin: 0 0 var(--space-1); }
+.wizard-main h1 { margin-top: 0; }
+.wizard-why { margin-bottom: var(--space-5); }
+.wizard-form { gap: var(--space-5); }
+.wizard-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); padding-top: var(--space-5); border-top: 1px solid var(--line); }
+.wizard-actions-end { margin-left: auto; display: flex; flex-wrap: wrap; gap: var(--space-4); }
+.button-lamp { background: var(--lamp); border-color: var(--lamp); color: #2b2100; }
+.wizard-foot { margin-top: var(--space-6); display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-2) var(--space-5); }
+.wizard-foot p { margin: 0; max-width: 40rem; }
+
+.wizard-hello { font-size: var(--step-1); margin-top: 0; }
+.wizard-plan { margin: 0 0 var(--space-4); padding-left: var(--space-5); }
+.wizard-plan li { padding: var(--space-1) 0; }
+
+/* Radio and checkbox choices with a line of explanation */
+.pick-list { gap: var(--space-2); }
+.pick { border: 1px solid var(--line); background: var(--surface); padding: var(--space-3) var(--space-4); margin: 0; }
+.pick > span { display: flex; flex-direction: column; gap: 0.15rem; }
+.pick-hint { color: var(--ink-soft); font-size: var(--step--1); }
+.pick-meta { color: var(--ink-soft); font-size: var(--step--1); font-weight: 650; }
+.pick-row { grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); display: grid; }
+.pick-row legend { grid-column: 1 / -1; }
+.choice-inline { padding-left: 0; margin: 0 0 var(--space-2); }
+.field-narrow textarea { max-width: 22rem; }
+
+/* Name and look */
+.brand-step { display: grid; grid-template-columns: minmax(0, 1fr) 16rem; gap: var(--space-6); align-items: start; }
+.brand-fields { display: grid; gap: var(--space-4); min-width: 0; }
+.brand-aside { position: sticky; top: var(--space-4); display: grid; gap: var(--space-5); }
+.brand-aside-label { font-weight: 700; color: var(--ink-soft); font-size: var(--step--1); margin: 0 0 var(--space-2); }
+.brand-preview { border: 1px solid var(--line); border-radius: var(--radius-m); overflow: hidden; background: var(--paper); }
+.bp-bar { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--surface); border-bottom: 1px solid var(--line); font-family: var(--font-head); font-weight: 800; overflow-wrap: anywhere; }
+.bp-bar img { height: 1.75rem; width: auto; max-width: 6rem; object-fit: contain; }
+.bp-bar .brand-mark { width: 1.375rem; height: 1.375rem; flex: none; }
+.bp-body { padding: var(--space-3); display: grid; gap: var(--space-2); justify-items: start; }
+.bp-tagline { margin: 0; color: var(--ink-soft); font-size: var(--step--1); }
+.bp-tagline:empty { display: none; }
+.bp-button { background: var(--primary); color: var(--primary-ink); border-radius: 999px; padding: var(--space-1) var(--space-3); font-weight: 700; font-size: var(--step--1); }
+.bp-link { color: var(--primary); text-decoration: underline; font-size: var(--step--1); font-weight: 600; }
+.swatches { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.swatch-choice { display: inline-flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1); border: 1px solid var(--line); border-radius: 999px; background: var(--surface); cursor: pointer; font-weight: 600; min-height: 2.75rem; }
+.swatch-choice input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.swatch-choice:has(input:checked) { outline: 3px solid var(--ink); outline-offset: 1px; }
+.swatch-choice:has(input:focus-visible) { outline: 3px solid var(--focus); outline-offset: 2px; }
+.swatch { display: inline-block; width: 1.75rem; height: 1.75rem; border-radius: 50%; background: var(--primary); }
+.swatch-inline { width: 1rem; height: 1rem; vertical-align: -0.15rem; }
+.logo-current { margin: var(--space-1) 0; padding: var(--space-2); background: var(--surface); border: 1px dashed var(--line); border-radius: var(--radius-s); display: inline-block; }
+.logo-current img { display: block; height: 3rem; width: auto; max-width: 14rem; object-fit: contain; }
+ul.plain { list-style: none; margin: 0 0 var(--space-2); padding: 0; }
+.example-block pre { margin: 0; padding: var(--space-3); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-s); overflow-x: auto; font-size: var(--step--1); }
+.example-block p { margin: 0 0 var(--space-1); }
+
+/* Review */
+.review-sections { display: grid; gap: 0; border-top: 1px solid var(--line); }
+.review-section { padding: var(--space-4) 0; border-bottom: 1px solid var(--line); }
+.review-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-2); }
+.review-head h2 { font-size: var(--step-1); margin: 0; }
+.review-section .facts dd { overflow-wrap: anywhere; }
+.review-notes { border-left-color: var(--lamp); }
+
+@media (max-width: 56rem) {
+  .wizard { grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
+  .wizard-rail { position: static; }
+  .wizard-name { display: none; }
+  /* The trace turns into a row of nodes; only the current step keeps its name. */
+  .wizard-steps { display: flex; align-items: center; }
+  .wstep { flex: 1 1 0; padding: 0; align-items: center; gap: 0; }
+  .wstep:last-child { flex: 0 0 auto; }
+  .wstep::before { left: 1.75rem; right: 0; top: calc(50% - 2px); bottom: auto; width: auto; height: 4px; }
+  .wstep-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .wstep-dot { width: 1.5rem; height: 1.5rem; font-size: 0.7rem; }
+  .brand-step { grid-template-columns: minmax(0, 1fr); }
+  .brand-aside { position: static; order: -1; }
+  .brand-address { display: none; }
+}
+@media (max-width: 30rem) {
+  .wizard-actions-end { margin-left: 0; flex-basis: 100%; }
+}
+
+/* School settings page */
+.settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr)); gap: 0 var(--space-7); }
+.settings-group { padding: var(--space-4) 0 var(--space-5); border-top: 1px solid var(--line); min-width: 0; }
+.settings-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-4); }
+.settings-head h2 { font-size: var(--step-1); margin: 0 0 var(--space-3); }
+.settings .facts dd { overflow-wrap: anywhere; }
+.settings-look { display: grid; gap: var(--space-3); }
+.settings-logo img { height: 3.5rem; width: auto; max-width: 16rem; object-fit: contain; }
+.setup-panel { margin-bottom: var(--space-6); }
+.launch-result { max-width: 52rem; }
+.launch-result h2 { margin-top: 0; }
+.setup-nudge { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3) var(--space-5); padding: var(--space-4) var(--space-5); margin-bottom: var(--space-6); border: 2px solid var(--lamp); background: var(--lamp-soft); border-radius: var(--radius-m); max-width: 52rem; }
+.setup-nudge h2 { margin: 0 0 var(--space-1); font-size: var(--step-1); }
+.setup-nudge p { margin: 0; max-width: 40rem; }
+.welcome-tagline { font-family: var(--font-head); font-size: var(--step-1); font-weight: 700; color: var(--primary); margin: calc(-1 * var(--space-2)) 0 var(--space-3); }
+@media (max-width: 48rem) {
+  /* With a logo, a phone header shows the logo alone; the name stays for screen readers. */
+  .brand-logo + span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .brand-logo { height: 2rem; }
+}
+@media (max-width: 30rem) {
+  .review-section .facts, .settings .facts { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .review-section .facts dd, .settings .facts dd { margin-bottom: var(--space-2); }
+}
+
+/* Platform: add a school */
+.add-school { margin-top: var(--space-6); max-width: 52rem; }
+.form-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); align-items: start; }
+.form-grid > div:last-child { grid-column: 1 / -1; }
+.settings-group > h2 { font-size: var(--step-1); margin: 0 0 var(--space-3); }
+.address-list li { padding: var(--space-1) 0; }
+.notice > h2:first-child { margin-top: 0; }
+@media (prefers-color-scheme: dark) {
+  /* Logos are usually drawn for white paper: give them a light plate so dark lettering stays visible. */
+  .brand-logo, .bp-bar img, .logo-current img, .settings-logo img { background: #f6f8fb; border-radius: var(--radius-s); padding: 0.15rem 0.35rem; }
+}

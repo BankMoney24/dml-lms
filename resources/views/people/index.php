@@ -13,6 +13,7 @@ foreach ($members as $m) {
   <h1>People</h1>
   <p class="lead">Who can sign in to <?= $v->e($v->shared('tenant')?->name) ?>, and what they can do.</p>
 </header>
+<?php $schoolTab = 'people'; include __DIR__ . '/../school/_tabs.php'; ?>
 
 <?php if ($newMember !== null): ?>
 <div class="notice notice-done" role="status">

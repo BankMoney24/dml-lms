@@ -6,8 +6,9 @@ $tenant = $v->shared('tenant');
 <section class="welcome" aria-labelledby="welcome-h">
   <div class="welcome-text">
     <h1 id="welcome-h"><?= $v->e($tenant->name) ?></h1>
+    <?php if ($tenant->tagline !== ''): ?><p class="welcome-tagline"><?= $v->e($tenant->tagline) ?></p><?php endif; ?>
     <p class="lead">Courses in technology you can follow on a phone, on a slow connection, at your own pace. Your teachers see your progress and review your work.</p>
-    <p class="actions"><a class="button" href="/login">Sign in</a> <a class="button button-quiet" href="/courses">See the courses</a></p>
+    <p class="actions"><a class="button" href="/login">Sign in</a> <?php if ($tenant->publicCatalogue): ?><a class="button button-quiet" href="/courses">See the courses</a><?php endif; ?></p>
   </div>
   <ol class="promise" aria-label="How each course works">
     <li class="promise-step">
@@ -23,7 +24,7 @@ $tenant = $v->shared('tenant');
     <li class="promise-step">
       <span class="promise-node" aria-hidden="true"></span>
       <h2>Prove it</h2>
-      <p>Finish a course and get a certificate anyone can check online.</p>
+      <p><?= $tenant->certificatesEnabled ? 'Finish a course and get a certificate anyone can check online.' : 'Finish each course with a final check that shows what you can do.' ?></p>
     </li>
   </ol>
 </section>
@@ -38,6 +39,7 @@ $tenant = $v->shared('tenant');
 </section>
 <?php endif; ?>
 
+<?php if ($tenant->certificatesEnabled): ?>
 <section class="section verify-strip" aria-labelledby="verify-h">
   <div>
     <h2 id="verify-h">Checking a certificate?</h2>
@@ -49,3 +51,4 @@ $tenant = $v->shared('tenant');
     <button type="submit" class="button button-quiet">Check</button>
   </form>
 </section>
+<?php endif; ?>

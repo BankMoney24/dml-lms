@@ -159,6 +159,24 @@ Until `MAIL_DRIVER=smtp` is set, nothing is emailed: admins get a one-time passw
 
 How it behaves: messages go into the `mail_outbox` table and are sent right after the page is returned; failures are retried after 1 min, 5 min, 30 min, 2 h and 6 h, then marked failed. Message bodies (which contain sign-in links) are erased once sent or abandoned. Reset links last 60 minutes, invitations 7 days; both work once.
 
+### School setup and new schools
+
+The first time an owner or admin signs in after this release, the home page asks them to **set up the school**: type, academic year, name, colour, logo, contact details, certificates, whether visitors can browse courses, starter courses, and the first teachers to invite. Nothing changes until they confirm the last step. Later changes go through the same steps from **School → Settings**.
+
+Platform administrators (`bin/console user:platform-admin`) create more schools at **System → Schools**: name, web address and first owner. Each school needs its own address that points at this server.
+
+#### A new school address
+
+1. **DNS**: at the domain's DNS host add an A record for the name (e.g. `learn.sunriseacademy.ng`) pointing at the server's IP address.
+2. **Web server**: add the name to the domain virtual host, then reload:
+   ```bash
+   sed -i 's/^\(\s*ServerAlias .*\)$/\1 learn.sunriseacademy.ng/' /etc/httpd/conf.d/dml-lms-domain.conf
+   apachectl configtest && systemctl reload httpd
+   ```
+   (On the temporary IP-and-port setup every name that reaches the port already lands on the app.)
+3. **HTTPS**: `certbot --apache --expand -d dmlschooloftechnology.com -d www.dmlschooloftechnology.com -d learn.sunriseacademy.ng` (list every name the certificate should cover).
+4. **In the app**: System → Schools → Add a school (or open the school and *Add an address*). The address works as soon as DNS and the web server do. The owner gets an invitation by email, or you see a one-time password to give them.
+
 ### Two-step sign-in
 
 Owners and admins must set up an authenticator app (Google Authenticator, Microsoft Authenticator, Authy) the next time they sign in, and get 10 one-use recovery codes. Change who is forced with `TWO_FACTOR_REQUIRED_ROLES` in `shared/.env` (comma-separated roles; empty = optional for everyone). If someone loses their phone and codes, another **owner** resets it from *People → Manage*. If the only owner is locked out:

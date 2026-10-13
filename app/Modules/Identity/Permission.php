@@ -12,4 +12,5 @@ enum Permission: string
     case MembersManage = 'members.manage';
     case ReportsView = 'reports.view';
     case AuditView = 'audit.view';
+    case SchoolManage = 'school.manage';
 }

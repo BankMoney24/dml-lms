@@ -8,6 +8,7 @@ use App\Modules\Audit\AuditLog;
 use App\Modules\Courses\CourseRepository;
 use App\Modules\Identity\UserRepository;
 use App\Modules\Learning\Enrolment;
+use App\Modules\Tenancy\TenantRepository;
 use RuntimeException;
 
 /**
@@ -25,15 +26,24 @@ final class CertificateService
         private readonly CourseRepository $courses,
         private readonly UserRepository $users,
         private readonly AuditLog $audit,
+        private readonly TenantRepository $tenants,
     ) {
     }
 
-    /** Issues the certificate for a completed enrolment; returns the existing one if already issued. */
-    public function issueFor(Enrolment $enrolment): Certificate
+    /**
+     * Issues the certificate for a completed enrolment; returns the existing
+     * one if already issued, or null when the school has switched
+     * certificates off (certificates issued earlier stay valid).
+     */
+    public function issueFor(Enrolment $enrolment): ?Certificate
     {
         $existing = $this->certificates->findForEnrolment($enrolment->tenantId, $enrolment->id);
         if ($existing !== null) {
             return $existing;
+        }
+        $tenant = $this->tenants->findById($enrolment->tenantId);
+        if ($tenant === null || !$tenant->certificatesEnabled) {
+            return null;
         }
         $course = $this->courses->findById($enrolment->tenantId, $enrolment->courseId);
         $user = $this->users->findById($enrolment->userId);

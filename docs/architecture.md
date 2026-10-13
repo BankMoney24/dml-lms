@@ -22,13 +22,14 @@ Health endpoints (`/health`, `/health/ready`) skip session, tenant and auth.
 
 | Module | Owns | Depends on |
 |---|---|---|
-| Tenancy | tenants, domains, memberships, tenant resolution | Core |
+| Tenancy | tenants (profile, theme, logo), domains, memberships, tenant resolution, the school setup wizard | Core, Wizards, Courses (starter courses) |
 | Identity | users, roles → permissions, sign-in, throttling | Tenancy, Audit |
 | Courses | courses, modules, lessons, authoring | Assessments (to create quizzes), Audit |
 | Learning | enrolments, lesson progress, completion | Courses |
 | Assessments | assessments, questions, attempts, scoring | Learning (to record a passed quiz) |
 | Audit | audit_events | Core |
-| Platform | home page, health | all read-only |
+| Wizards | wizard_runs and the generic wizard screens (ADR 0010) | Identity, Audit |
+| Platform | home page, health, System page, Schools (platform administrators) | Tenancy, Identity; otherwise read-only |
 
 Controllers stay thin: parse input, call a use case, render. Business rules live in services (`CourseAuthoring`, `LearningService`, `AttemptService`) and pure classes (`QuizScorer`, `CompletionRule`) that are unit-tested without a database.
 

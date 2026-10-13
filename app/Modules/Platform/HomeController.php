@@ -44,7 +44,7 @@ final class HomeController
         if ($user === null) {
             return Response::html($this->view->render('tenant/welcome', [
                 'pageTitle' => $tenant->name,
-                'cards' => $this->cards->build($tenant->id, $this->courses->listPublished($tenant->id, 6)),
+                'cards' => $tenant->publicCatalogue ? $this->cards->build($tenant->id, $this->courses->listPublished($tenant->id, 6)) : [],
             ]));
         }
 
@@ -107,6 +107,7 @@ final class HomeController
             'suggestedCards' => $this->cards->build($tenant->id, array_slice($suggested, 0, 6), $user->user->id),
             'certificates' => $this->certificates->forUser($tenant->id, $user->user->id),
             'teaching' => $teaching,
+            'setupPending' => $user->can(Permission::SchoolManage) && !$tenant->isSetUp(),
         ]));
     }
 }

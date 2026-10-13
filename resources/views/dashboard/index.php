@@ -4,6 +4,7 @@
 /** @var list<array<string, mixed>> $myCards */
 /** @var list<array<string, mixed>> $suggestedCards */
 /** @var list<\App\Modules\Certificates\Certificate> $certificates */
+/** @var bool $setupPending */
 /** @var ?array{published: int, drafts: int, reviews: int, courses: list<array{course: \App\Modules\Courses\Course, lessons: int, enrolled: int, completed: int, active: int}>} $teaching */
 $user = $v->shared('user');
 $firstName = explode(' ', trim($user->displayName))[0];
@@ -15,6 +16,16 @@ $hasLearning = $continue !== null || $myCards !== [];
     <p class="lead"><?= $hasLearning ? 'You have finished everything you started. Pick something new below.' : 'Choose a course to begin.' ?></p>
   <?php endif; ?>
 </header>
+
+<?php if ($setupPending): ?>
+<section class="setup-nudge" aria-labelledby="setup-nudge-h">
+  <div>
+    <h2 id="setup-nudge-h">Finish setting up your school</h2>
+    <p>Choose your school's type, name, colour and features, and invite your team. It takes a few minutes, and you can stop at any point.</p>
+  </div>
+  <a class="button" href="/setup/school">Set up the school</a>
+</section>
+<?php endif; ?>
 
 <?php if ($continue !== null): $card = $continue['card']; $c = $card['course']; $pct = $card['lessons'] === 0 ? 0 : intdiv($card['done'] * 100, $card['lessons']); ?>
 <section class="continue" aria-labelledby="continue-h">

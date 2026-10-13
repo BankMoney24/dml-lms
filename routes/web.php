@@ -19,8 +19,11 @@ use App\Modules\Identity\Http\TwoFactorController;
 use App\Modules\Learning\Http\LearnController;
 use App\Modules\Platform\HealthController;
 use App\Modules\Platform\HomeController;
+use App\Modules\Platform\SchoolsController;
 use App\Modules\Platform\SystemController;
 use App\Modules\Tenancy\Http\PeopleController;
+use App\Modules\Tenancy\Http\SchoolController;
+use App\Modules\Wizards\Http\WizardController;
 
 /*
  * Route middleware:
@@ -106,6 +109,23 @@ return static function (Router $r): void {
     $r->post('/people/{user:int}/send-link', [PeopleController::class, 'sendLink'], $people);
     $r->post('/people/{user:int}/reset-two-step', [PeopleController::class, 'resetTwoStep'], $people);
 
+    $school = ['tenant', 'auth', 'can:school.manage'];
+    $r->get('/school', [SchoolController::class, 'index'], $school);
+    $r->get('/school/logo-preview', [SchoolController::class, 'logoPreview'], $school);
+    $r->get('/logo', [SchoolController::class, 'logo'], ['tenant']);
+
+    // Wizard engine; each wizard checks who may run it.
+    $r->get('/setup/{wizard}', [WizardController::class, 'resume'], $signedIn);
+    $r->post('/setup/{wizard}/discard', [WizardController::class, 'discard'], $signedIn);
+    $r->get('/setup/{wizard}/{step}', [WizardController::class, 'show'], $signedIn);
+    $r->post('/setup/{wizard}/{step}', [WizardController::class, 'submit'], $signedIn);
+
     $r->get('/system', [SystemController::class, 'show'], ['tenant', 'auth']);
+    // Platform administrators only; the controller answers "not found" to anyone else.
+    $r->get('/system/schools', [SchoolsController::class, 'index'], ['tenant', 'auth']);
+    $r->post('/system/schools', [SchoolsController::class, 'store'], ['tenant', 'auth']);
+    $r->get('/system/schools/{school:int}', [SchoolsController::class, 'show'], ['tenant', 'auth']);
+    $r->post('/system/schools/{school:int}/addresses', [SchoolsController::class, 'addAddress'], ['tenant', 'auth']);
+    $r->post('/system/schools/{school:int}/status', [SchoolsController::class, 'status'], ['tenant', 'auth']);
     $r->get('/activity', [ActivityController::class, 'index'], ['tenant', 'auth', 'can:audit.view']);
 };

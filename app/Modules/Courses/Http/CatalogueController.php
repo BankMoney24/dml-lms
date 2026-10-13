@@ -34,6 +34,9 @@ final class CatalogueController
     public function index(Request $request): Response
     {
         $tenant = RequestContext::tenant($request);
+        if (!$tenant->publicCatalogue && RequestContext::optionalUser($request) === null) {
+            return Response::redirect('/login');
+        }
         $page = max(1, (int) ($request->query('page', '1') ?? '1'));
         $courses = $this->courses->listPublished($tenant->id, self::PER_PAGE + 1, ($page - 1) * self::PER_PAGE);
 
@@ -48,6 +51,9 @@ final class CatalogueController
     public function show(Request $request): Response
     {
         $tenant = RequestContext::tenant($request);
+        if (!$tenant->publicCatalogue && RequestContext::optionalUser($request) === null) {
+            return Response::redirect('/login');
+        }
         $course = $this->courses->findBySlug($tenant->id, $request->routeParam('slug'));
         if ($course === null || !$course->isPublished()) {
             throw HttpException::notFound();

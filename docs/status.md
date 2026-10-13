@@ -1,4 +1,4 @@
-# Status against the PRD (v1.0, 12 Oct 2026)
+# Status against the PRD (v1.0, 13 Oct 2026)
 
 Legend: **Built** = implemented and covered by tests · **Partial** = foundation in place, gaps listed · **Next** = not started.
 
@@ -23,11 +23,13 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 
 | ID | Status | Notes |
 |---|---|---|
-| TEN-001 create/suspend tenants | Partial | `bin/console tenant:create`; suspend via repository. No platform admin UI yet |
+| TEN-001 create/suspend tenants | Built | **System → Schools** for platform administrators: create a school with its address and first owner (emailed invitation or one-time password), add addresses, suspend and reopen (not the school you are signed in through); all audited. `bin/console tenant:create` still works |
 | TEN-002 tenant from verified host | Built | |
 | TEN-003 server-side membership checks | Built | Route gate + use-case checks + repository scoping |
-| TEN-004 branding, locale, terminology | Partial | Name, locale, timezone stored; branding/terminology next |
-| TEN-005 tenant in jobs/cache/storage/audit | Partial | Audit ✔; no jobs/cache/uploads exist yet |
+| TEN-004 branding, locale, terminology | Partial | Name, tagline, logo (PNG/JPEG/WebP, checked and scanned), one of 7 colour themes checked for contrast in light and dark mode, public contact details in the footer. Terminology (e.g. "student" vs "learner") next |
+| TEN-005 tenant in jobs/cache/storage/audit | Partial | Audit ✔; uploads and logos stored per school; no jobs or cache yet |
+| §6.3 wizard engine | Built | One engine for every guided journey: progress trace, Back / Continue / Skip / Save and exit, answers saved on the server after each step and shared by the institution's admins, steps open in order, review before anything is applied, discard, audit without field values. ADR 0010 |
+| §6.4 institution onboarding | Built (billing step later) | Welcome, type (suggests defaults), academic year, name and look, learning features (certificates on/off, public course list on/off, starter courses as drafts), invite the team (pasted list, every line validated, invitations only on launch), check and launch. Owners are prompted on their home page; later changes reuse the wizard from **School → Settings**. Billing and policy come with payments |
 | IAM-001 sign-in/out, reset, invitation | Built | Sign-in/out; self-service password change; emailed password reset (60 min, single use, rate-limited, no account enumeration); emailed invitations (7 days) and resend from **People**. Without an email provider, admins hand out a one-time password the person must replace |
 | IAM-002 secure server sessions + CSRF | Built | ADR 0002 |
 | IAM-003 password hashing | Built | |
@@ -69,9 +71,9 @@ Shared components rendered by `ViewHelpers` (labelled fields with inline errors,
 
 ## Recommended next slice
 
-1. On the server: install the backup timers, save the key off the server, set `REMOTE` (deployment.md → Backups). Then staging (closes Phase 0).
+1. On the server: finish the school setup for DML School of Technology (home page prompt) and rotate the exposed backup key. Install the backup timers, save the key off the server, set `REMOTE` (deployment.md → Backups). Then staging (closes Phase 0).
 2. Choose the email provider for the server and add SPF/DKIM for the domain (code is ready; see deployment.md → Email).
-3. Turn on ClamAV scanning on the server and add uploads to the backup routine (deployment.md → Uploaded files).
-4. Institution onboarding wizard on a reusable wizard engine (PRD §6.3–6.4).
-5. Paystack adapter with verified, idempotent webhooks.
-6. First lab provider behind the lab-session contract.
+3. Turn on ClamAV scanning on the server (deployment.md → Uploaded files).
+4. Paystack adapter with verified, idempotent webhooks, then the billing step of the setup wizard.
+5. First lab provider behind the lab-session contract.
+6. Terminology per school and grouping learners by class or level (builds on the academic year from setup).

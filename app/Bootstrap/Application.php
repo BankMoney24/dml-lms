@@ -4,6 +4,16 @@ declare(strict_types=1);
 
 namespace App\Bootstrap;
 
+use App\Modules\Platform\SchoolsController;
+use App\Modules\Platform\SchoolAdminService;
+use App\Modules\Files\VirusScanner;
+use App\Modules\Tenancy\LogoStore;
+use App\Modules\Courses\CoursePackages;
+use App\Modules\Wizards\WizardRunRepository;
+use App\Modules\Wizards\WizardRegistry;
+use App\Modules\Wizards\Http\WizardController;
+use App\Modules\Tenancy\Setup\SchoolSetupWizard;
+use App\Modules\Tenancy\Http\SchoolController;
 use App\Core\Clock;
 use App\Core\Config;
 use App\Core\Container;
@@ -206,6 +216,7 @@ final class Application
             $c->get(CourseRepository::class),
             $c->get(UserRepository::class),
             $c->get(AuditLog::class),
+            $c->get(TenantRepository::class),
         ));
         $c->set(LearningService::class, static fn (Container $c) => new LearningService(
             $c->get(Connection::class),
@@ -217,13 +228,17 @@ final class Application
             $c->get(CertificateService::class),
         ));
         $c->set(FileRepository::class, static fn (Container $c) => new FileRepository($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(VirusScanner::class, static fn () => strtolower($config->get('UPLOAD_SCANNER', '') ?? '') === 'clamd'
+            ? new ClamdScanner($config->get('CLAMD_HOST', '127.0.0.1') ?? '127.0.0.1', $config->int('CLAMD_PORT', 3310))
+            : new NoScanner());
+        $c->set(LogoStore::class, static fn (Container $c) => new LogoStore($storage . '/uploads', $c->get(VirusScanner::class), $c->get(Logger::class)));
+        $c->set(CoursePackages::class, static fn () => new CoursePackages(self::basePath('courses')));
+        $c->set(WizardRunRepository::class, static fn (Container $c) => new WizardRunRepository($c->get(Connection::class), $c->get(Clock::class)));
         $c->set(FileService::class, static fn (Container $c) => new FileService(
             $c->get(FileRepository::class),
             $c->get(LessonRepository::class),
             new UploadPolicy(max(1, $config->int('UPLOAD_MAX_MB', 10)) * 1048576),
-            strtolower($config->get('UPLOAD_SCANNER', '') ?? '') === 'clamd'
-                ? new ClamdScanner($config->get('CLAMD_HOST', '127.0.0.1') ?? '127.0.0.1', $config->int('CLAMD_PORT', 3310))
-                : new NoScanner(),
+            $c->get(VirusScanner::class),
             $c->get(AuditLog::class),
             $c->get(Logger::class),
             $storage . '/uploads',
@@ -285,6 +300,21 @@ final class Application
                 max(1, $config->int('UPLOAD_TENANT_QUOTA_MB', 5120)) * 1048576,
                 $clamd,
             ),
+        ));
+        $c->set(SchoolsController::class, static fn (Container $c) => new SchoolsController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(TenantRepository::class),
+            new SchoolAdminService(
+                $c->get(Connection::class),
+                $c->get(TenantRepository::class),
+                $c->get(UserRepository::class),
+                $c->get(MembershipRepository::class),
+                $c->get(AccountLinkService::class),
+                $c->get(MailSettings::class),
+                $c->get(AuditLog::class),
+            ),
+            $c->get(MailSettings::class),
         ));
         $c->set(HealthController::class, static fn (Container $c) => new HealthController($c->get(Connection::class), self::releaseId()));
         $c->set(HomeController::class, static fn (Container $c) => new HomeController(
@@ -414,6 +444,39 @@ final class Application
             $c->get(Session::class),
             $c->get(AuthService::class),
             $c->get(TwoFactorService::class),
+        ));
+        $c->set(SchoolSetupWizard::class, static fn (Container $c) => new SchoolSetupWizard(
+            $c->get(Connection::class),
+            $c->get(TenantRepository::class),
+            $c->get(LogoStore::class),
+            $c->get(CoursePackages::class),
+            $c->get(CoursePackageImporter::class),
+            $c->get(CourseRepository::class),
+            $c->get(MemberService::class),
+            $c->get(AccountLinkService::class),
+            $c->get(UserRepository::class),
+            $c->get(MembershipRepository::class),
+            $c->get(MailSettings::class),
+            $c->get(Session::class),
+            $c->get(Logger::class),
+        ));
+        $c->set(WizardRegistry::class, static fn (Container $c) => new WizardRegistry([$c->get(SchoolSetupWizard::class)]));
+        $c->set(WizardController::class, static fn (Container $c) => new WizardController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(WizardRegistry::class),
+            $c->get(WizardRunRepository::class),
+            $c->get(AuditLog::class),
+        ));
+        $c->set(SchoolController::class, static fn (Container $c) => new SchoolController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(TenantRepository::class),
+            $c->get(WizardRunRepository::class),
+            $c->get(SchoolSetupWizard::class),
+            $c->get(LogoStore::class),
+            $c->get(MembershipRepository::class),
+            $c->get(CourseRepository::class),
         ));
         $c->set(ActivityController::class, static fn (Container $c) => new ActivityController(
             $c->get(View::class),

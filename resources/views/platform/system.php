@@ -20,6 +20,7 @@ $bytes = static fn (?int $b): string => $b === null ? '–' : \App\Modules\Files
   <p class="page-head-meta"><?= $v->badge($label($overall), $tone($overall)) ?> <span>Release <?= $v->e($app['release']) ?></span></p>
   <p class="lead">Backups, the restore test, email, storage and scanning for the whole platform. Visible to platform administrators only.</p>
 </header>
+<?php $platformTab = 'health'; include __DIR__ . '/_tabs.php'; ?>
 
 <div class="status-grid">
   <section class="status-card status-<?= $v->e($backup['state']) ?>" aria-labelledby="st-backup">

@@ -77,11 +77,18 @@ final class ViewHelpers
         return is_array($permissions) && in_array($permission, $permissions, true);
     }
 
-    /** Main navigation link; marks the current section for assistive technology and styling. */
-    public function navLink(string $href, string $label): string
+    /**
+     * Main navigation link; marks the current section for assistive technology and styling.
+     *
+     * @param list<string> $alsoFor other sections that belong under this link (e.g. /people under School)
+     */
+    public function navLink(string $href, string $label, array $alsoFor = []): string
     {
         $path = (string) ($this->shared['path'] ?? '/');
-        $current = $href === '/' ? $path === '/' : ($path === $href || str_starts_with($path, $href . '/'));
+        $current = false;
+        foreach ([$href, ...$alsoFor] as $prefix) {
+            $current = $current || ($prefix === '/' ? $path === '/' : ($path === $prefix || str_starts_with($path, $prefix . '/')));
+        }
 
         return sprintf(
             '<a href="%s"%s>%s</a>',

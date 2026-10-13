@@ -182,7 +182,7 @@ final class MemberService
     }
 
     /** 16 characters from an unambiguous alphabet, easy to read out or type from paper. */
-    private static function oneTimePassword(): string
+    public static function oneTimePassword(): string
     {
         $alphabet = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
         $out = '';

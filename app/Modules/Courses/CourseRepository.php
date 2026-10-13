@@ -136,4 +136,13 @@ final class CourseRepository
             [Course::STATUS_DRAFT, $this->clock->sqlNow(), $tenantId, $courseId],
         );
     }
+
+    /** @return list<string> every course title in the school, drafts included */
+    public function titles(int $tenantId): array
+    {
+        return array_map(
+            static fn (array $r): string => (string) $r['title'],
+            $this->db->fetchAll('SELECT title FROM courses WHERE tenant_id = ?', [$tenantId]),
+        );
+    }
 }

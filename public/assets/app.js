@@ -123,11 +123,32 @@
       var problems = [];
       if (maxFiles && input.files.length > maxFiles) { problems.push('Choose at most ' + maxFiles + ' files.'); }
       Array.prototype.forEach.call(input.files, function (f) {
-        if (max && f.size > max) { problems.push('“' + f.name + '” is ' + (f.size / 1048576).toFixed(1) + ' MB; the limit is ' + Math.floor(max / 1048576) + ' MB.'); }
+        if (max && f.size > max) { problems.push('“' + f.name + '” is ' + size(f.size) + '; the limit is ' + size(max) + '.'); }
       });
       note.textContent = problems.join(' ');
     });
   });
+
+  function size(bytes) {
+    return bytes < 1048576 ? Math.ceil(bytes / 1024) + ' KB' : (bytes / 1048576).toFixed(1).replace(/\.0$/, '') + ' MB';
+  }
+
+  // School setup, "Name and look": the small preview follows the colour and name as they are chosen.
+  var preview = document.querySelector('[data-brand-preview]');
+  if (preview) {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-theme-pick]'), function (radio) {
+      radio.addEventListener('change', function () {
+        preview.className = preview.className.replace(/\btheme-[a-z]+\b/, 'theme-' + radio.value);
+      });
+    });
+    [['name', '[data-preview-name]', 'Your school'], ['tagline', '[data-preview-tagline]', '']].forEach(function (pair) {
+      var input = document.getElementById(pair[0]);
+      var target = preview.querySelector(pair[1]);
+      if (input && target) {
+        input.addEventListener('input', function () { target.textContent = input.value.trim() || pair[2]; });
+      }
+    });
+  }
 
   // "Go back" on error pages that follow a form (shown only when there is somewhere to go back to).
   Array.prototype.forEach.call(document.querySelectorAll('[data-back]'), function (button) {
