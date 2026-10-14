@@ -18,7 +18,7 @@ final class NavCounts
     {
     }
 
-    /** @return array{reviews: int, support: int, children: int, requests: int} */
+    /** @return array{reviews: int, support: int, children: int, requests: int, questions: int} */
     public function for(CurrentUser $current, int $tenantId): array
     {
         $userId = $current->user->id;
@@ -29,6 +29,9 @@ final class NavCounts
                 : 0,
             'support' => $current->can(Permission::SupportManage)
                 ? (int) $this->db->fetchValue("SELECT COUNT(*) FROM support_requests WHERE tenant_id = ? AND status = 'open'", [$tenantId])
+                : 0,
+            'questions' => $current->can(Permission::CourseManage)
+                ? (int) $this->db->fetchValue("SELECT COUNT(*) FROM lesson_questions WHERE tenant_id = ? AND status = 'open' AND staff_answered = 0 AND accepted_answer_id IS NULL", [$tenantId])
                 : 0,
             'requests' => $current->can(Permission::MembersManage)
                 ? (int) $this->db->fetchValue("SELECT COUNT(*) FROM join_requests WHERE tenant_id = ? AND status = 'pending'", [$tenantId])

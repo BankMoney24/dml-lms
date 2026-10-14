@@ -10,6 +10,10 @@
 /** @var ?array<string, mixed> $lab */
 /** @var ?array{saved: bool, body: string, updated_at: string} $note */
 $note ??= null;
+/** @var list<\App\Modules\Discussions\Question> $questions */
+$questions ??= [];
+$qaEnabled ??= false;
+$qaDrafts ??= [];
 $base = '/courses/' . $v->e($course->slug);
 $latest = $submissions[0] ?? null;
 ?>
@@ -165,6 +169,29 @@ $latest = $submissions[0] ?? null;
       <button type="submit" class="button">Submit answers</button>
     </form>
     <?php endif; ?>
+  <?php endif; ?>
+
+  <?php if ($qaEnabled): ?>
+  <section class="qa-section" id="questions" aria-labelledby="qa-h">
+    <div class="qa-section-head">
+      <h2 id="qa-h"><?= $v->icon('help') ?>Questions about this lesson<?php if ($questions !== []): ?> <span class="qa-count"><?= count($questions) ?></span><?php endif; ?></h2>
+      <p class="hint">Stuck? Ask your teacher and classmates. Everyone taking this course can read questions and answers.</p>
+    </div>
+    <form method="post" action="<?= $base ?>/lessons/<?= $lesson->id ?>/questions" class="qa-ask" id="ask">
+      <?= $v->csrfField() ?>
+      <label for="question" class="visually-hidden">Your question</label>
+      <textarea id="question" name="question" rows="3" maxlength="3000" placeholder="What are you stuck on? Say what you tried. Put code between lines of three backticks (```)."><?= $v->e($qaDrafts['question-' . $lesson->id] ?? '') ?></textarea>
+      <button type="submit" class="button button-small">Ask</button>
+    </form>
+    <?php if ($questions === []): ?>
+      <p class="muted qa-empty">No questions yet. If something is not clear, you are probably not the only one: ask.</p>
+    <?php else: ?>
+      <div class="qa-list">
+        <?php $me = $v->shared('user'); $meId = $me?->id ?? 0; $isStaff = $v->can('course.manage'); $coursePath = $base; $back = ''; $drafts = $qaDrafts; ?>
+        <?php foreach ($questions as $q): ?><?php include __DIR__ . '/../discussions/_thread.php'; ?><?php endforeach; ?>
+      </div>
+    <?php endif; ?>
+  </section>
   <?php endif; ?>
 </article>
 <aside class="lesson-side" aria-labelledby="side-h">

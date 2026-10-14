@@ -112,6 +112,8 @@ $shell = $tenant !== null && $user !== null;
         <?php if ($v->can('course.manage')): ?>
           <?= $v->sideLink('/teach', 'Your courses', 'teach', ['/teach/courses']) ?>
           <?= $v->sideLink('/teach/reviews', 'Reviews', 'review', [], (int) ($counts['reviews'] ?? 0)) ?>
+          <?= $v->sideLink('/teach/questions', 'Questions', 'help', [], (int) ($counts['questions'] ?? 0)) ?>
+          <?php if ($v->can('reports.view')): ?><?= $v->sideLink('/school/reports', 'Reports', 'chart') ?><?php endif; ?>
           <?= $v->sideLink('/teach/labs', 'Lab catalogue', 'lab') ?>
         <?php endif; ?>
         <?= $v->sideLink('/groups', $tenant->groupWord(true, true), 'groups') ?>

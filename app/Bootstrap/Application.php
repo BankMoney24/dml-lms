@@ -480,6 +480,7 @@ final class Application
             $c->get(LabCatalogue::class),
             $c->get(LabSessionRepository::class),
             $c->get(\App\Modules\Study\NoteRepository::class),
+            $c->get(\App\Modules\Discussions\QuestionRepository::class),
         ));
         $c->set(LabController::class, static fn (Container $c) => new LabController(
             $c->get(View::class),
@@ -654,6 +655,30 @@ final class Application
             $c->get(View::class),
             $c->get(Session::class),
             new \App\Modules\Playground\SnippetRepository($c->get(Connection::class), $c->get(Clock::class)),
+        ));
+        $c->set(\App\Modules\Reports\Http\ReportsController::class, static fn (Container $c) => new \App\Modules\Reports\Http\ReportsController(
+            $c->get(View::class),
+            new \App\Modules\Reports\SchoolReport($c->get(Connection::class), $c->get(Clock::class)),
+            $c->get(AuditLog::class),
+            $c->get(Clock::class),
+        ));
+        $c->set(\App\Modules\Discussions\QuestionRepository::class, static fn (Container $c) => new \App\Modules\Discussions\QuestionRepository($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(\App\Modules\Discussions\Discussions::class, static fn (Container $c) => new \App\Modules\Discussions\Discussions(
+            $c->get(\App\Modules\Discussions\QuestionRepository::class),
+            $c->get(CourseRepository::class),
+            $c->get(LearningService::class),
+            $c->get(RateLimiter::class),
+            $c->get(AuditLog::class),
+            $c->get(GroupRepository::class),
+            $c->get(\App\Modules\Notifications\Notifier::class),
+        ));
+        $c->set(\App\Modules\Discussions\Http\DiscussionController::class, static fn (Container $c) => new \App\Modules\Discussions\Http\DiscussionController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(CourseRepository::class),
+            $c->get(LessonRepository::class),
+            $c->get(\App\Modules\Discussions\QuestionRepository::class),
+            $c->get(\App\Modules\Discussions\Discussions::class),
         ));
         $c->set(WizardController::class, static fn (Container $c) => new WizardController(
             $c->get(View::class),

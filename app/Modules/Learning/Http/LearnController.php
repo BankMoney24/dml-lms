@@ -43,6 +43,7 @@ final class LearnController
         private readonly LabCatalogue $labs,
         private readonly LabSessionRepository $labSessions,
         private readonly ?\App\Modules\Study\NoteRepository $notes = null,
+        private readonly ?\App\Modules\Discussions\QuestionRepository $questions = null,
     ) {
     }
 
@@ -166,6 +167,9 @@ final class LearnController
             'lessonFiles' => $this->files->forLesson($course->tenantId, $lesson->id),
             'policy' => $this->fileService->policy(),
             'note' => $this->notes?->find($course->tenantId, $user->user->id, $lesson->id),
+            'questions' => $this->questions?->forLesson($course->tenantId, $lesson->id) ?? [],
+            'qaEnabled' => $this->questions !== null,
+            'qaDrafts' => \App\Modules\Discussions\Http\DiscussionController::draftsFrom($this->session),
             'errors' => $errors,
             'old' => $old,
         ]), $status);

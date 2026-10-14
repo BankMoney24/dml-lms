@@ -22,6 +22,9 @@ if ($v->can('members.manage')) {
     $tabs['people'] = ['/people', 'People'];
     $tabs['joining'] = ['/school/joining', 'Joining'];
 }
+if ($v->can('reports.view')) {
+    $tabs['reports'] = ['/school/reports', 'Reports'];
+}
 if ($v->can('audit.view')) {
     $tabs['activity'] = ['/activity', 'Activity'];
 }

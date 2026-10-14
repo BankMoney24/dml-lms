@@ -32,6 +32,8 @@ use App\Modules\Search\Http\SearchController;
 use App\Modules\Joining\Http\JoinController;
 use App\Modules\Joining\Http\JoiningAdminController;
 use App\Modules\Playground\Http\PlaygroundController;
+use App\Modules\Discussions\Http\DiscussionController;
+use App\Modules\Reports\Http\ReportsController;
 use App\Modules\Site\Http\SiteController;
 use App\Modules\Platform\Seo\ShareController;
 use App\Modules\Study\Http\StudyController;
@@ -167,6 +169,18 @@ return static function (Router $r): void {
     // Calendar apps fetch this themselves: no session; the secret in the address is the key (ADR 0018).
     $r->get('/calendar/{token:code}.ics', [StudyController::class, 'feed'], [Kernel::BARE, 'host-tenant', 'tenant']);
     $r->get('/search', [SearchController::class, 'index'], $signedIn);
+    // Questions and answers under lessons (ADR 0022). The service checks enrolment.
+    $r->post('/courses/{slug}/lessons/{lesson:int}/questions', [DiscussionController::class, 'ask'], $signedIn);
+    $r->post('/courses/{slug}/questions/{question:int}/answers', [DiscussionController::class, 'answer'], $signedIn);
+    $r->post('/courses/{slug}/questions/{question:int}/accept', [DiscussionController::class, 'accept'], $signedIn);
+    $r->post('/courses/{slug}/questions/{question:int}/delete', [DiscussionController::class, 'deleteQuestion'], $signedIn);
+    $r->post('/courses/{slug}/answers/{answer:int}/delete', [DiscussionController::class, 'deleteAnswer'], $signedIn);
+    $r->post('/courses/{slug}/questions/moderate', [DiscussionController::class, 'moderate'], ['tenant', 'auth', 'can:course.manage']);
+    $r->get('/teach/questions', [DiscussionController::class, 'inbox'], ['tenant', 'auth', 'can:course.manage']);
+    // School reports and spreadsheet downloads (ADR 0022).
+    $r->get('/school/reports', [ReportsController::class, 'index'], ['tenant', 'auth', 'can:reports.view']);
+    $r->get('/school/reports/courses.csv', [ReportsController::class, 'coursesCsv'], ['tenant', 'auth', 'can:reports.view']);
+    $r->get('/school/reports/learners.csv', [ReportsController::class, 'learnersCsv'], ['tenant', 'auth', 'can:members.manage']);
     $r->get('/playground', [PlaygroundController::class, 'index'], $signedIn);
     $r->post('/playground', [PlaygroundController::class, 'save'], $signedIn);
     $r->post('/playground/{snippet:int}/delete', [PlaygroundController::class, 'delete'], $signedIn);
