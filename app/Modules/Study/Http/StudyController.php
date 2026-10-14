@@ -107,7 +107,7 @@ final class StudyController
         $token = $this->calendar->issue($tenant->id, RequestContext::user($request)->user->id);
 
         // Shown on this response only; it is not stored anywhere we can read it back.
-        return $this->calendarPage($request, $request->baseUrl() . '/calendar/' . $token . '.ics')
+        return $this->calendarPage($request, RequestContext::baseUrl($request) . '/calendar/' . $token . '.ics')
             ->withHeader('Cache-Control', 'no-store');
     }
 
@@ -132,7 +132,7 @@ final class StudyController
             throw HttpException::notFound();
         }
 
-        return new Response($this->calendar->render($tenant, $userId, $request->baseUrl()), 200, [
+        return new Response($this->calendar->render($tenant, $userId, RequestContext::baseUrl($request)), 200, [
             'Content-Type' => 'text/calendar; charset=utf-8',
             'Content-Disposition' => 'inline; filename="due-dates.ics"',
             'Cache-Control' => 'private, max-age=900',

@@ -55,6 +55,8 @@ final class CatalogueController
             'track' => $track,
             'trackCounts' => $this->courses->publishedTrackCounts($tenant->id),
             'indexable' => $tenant->publicCatalogue && $page === 1 && $track === null,
+            'canonicalPath' => '/courses',
+            'seoCrumbs' => ['Courses' => '/courses'],
             'metaDescription' => sprintf('Courses from %s: practical lessons, hands-on labs and quizzes you can follow on a phone.', $tenant->name),
         ]));
     }
@@ -83,7 +85,11 @@ final class CatalogueController
             'completedIds' => $enrolment === null ? [] : $this->progress->completedLessonIds($tenant->id, $enrolment->id),
             'indexable' => $tenant->publicCatalogue,
             'metaDescription' => $course->summary !== '' ? $course->summary : sprintf('%s, a course from %s.', $course->title, $tenant->name),
-            'jsonLd' => CourseSchema::course($course, $tenant, $request->baseUrl()),
+            'jsonLd' => CourseSchema::course($course, $tenant, RequestContext::baseUrl($request)),
+            'seoCrumbs' => ['Courses' => '/courses', $course->title => '/courses/' . $course->slug],
+            'ogImage' => '/share/courses/' . rawurlencode($course->slug) . '.png?v=' . substr(hash('sha256', $course->updatedAt . $course->title), 0, 10),
+            'ogImageAlt' => $course->title . ', a course from ' . $tenant->name,
+            'ogImageSize' => [\App\Modules\Platform\Seo\ShareCard::WIDTH, \App\Modules\Platform\Seo\ShareCard::HEIGHT],
             'mustPay' => $mustPay,
             'payOnline' => $mustPay && $this->payments->isConnected($tenant),
             'waiting' => $mustPay && $user !== null ? $this->payments->waiting($tenant, $user->user->id, $course) : null,
@@ -134,6 +140,10 @@ final class CatalogueController
             'payOnline' => $mustPay && $this->payments->isConnected($tenant),
             'indexable' => $tenant->publicCatalogue,
             'metaDescription' => sprintf('A free lesson from %s, a course from %s.', $course->title, $tenant->name),
+            'seoCrumbs' => ['Courses' => '/courses', $course->title => '/courses/' . $course->slug, $lesson->title => '/courses/' . $course->slug . '/preview/' . $lesson->id],
+            'ogImage' => '/share/courses/' . rawurlencode($course->slug) . '.png?v=' . substr(hash('sha256', $course->updatedAt . $course->title), 0, 10),
+            'ogImageAlt' => $course->title . ', a course from ' . $tenant->name,
+            'ogImageSize' => [\App\Modules\Platform\Seo\ShareCard::WIDTH, \App\Modules\Platform\Seo\ShareCard::HEIGHT],
         ]));
     }
 }

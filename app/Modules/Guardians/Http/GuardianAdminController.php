@@ -66,8 +66,8 @@ final class GuardianAdminController
             $user = $this->users->findById($added['user_id']);
             if ($user !== null) {
                 $added['existing_account']
-                    ? $this->accountLinks->sendAddedNotice($tenant, $user, $me, Role::Guardian, $request->baseUrl())
-                    : $this->accountLinks->sendInvitation($tenant, $user, $me, Role::Guardian, $request->baseUrl());
+                    ? $this->accountLinks->sendAddedNotice($tenant, $user, $me, Role::Guardian, RequestContext::baseUrl($request))
+                    : $this->accountLinks->sendInvitation($tenant, $user, $me, Role::Guardian, RequestContext::baseUrl($request));
             }
         }
         $this->session->flash(self::NEW_GUARDIAN_FLASH, json_encode([

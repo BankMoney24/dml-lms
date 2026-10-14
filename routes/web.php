@@ -29,6 +29,8 @@ use App\Modules\Platform\SchoolsController;
 use App\Modules\Platform\SeoController;
 use App\Modules\Platform\SystemController;
 use App\Modules\Search\Http\SearchController;
+use App\Modules\Site\Http\SiteController;
+use App\Modules\Platform\Seo\ShareController;
 use App\Modules\Study\Http\StudyController;
 use App\Modules\Support\Http\SupportController;
 use App\Modules\Tenancy\Http\PeopleController;
@@ -49,6 +51,10 @@ return static function (Router $r): void {
     $r->get('/robots.txt', [SeoController::class, 'robots'], [Kernel::BARE, 'host-tenant']);
     $r->get('/sitemap.xml', [SeoController::class, 'sitemap'], [Kernel::BARE, 'host-tenant']);
     $r->get('/health/ready', [HealthController::class, 'ready'], [Kernel::BARE]);
+    // Link-preview images for social networks (ADR 0019): public, cookie-free, cached.
+    $r->get('/share/site.png', [ShareController::class, 'site'], [Kernel::BARE, 'host-tenant', 'tenant']);
+    $r->get('/share/courses/{slug}.png', [ShareController::class, 'course'], [Kernel::BARE, 'host-tenant', 'tenant']);
+    $r->get('/share/pages/{page}.png', [ShareController::class, 'page'], [Kernel::BARE, 'host-tenant', 'tenant']);
 
     $r->get('/', [HomeController::class, 'index']);
 
@@ -62,6 +68,10 @@ return static function (Router $r): void {
     $r->get('/password/reset/{token}', [PasswordResetController::class, 'showReset'], ['tenant']);
     $r->post('/password/reset/{token}', [PasswordResetController::class, 'reset'], ['tenant']);
 
+    // The school's public pages (ADR 0019); only published ones answer.
+    foreach (array_keys(\App\Modules\Site\SitePages::PAGES) as $sitePage) {
+        $r->get('/' . $sitePage, [SiteController::class, 'show'], ['tenant']);
+    }
     $r->get('/courses', [CatalogueController::class, 'index'], ['tenant']);
     $r->get('/courses/{slug}', [CatalogueController::class, 'show'], ['tenant']);
     // Free preview lessons (CRS-003): open to anyone who may see the course page.
@@ -196,6 +206,13 @@ return static function (Router $r): void {
     $r->post('/school/payments/disconnect', [PaymentAdminController::class, 'disconnect'], $school);
     $r->post('/school/payments/manual', [PaymentAdminController::class, 'manual'], $school);
     $r->get('/logo', [SchoolController::class, 'logo'], ['tenant']);
+    $r->get('/school/website', [SiteController::class, 'index'], $school);
+    $r->post('/school/website-settings', [SiteController::class, 'saveSettings'], $school);
+    $r->get('/school/website/{page}', [SiteController::class, 'edit'], $school);
+    $r->post('/school/website/{page}', [SiteController::class, 'save'], $school);
+    $r->get('/school/website/{page}/preview', [SiteController::class, 'preview'], $school);
+    $r->post('/school/website/{page}/publish', [SiteController::class, 'publish'], $school);
+    $r->post('/school/website/{page}/unpublish', [SiteController::class, 'unpublish'], $school);
 
     // Wizard engine; each wizard checks who may run it.
     $r->get('/setup/{wizard}', [WizardController::class, 'resume'], $signedIn);

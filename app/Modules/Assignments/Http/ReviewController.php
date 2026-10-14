@@ -62,7 +62,7 @@ final class ReviewController
                 $submission->id,
                 $decision,
                 $feedback,
-                $request->baseUrl(),
+                RequestContext::baseUrl($request),
                 $request->clientIp,
             );
         } catch (ValidationException $e) {

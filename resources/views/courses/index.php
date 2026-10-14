@@ -27,7 +27,7 @@ $base = $track === null ? [] : ['track' => $track];
       ? $v->emptyState('No more courses', 'You have reached the end of the list.', '/courses', 'Back to the first page')
       : $v->emptyState('No courses yet', 'Nothing has been published yet. Check back soon, or ask your teacher which course to join.') ?>
 <?php else: ?>
-  <?php include __DIR__ . '/_list.php'; ?>
+  <?php $cardHeading = 'h2'; include __DIR__ . '/_list.php'; ?>
 <?php endif; ?>
 <?php if ($page > 1 || $hasMore): ?>
 <nav class="pager" aria-label="Pages">

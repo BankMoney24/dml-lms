@@ -39,6 +39,7 @@ final class HomeController
         private readonly ?\App\Modules\Study\ActivityReport $activity = null,
         private readonly ?\App\Modules\Study\Deadlines $deadlines = null,
         private readonly ?\App\Modules\Study\NoteRepository $notes = null,
+        private readonly ?\App\Modules\Site\SitePageRepository $sitePages = null,
     ) {
     }
 
@@ -51,7 +52,14 @@ final class HomeController
                 'indexable' => true,
                 'metaDescription' => 'DML Technologies gives schools, universities and training centres their own learning space: '
                     . 'courses, virtual labs, quizzes and certificates that work on a slow connection.',
-                'jsonLd' => CourseSchema::organisation('DML Technologies', $request->baseUrl(), 'Developing leaders through specialised education', $request->baseUrl() . '/assets/brand/dml-logo.png'),
+                'jsonLd' => [
+                    '@type' => 'Organization',
+                    '@id' => RequestContext::baseUrl($request) . '/#organization',
+                    'name' => 'DML Technologies',
+                    'url' => RequestContext::baseUrl($request) . '/',
+                    'slogan' => 'Developing leaders through specialised education',
+                    'logo' => RequestContext::baseUrl($request) . '/assets/brand/dml-logo.png',
+                ],
             ]));
         }
 
@@ -60,16 +68,12 @@ final class HomeController
             return Response::html($this->view->render('tenant/welcome', [
                 'pageTitle' => $tenant->name,
                 'cards' => $tenant->publicCatalogue ? $this->cards->build($tenant->id, $this->courses->listPublished($tenant->id, 6)) : [],
+                'sitePages' => $this->sitePages?->published($tenant->id) ?? [],
                 'indexable' => true,
-                'jsonLd' => CourseSchema::organisation(
-                    $tenant->name,
-                    $request->baseUrl(),
-                    $tenant->tagline,
-                    $tenant->hasLogo() ? $request->baseUrl() . '/logo?v=' . $tenant->logoVersion() : null,
-                    $tenant->contactEmail,
-                    $tenant->contactPhone,
-                    $tenant->website,
-                ),
+                'jsonLd' => [
+                    CourseSchema::organisation($tenant, RequestContext::baseUrl($request), $tenant->hasLogo() ? RequestContext::baseUrl($request) . '/logo?v=' . $tenant->logoVersion() : null),
+                    CourseSchema::website($tenant, RequestContext::baseUrl($request)),
+                ],
             ]));
         }
 

@@ -123,7 +123,7 @@ final class PhishingLab implements Lab
         ],
         'course-reminder' => [
             'from' => 'DML School of Technology',
-            'address' => 'no-reply@dmlschooloftechnology.com',
+            'address' => 'no-reply@dmlschooloftechnology.org',
             'subject' => 'Reminder: your Networking quiz is due Friday',
             'body' => "Hi,\nThis is a reminder that the Module 2 quiz in Networking Basics closes on Friday. Sign in to your school site to take it.",
             'link_text' => '',

@@ -206,7 +206,7 @@ final class StudyToolsTest extends AppTestCase
         $this->signIn('tobi@school.test');
         $this->assertStringNotContainsString('data-appearance', $this->get(self::HOST, '/')->body);
         $this->assertRedirectTo('/courses', $this->post(self::HOST, '/account/appearance', ['appearance' => 'dark', 'back' => '/courses']));
-        $this->assertStringContainsString('<html lang="en" data-appearance="dark">', $this->get(self::HOST, '/')->body);
+        $this->assertStringContainsString('data-appearance="dark">', $this->get(self::HOST, '/')->body);
         $this->assertRedirectTo('/account', $this->post(self::HOST, '/account/appearance', ['appearance' => 'purple', 'back' => '//evil.example']));
         $this->assertSame('dark', $this->db()->fetchValue('SELECT appearance FROM users WHERE id = ?', [$this->tobi->id]));
         $this->post(self::HOST, '/account/appearance', ['appearance' => 'system']);

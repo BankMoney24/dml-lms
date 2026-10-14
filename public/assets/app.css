@@ -1609,3 +1609,30 @@ kbd { font: 700 0.8125rem/1 var(--font-body); padding: 0.15rem 0.4rem; border: 1
 .continue { border: 1px solid var(--brand-navy-line); }
 .preview-side .join-card .course-price { color: #b6bfcf; }
 .copy-row .button { flex: none; white-space: nowrap; }
+
+/* Public website pages and footer (ADR 0019) */
+.footer-pages { flex-basis: 100%; }
+.footer-credit a, .side-credit a { color: inherit; font-weight: 650; }
+.side-credit a { color: #c9d1df; }
+.side-credit a:hover { color: #fff; }
+.site-page { max-width: var(--measure); }
+.site-page .prose h2 { font-size: var(--step-1); }
+.contact-list { list-style: none; margin: 0 0 var(--space-5); padding: 0; display: grid; gap: var(--space-2); max-width: 36rem; }
+.contact-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-4); padding: var(--space-3) var(--space-4); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); box-shadow: var(--shadow-1); }
+.contact-label { min-width: 6rem; font-size: var(--step--1); font-weight: 700; color: var(--ink-soft); }
+.contact-list a { font-weight: 650; overflow-wrap: anywhere; }
+.site-credit { margin-top: var(--space-6); padding-top: var(--space-4); border-top: 1px solid var(--line); }
+.site-credit h2 { font-size: var(--step-0); margin: 0 0 var(--space-2); }
+.site-updated { margin-top: var(--space-5); }
+.site-page-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.site-page-list li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); box-shadow: var(--shadow-1); }
+.site-page-list a { display: grid; gap: 2px; min-width: 0; text-decoration: none; color: var(--ink); }
+.site-page-title { font-weight: 700; color: var(--primary); }
+.site-page-list a:hover .site-page-title { text-decoration: underline; }
+.about-strip { max-width: 48rem; }
+.about-strip p { font-size: var(--step-1); color: var(--ink-soft); }
+.about-links { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-5); font-size: var(--step-0) !important; font-weight: 650; }
+/* The public Sign in button keeps button colours inside the header's account area (contrast). */
+.account a.button { color: var(--primary-ink); }
+.account a.button:hover { color: var(--primary-ink); }
+.side-logo img { width: auto; }

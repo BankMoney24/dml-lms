@@ -62,8 +62,8 @@ final class PeopleController
             $role = Role::from($added['role']);
             if ($user !== null) {
                 $added['existing_account']
-                    ? $this->links->sendAddedNotice($tenant, $user, $me, $role, $request->baseUrl())
-                    : $this->links->sendInvitation($tenant, $user, $me, $role, $request->baseUrl());
+                    ? $this->links->sendAddedNotice($tenant, $user, $me, $role, RequestContext::baseUrl($request))
+                    : $this->links->sendInvitation($tenant, $user, $me, $role, RequestContext::baseUrl($request));
             }
         }
 
@@ -115,7 +115,7 @@ final class PeopleController
                 RequestContext::tenant($request),
                 RequestContext::user($request),
                 $request->routeInt('user'),
-                $request->baseUrl(),
+                RequestContext::baseUrl($request),
                 $request->clientIp,
             );
             $this->session->flash('success', sprintf('Sign-in link emailed to %s.', $user->email));

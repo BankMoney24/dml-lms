@@ -36,7 +36,7 @@ final class CertificateController
             'pageTitle' => 'Certificate: ' . $certificate->courseTitle,
             'certificate' => $certificate,
             'course' => $this->courses->findById($tenant->id, $certificate->courseId),
-            'verifyUrl' => $request->baseUrl() . '/verify/' . $certificate->displayCode(),
+            'verifyUrl' => RequestContext::baseUrl($request) . '/verify/' . $certificate->displayCode(),
         ]));
     }
 

@@ -386,6 +386,15 @@ final class Application
             $c->get(NotificationRepository::class),
             new \App\Modules\Platform\NavCounts($c->get(Connection::class)),
         ));
+        $c->set(\App\Modules\Tenancy\CanonicalUrl::class, static fn (Container $c) => new \App\Modules\Tenancy\CanonicalUrl(
+            $c->get(TenantRepository::class),
+            strtolower($config->get('PUBLIC_SCHEME', '') ?? ''),
+        ));
+        $c->set(\App\Modules\Tenancy\CanonicalHost::class, static fn (Container $c) => new \App\Modules\Tenancy\CanonicalHost(
+            $c->get(\App\Modules\Tenancy\CanonicalUrl::class),
+            $c->get(View::class),
+            $config->bool('CANONICAL_REDIRECT', false),
+        ));
         $c->set(VerifyCsrf::class, static fn (Container $c) => new VerifyCsrf($c->get(Csrf::class)));
 
         // Controllers
@@ -436,6 +445,7 @@ final class Application
             $c->get(\App\Modules\Study\ActivityReport::class),
             $c->get(\App\Modules\Study\Deadlines::class),
             $c->get(\App\Modules\Study\NoteRepository::class),
+            $c->get(\App\Modules\Site\SitePageRepository::class),
         ));
         $c->set(LoginController::class, static fn (Container $c) => new LoginController(
             $c->get(View::class),
@@ -634,7 +644,35 @@ final class Application
             $c->get(CourseRepository::class),
             $c->get(Clock::class),
         ));
-        $c->set(SeoController::class, static fn (Container $c) => new SeoController($c->get(CourseRepository::class)));
+        $c->set(SeoController::class, static fn (Container $c) => new SeoController(
+            $c->get(Connection::class),
+            $c->get(\App\Modules\Tenancy\CanonicalUrl::class),
+            $c->get(\App\Modules\Site\SitePageRepository::class),
+        ));
+        $c->set(\App\Modules\Site\SitePageRepository::class, static fn (Container $c) => new \App\Modules\Site\SitePageRepository($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(\App\Modules\Site\ShareSiteLinks::class, static fn (Container $c) => new \App\Modules\Site\ShareSiteLinks(
+            $c->get(\App\Modules\Site\SitePageRepository::class),
+            $c->get(View::class),
+            $c->get(LogoStore::class),
+        ));
+        $c->set(\App\Modules\Site\SitePages::class, static fn (Container $c) => new \App\Modules\Site\SitePages(
+            $c->get(\App\Modules\Site\SitePageRepository::class),
+            $c->get(Connection::class),
+            $c->get(AuditLog::class),
+        ));
+        $c->set(\App\Modules\Site\Http\SiteController::class, static fn (Container $c) => new \App\Modules\Site\Http\SiteController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(\App\Modules\Site\SitePages::class),
+            $c->get(\App\Modules\Site\SitePageRepository::class),
+        ));
+        $c->set(\App\Modules\Platform\Seo\ShareController::class, static fn (Container $c) => new \App\Modules\Platform\Seo\ShareController(
+            new \App\Modules\Platform\Seo\ShareCard($storage . '/share', self::basePath('resources/fonts')),
+            $c->get(CourseRepository::class),
+            $c->get(\App\Modules\Site\SitePageRepository::class),
+            $c->get(LogoStore::class),
+            self::basePath('public/assets/brand/og-image.jpg'),
+        ));
         $c->set(NotificationController::class, static fn (Container $c) => new NotificationController(
             $c->get(View::class),
             $c->get(Session::class),
@@ -693,11 +731,12 @@ final class Application
         $c->set(Kernel::class, static fn (Container $c) => new Kernel(
             $c,
             $c->get(Router::class),
-            [ResolveTenant::class, StartSession::class, AuthenticateSession::class, VerifyCsrf::class],
+            [ResolveTenant::class, \App\Modules\Tenancy\CanonicalHost::class, \App\Modules\Site\ShareSiteLinks::class, StartSession::class, AuthenticateSession::class, VerifyCsrf::class],
             static fn (string $spec): Middleware => self::routeMiddleware($c, $spec),
             $c->get(View::class),
             $c->get(Logger::class),
             $config->bool('APP_DEBUG') && !$config->isProduction(),
+            self::hstsHeader($config),
         ));
 
         foreach ($overrides as $id => $service) {
@@ -705,6 +744,21 @@ final class Application
         }
 
         return $c;
+    }
+
+    /**
+     * HSTS for HTTPS responses: a year by default, without subdomains unless
+     * HSTS_INCLUDE_SUBDOMAINS is set (other services on the domain may still use HTTP).
+     * HSTS_MAX_AGE=0 turns it off.
+     */
+    public static function hstsHeader(Config $config): string
+    {
+        $age = $config->int('HSTS_MAX_AGE', 31536000);
+        if ($age <= 0) {
+            return '';
+        }
+
+        return 'max-age=' . $age . ($config->bool('HSTS_INCLUDE_SUBDOMAINS', false) ? '; includeSubDomains' : '');
     }
 
     private static function routeMiddleware(Container $c, string $spec): Middleware

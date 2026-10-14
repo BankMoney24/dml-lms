@@ -2,7 +2,7 @@
 # One deploy user per environment, e.g. dmldeploy (production), dmlstaging (staging).
 
 APP_ROOT=/var/www/dml-lms            # cPanel: /home/<account>/dml-lms
-HEALTH_HOST=dmlschooloftechnology.com # the host the health check is sent to
+HEALTH_HOST=dmlschooloftechnology.org # the host the health check is sent to
 HEALTH_SCHEME=https
 HEALTH_PORT=443
 PHP_BIN=php                          # cPanel: /opt/cpanel/ea-php83/root/usr/bin/php

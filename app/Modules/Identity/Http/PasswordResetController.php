@@ -42,7 +42,7 @@ final class PasswordResetController
         $tenant = RequestContext::tenant($request);
         $email = mb_substr(trim($request->input('email', '') ?? ''), 0, 254);
         if ($this->mail->deliveryAvailable()) {
-            $this->links->requestReset($tenant, $email, $request->clientIp, $request->baseUrl());
+            $this->links->requestReset($tenant, $email, $request->clientIp, RequestContext::baseUrl($request));
         }
 
         // Same answer whether or not the address has an account here.

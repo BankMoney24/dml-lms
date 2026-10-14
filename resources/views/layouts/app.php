@@ -7,48 +7,63 @@
  * @var ?string $metaDescription one or two sentences about the page
  * @var ?bool $indexable true only for public pages (welcome, course list, course pages)
  * @var ?array<string, mixed> $jsonLd structured data for the page
+ * See App\Modules\Platform\Seo\PageMeta for the full list (canonicalPath, seoCrumbs, ogImage …).
  */
 $tenant = $v->shared('tenant');
 $user = $v->shared('user');
 $role = $v->shared('role');
 $siteName = $tenant?->name ?? 'DML Learning Platform';
-$title = ($pageTitle ?? '') !== '' && ($pageTitle ?? '') !== $siteName ? $pageTitle . ' – ' . $siteName : $siteName;
 $baseUrl = (string) $v->shared('base_url', '');
 $path = (string) $v->shared('path', '/');
-$description = trim((string) ($metaDescription ?? ''));
-if ($description === '') {
-    $description = $tenant !== null
-        ? ($tenant->tagline !== '' ? $tenant->tagline . '. ' : '') . 'Courses, hands-on labs and certificates from ' . $tenant->name . '.'
-        : 'DML Learning Platform by DML Technologies: courses, virtual labs and certificates for schools and training centres.';
-}
-$description = mb_strimwidth($description, 0, 300, '…');
-$robotsOk = ($indexable ?? false) === true;
-$canonical = $baseUrl . ($path === '/' ? '/' : $path);
-$ogImage = $tenant !== null && $tenant->hasLogo() ? $baseUrl . '/logo?v=' . $tenant->logoVersion() : $baseUrl . '/assets/brand/og-image.jpg';
-$ogImageIsLarge = !($tenant !== null && $tenant->hasLogo());
+// Titles, descriptions, canonical, social previews and structured data: one builder for every page (ADR 0019).
+$meta = \App\Modules\Platform\Seo\PageMeta::build([
+    'pageTitle' => $pageTitle ?? null, 'metaDescription' => $metaDescription ?? null, 'indexable' => $indexable ?? false,
+    'canonicalPath' => $canonicalPath ?? null, 'jsonLd' => $jsonLd ?? null, 'seoCrumbs' => $seoCrumbs ?? null,
+    'ogImage' => $ogImage ?? null, 'ogImageAlt' => $ogImageAlt ?? null, 'ogImageSize' => $ogImageSize ?? null, 'ogType' => $ogType ?? null,
+], $tenant, $baseUrl, $path);
+$sitePages = (array) $v->shared('site_pages', []);
+$logoRatio = (float) $v->shared('logo_ratio', 0);
+// width and height attributes reserve the logo's space before it loads (no layout shift).
+$logoSize = static fn (int $h): string => $logoRatio > 0 ? 'width="' . (int) round($logoRatio * $h) . '" height="' . $h . '"' : 'height="' . $h . '"';
 $themeKey = $tenant?->theme ?? \App\Modules\Tenancy\SchoolTheme::DEFAULT;
 $appearance = $user?->appearance ?? 'system';
 // Signed-in pages in a school use the app shell: sidebar, search and account menu.
 $shell = $tenant !== null && $user !== null;
 ?><!doctype html>
-<html lang="en"<?= $appearance !== 'system' ? ' data-appearance="' . $v->e($appearance) . '"' : '' ?>>
+<html lang="<?= $v->e($meta['lang']) ?>"<?= $appearance !== 'system' ? ' data-appearance="' . $v->e($appearance) . '"' : '' ?>>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title><?= $v->e($title) ?></title>
-<meta name="description" content="<?= $v->e($description) ?>">
-<?php if ($robotsOk): ?>
-<link rel="canonical" href="<?= $v->e($canonical) ?>">
-<?php else: ?>
-<meta name="robots" content="noindex, nofollow">
+<title><?= $v->e($meta['title']) ?></title>
+<meta name="description" content="<?= $v->e($meta['description']) ?>">
+<meta name="robots" content="<?= $v->e($meta['robots']) ?>">
+<?php if ($meta['canonical'] !== null): ?>
+<link rel="canonical" href="<?= $v->e($meta['canonical']) ?>">
+<meta property="og:site_name" content="<?= $v->e($meta['siteName']) ?>">
+<meta property="og:locale" content="<?= $v->e($meta['locale']) ?>">
+<meta property="og:type" content="<?= $v->e($meta['ogType']) ?>">
+<meta property="og:title" content="<?= $v->e($meta['ogTitle']) ?>">
+<meta property="og:description" content="<?= $v->e($meta['description']) ?>">
+<meta property="og:url" content="<?= $v->e($meta['canonical']) ?>">
+<?php if ($meta['ogImage'] !== null): ?>
+<meta property="og:image" content="<?= $v->e($meta['ogImage']) ?>">
+<meta property="og:image:alt" content="<?= $v->e($meta['ogImageAlt']) ?>">
+<?php if ($meta['ogImageSize'] !== null): ?>
+<meta property="og:image:width" content="<?= (int) $meta['ogImageSize'][0] ?>">
+<meta property="og:image:height" content="<?= (int) $meta['ogImageSize'][1] ?>">
 <?php endif; ?>
-<meta property="og:site_name" content="<?= $v->e($siteName) ?>">
-<meta property="og:title" content="<?= $v->e($pageTitle ?? $siteName) ?>">
-<meta property="og:description" content="<?= $v->e($description) ?>">
-<meta property="og:type" content="website">
-<meta property="og:url" content="<?= $v->e($canonical) ?>">
-<meta property="og:image" content="<?= $v->e($ogImage) ?>">
-<meta name="twitter:card" content="<?= $ogImageIsLarge ? 'summary_large_image' : 'summary' ?>">
+<?php endif; ?>
+<meta name="twitter:card" content="<?= $v->e($meta['twitterCard']) ?>">
+<meta name="twitter:title" content="<?= $v->e($meta['ogTitle']) ?>">
+<meta name="twitter:description" content="<?= $v->e($meta['description']) ?>">
+<?php if ($meta['ogImage'] !== null): ?>
+<meta name="twitter:image" content="<?= $v->e($meta['ogImage']) ?>">
+<meta name="twitter:image:alt" content="<?= $v->e($meta['ogImageAlt']) ?>">
+<?php endif; ?>
+<?php endif; ?>
+<?php foreach ($meta['verification'] as $verifyName => $verifyCode): ?>
+<meta name="<?= $v->e($verifyName) ?>" content="<?= $v->e($verifyCode) ?>">
+<?php endforeach; ?>
 <meta name="application-name" content="<?= $v->e($siteName) ?>">
 <meta name="theme-color" content="<?= $v->e(\App\Modules\Tenancy\SchoolTheme::colour($themeKey)) ?>">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -57,8 +72,8 @@ $shell = $tenant !== null && $user !== null;
 <link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png">
 <link rel="stylesheet" href="<?= $v->asset('app.css') ?>">
 <script src="<?= $v->asset('app.js') ?>" defer></script>
-<?php if (isset($jsonLd) && is_array($jsonLd) && $robotsOk): ?>
-<script type="application/ld+json"><?= json_encode($jsonLd, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?></script>
+<?php if ($meta['jsonLd'] !== null): ?>
+<script type="application/ld+json"><?= \App\Modules\Platform\Seo\PageMeta::json($meta['jsonLd']) ?></script>
 <?php endif; ?>
 </head>
 <?php if ($shell): ?>
@@ -75,7 +90,7 @@ $shell = $tenant !== null && $user !== null;
     <div class="sidebar-head">
       <a class="side-brand" href="/">
         <?php if ($tenant->hasLogo()): ?>
-          <span class="side-logo"><img src="/logo?v=<?= $v->e($tenant->logoVersion()) ?>" alt="" height="28"></span>
+          <span class="side-logo"><img src="/logo?v=<?= $v->e($tenant->logoVersion()) ?>" alt="" <?= $logoSize(28) ?>></span>
         <?php else: ?>
           <span class="side-logo side-logo-mark"><?php $pixelClass = ''; include __DIR__ . '/../partials/pixels.php'; ?></span>
         <?php endif; ?>
@@ -107,6 +122,7 @@ $shell = $tenant !== null && $user !== null;
         <?php if ($v->can('school.manage')): ?><?= $v->sideLink('/school', 'Settings', 'school', ['/setup']) ?><?php endif; ?>
         <?php if ($v->can('members.manage')): ?><?= $v->sideLink('/people', 'People', 'people') ?><?php endif; ?>
         <?php if ($v->can('support.manage')): ?><?= $v->sideLink('/school/support', 'Help desk', 'inbox', [], (int) ($counts['support'] ?? 0)) ?><?php endif; ?>
+        <?php if ($v->can('school.manage')): ?><?= $v->sideLink('/school/website', 'Website', 'link') ?><?php endif; ?>
         <?php if ($v->can('school.manage')): ?><?= $v->sideLink('/school/payments', 'Payments', 'payments') ?><?php endif; ?>
         <?php if ($v->can('audit.view')): ?><?= $v->sideLink('/activity', 'Activity', 'activity') ?><?php endif; ?>
         <?php if ($user->isPlatformAdmin): ?><?= $v->sideLink('/system', 'System', 'system') ?><?php endif; ?>
@@ -117,13 +133,13 @@ $shell = $tenant !== null && $user !== null;
       <ul>
         <?= $v->sideLink('/help', 'Get help', 'help') ?>
       </ul>
-      <p class="side-credit"><?php $pixelClass = ''; include __DIR__ . '/../partials/pixels.php'; ?>Powered by TridaxLabs</p>
+      <p class="side-credit"><?php $pixelClass = ''; include __DIR__ . '/../partials/pixels.php'; ?><span>Developed and powered by <a href="https://tridax.org">TridaxLabs</a></span></p>
     </div>
   </aside>
   <div class="shell-main">
     <header class="appbar">
       <a class="appbar-menu" href="#sidebar" data-nav-open aria-controls="sidebar"><?= $v->icon('menu') ?><span class="visually-hidden">Menu</span></a>
-      <a class="appbar-brand" href="/"><?php if ($tenant->hasLogo()): ?><img src="/logo?v=<?= $v->e($tenant->logoVersion()) ?>" alt="" height="28"><?php endif; ?><span><?= $v->e($siteName) ?></span></a>
+      <a class="appbar-brand" href="/"><?php if ($tenant->hasLogo()): ?><img src="/logo?v=<?= $v->e($tenant->logoVersion()) ?>" alt="" <?= $logoSize(28) ?>><?php endif; ?><span><?= $v->e($siteName) ?></span></a>
       <form class="search" role="search" method="get" action="/search" data-search>
         <label class="visually-hidden" for="site-search">Search</label>
         <?= $v->icon('search', 'search-icon') ?>
@@ -182,6 +198,7 @@ $shell = $tenant !== null && $user !== null;
         <?php if ($tenant->contactPhone !== ''): ?><li><a href="tel:<?= $v->e((string) preg_replace('/[^0-9+]/', '', $tenant->contactPhone)) ?>"><?= $v->e($tenant->contactPhone) ?></a></li><?php endif; ?>
         <li><a href="/help">Get help</a></li>
         <li><a href="/verify">Check a certificate</a></li>
+        <?php foreach ($sitePages as $pagePath => $pageName): ?><li><a href="<?= $v->e($pagePath) ?>"><?= $v->e($pageName) ?></a></li><?php endforeach; ?>
       </ul>
     </footer>
   </div>
@@ -196,7 +213,7 @@ $shell = $tenant !== null && $user !== null;
   <div class="wrap topbar-inner">
     <a class="brand" href="/">
       <?php if ($tenant?->hasLogo()): ?>
-        <img class="brand-logo" src="/logo?v=<?= $v->e($tenant->logoVersion()) ?>" alt="" height="36">
+        <img class="brand-logo" src="/logo?v=<?= $v->e($tenant->logoVersion()) ?>" alt="" <?= $logoSize(36) ?>>
       <?php else: ?>
         <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><rect class="px-soft" x="1" y="2" width="4.5" height="4.5"/><rect x="6.5" y="2" width="4.5" height="4.5"/><rect x="12" y="2" width="4.5" height="4.5"/><rect class="px-accent" x="17.5" y="2" width="4.5" height="4.5"/><rect x="6.5" y="7.5" width="4.5" height="4.5"/><rect class="px-soft" x="12" y="7.5" width="4.5" height="4.5"/><rect x="17.5" y="7.5" width="4.5" height="4.5"/><rect x="12" y="13" width="4.5" height="4.5"/><rect class="px-accent" x="17.5" y="13" width="4.5" height="4.5"/><rect x="17.5" y="18.5" width="4.5" height="4.5"/></svg>
       <?php endif; ?>
@@ -229,7 +246,12 @@ $shell = $tenant !== null && $user !== null;
         </form>
       </div>
       <?php else: ?>
-      <nav class="nav" aria-label="Main"><?php if ($tenant->publicCatalogue): ?><?= $v->navLink('/courses', 'Courses') ?><?php endif; ?></nav>
+      <nav class="nav" aria-label="Main"><?php if ($tenant->publicCatalogue): ?><?= $v->navLink('/courses', 'Courses') ?><?php endif; ?><?php
+        foreach (['/about' => 'About', '/admissions' => 'Admissions', '/contact' => 'Contact'] as $navPath => $navLabel) {
+            if (isset($sitePages[$navPath])) {
+                echo $v->navLink($navPath, $navLabel);
+            }
+        } ?></nav>
       <div class="account"><?php if (!str_starts_with((string) $v->shared('path'), '/login')): ?><a class="button button-small" href="/login">Sign in</a><?php endif; ?></div>
       <?php endif; ?>
     <?php endif; ?>
@@ -252,10 +274,17 @@ $shell = $tenant !== null && $user !== null;
       <?php if ($user !== null): ?><li><a href="/help">Get help</a></li><?php endif; ?>
       <li><a href="/verify">Check a certificate</a></li>
     </ul>
+    <?php if ($sitePages !== []): ?>
+    <nav class="footer-pages" aria-label="About the school">
+      <ul class="footer-links">
+        <?php foreach ($sitePages as $pagePath => $pageName): ?><li><a href="<?= $v->e($pagePath) ?>"><?= $v->e($pageName) ?></a></li><?php endforeach; ?>
+      </ul>
+    </nav>
+    <?php endif; ?>
     <?php else: ?>
     <p class="footer-links">Learn. Build. Grow.</p>
     <?php endif; ?>
-    <p class="footer-credit"><?php $pixelClass = 'pixels-light'; include __DIR__ . '/../partials/pixels.php'; ?>DML Technologies learning platform, powered by TridaxLabs</p>
+    <p class="footer-credit"><?php $pixelClass = 'pixels-light'; include __DIR__ . '/../partials/pixels.php'; ?><span>Developed and powered by <a href="https://tridax.org">TridaxLabs</a></span></p>
   </div>
 </footer>
 </body>

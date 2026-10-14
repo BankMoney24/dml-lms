@@ -56,6 +56,33 @@ final class TenantRepository
         return $this->findById($id) ?? new Tenant($id, $slug, $name, Tenant::STATUS_ACTIVE, $timezone, $locale);
     }
 
+    /** The verified domain marked primary, if any. */
+    public function primaryHost(int $tenantId): ?string
+    {
+        $host = $this->db->fetchValue(
+            'SELECT host FROM tenant_domains WHERE tenant_id = ? AND is_primary = 1 AND verified_at IS NOT NULL ORDER BY id LIMIT 1',
+            [$tenantId],
+        );
+
+        return is_string($host) && $host !== '' ? $host : null;
+    }
+
+    /** Makes one of the school's verified domains its primary address; the others become aliases. */
+    public function setPrimaryDomain(int $tenantId, string $host): bool
+    {
+        $host = strtolower($host);
+        $exists = $this->db->fetchValue('SELECT id FROM tenant_domains WHERE tenant_id = ? AND host = ? AND verified_at IS NOT NULL', [$tenantId, $host]);
+        if ($exists === null) {
+            return false;
+        }
+        $this->db->transaction(function () use ($tenantId, $host): void {
+            $this->db->execute('UPDATE tenant_domains SET is_primary = 0 WHERE tenant_id = ?', [$tenantId]);
+            $this->db->execute('UPDATE tenant_domains SET is_primary = 1 WHERE tenant_id = ? AND host = ?', [$tenantId, $host]);
+        });
+
+        return true;
+    }
+
     public function addDomain(int $tenantId, string $host, bool $verified, bool $primary = false): void
     {
         $now = $this->clock->sqlNow();

@@ -30,6 +30,14 @@ final class RequestContext
         return $user;
     }
 
+    /** The school's canonical address (scheme and host), or this request's own if it has none. */
+    public static function baseUrl(Request $request): string
+    {
+        $base = $request->attribute('canonical_base');
+
+        return is_string($base) && $base !== '' ? $base : $request->baseUrl();
+    }
+
     public static function optionalUser(Request $request): ?CurrentUser
     {
         $user = $request->attribute('auth');

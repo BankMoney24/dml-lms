@@ -34,14 +34,14 @@ final class SeoTest extends AppTestCase
         $this->assertStringNotContainsString('noindex', $home);
         $this->assertStringContainsString('<meta property="og:title"', $home);
         $this->assertStringContainsString('"@type":"EducationalOrganization"', $home);
-        $this->assertStringContainsString('powered by TridaxLabs', $home);
+        $this->assertStringContainsString('Developed and powered by <a href="https://tridax.org">TridaxLabs</a>', $home);
 
         $course = $this->get(self::HOST, '/courses/networking')->body;
         $this->assertStringContainsString('<link rel="canonical" href="http://school.test/courses/networking">', $course);
         $this->assertStringContainsString('<meta name="description" content="Summary for school">', $course);
         $this->assertStringContainsString('"@type":"Course"', $course);
         $this->assertStringContainsString('"price":"15000.00","priceCurrency":"NGN"', $course);
-        $this->assertStringContainsString('"provider":{"@type":"EducationalOrganization","name":"School Academy"', $course);
+        $this->assertStringContainsString('"provider":{"@type":"EducationalOrganization","@id":"http://school.test/#organization","name":"School Academy"', $course);
     }
 
     public function testPrivatePagesAskSearchEnginesToStayAway(): void

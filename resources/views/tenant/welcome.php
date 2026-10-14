@@ -1,7 +1,14 @@
 <?php
 /** @var \App\Core\View\ViewHelpers $v */
 /** @var list<array<string, mixed>> $cards */
+/** @var list<\App\Modules\Site\SitePage> $sitePages */
 $tenant = $v->shared('tenant');
+$sitePages ??= [];
+$aboutPage = null;
+foreach ($sitePages as $sp) {
+    $aboutPage = $sp->slug === 'about' ? $sp : $aboutPage;
+}
+$admissionsPage = array_values(array_filter($sitePages, static fn ($sp): bool => $sp->slug === 'admissions'))[0] ?? null;
 ?>
 <section class="welcome" aria-labelledby="welcome-h">
   <div class="welcome-text">
@@ -29,6 +36,14 @@ $tenant = $v->shared('tenant');
     </li>
   </ol>
 </section>
+
+<?php if ($aboutPage !== null): ?>
+<section class="section about-strip" aria-labelledby="about-h">
+  <h2 id="about-h">About <?= $v->e($tenant->name) ?></h2>
+  <p><?= $v->e($aboutPage->summary) ?></p>
+  <p class="about-links"><a href="/about">More about the school</a><?php if ($admissionsPage !== null): ?><a href="/admissions">How to join</a><?php endif; ?></p>
+</section>
+<?php endif; ?>
 
 <?php if ($cards !== []): ?>
 <section class="section" aria-labelledby="latest">

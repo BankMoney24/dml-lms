@@ -73,6 +73,20 @@ final class Response
     }
 
     /**
+     * A permanent move to the school's canonical address. The target is built
+     * from a verified domain in the database, never from request input; it
+     * must be an absolute http(s) URL to a plain host name.
+     */
+    public static function toCanonical(string $url): self
+    {
+        if (preg_match('#^https?://[a-z0-9.-]+(:[0-9]{1,5})?/[^\s]*$#', $url) !== 1) {
+            throw new \InvalidArgumentException('Not a canonical address.');
+        }
+
+        return new self('', 301, ['Location' => $url]);
+    }
+
+    /**
      * Sends the browser to a payment provider's checkout page. Only exact,
      * known checkout addresses are allowed, so this can never become an
      * open redirect.

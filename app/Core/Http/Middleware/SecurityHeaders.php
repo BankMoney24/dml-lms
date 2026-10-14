@@ -10,7 +10,8 @@ use App\Core\Http\Response;
 
 final class SecurityHeaders implements Middleware
 {
-    public function __construct(private readonly bool $hsts)
+    /** @param string $hsts the Strict-Transport-Security value for this response, or '' for none (plain HTTP, or switched off) */
+    public function __construct(private readonly string $hsts)
     {
     }
 
@@ -33,8 +34,8 @@ final class SecurityHeaders implements Middleware
             'Permissions-Policy' => 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
             'Cross-Origin-Opener-Policy' => 'same-origin',
         ];
-        if ($this->hsts) {
-            $headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains';
+        if ($this->hsts !== '') {
+            $headers['Strict-Transport-Security'] = $this->hsts;
         }
         if ($response->header('Cache-Control') === null) {
             // Pages can contain personal data; do not let shared caches keep them.

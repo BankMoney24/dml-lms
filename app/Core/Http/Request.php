@@ -123,6 +123,12 @@ final class Request
         return $scheme . '://' . $this->host . $port;
     }
 
+    /** The query string as received (re-encoded), for redirects that must keep it. */
+    public function queryString(): string
+    {
+        return http_build_query($this->query, '', '&', PHP_QUERY_RFC3986);
+    }
+
     public function query(string $key, ?string $default = null): ?string
     {
         $value = $this->query[$key] ?? $default;

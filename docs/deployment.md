@@ -53,19 +53,14 @@ install -o dmldeploy -m 600 /root/<id>.tar.gz /var/www/dml-lms/incoming/
 sudo -u dmldeploy -H /usr/local/bin/dml-deploy activate <id> $(sha256sum /root/<id>.tar.gz | cut -d' ' -f1)
 ```
 
-**When `dmlschooloftechnology.com` points here** (A records for `@` and `www` → 66.29.156.116):
+**When `dmlschooloftechnology.org` points here** (A records for `@` and `www` → 66.29.156.116; confirmed on 14 Oct 2026). One script does the rest (ADR 0019): it checks DNS, backs up the Apache config and `.env`, adds the domain's Apache site, maps both names to the school, gets a Let's Encrypt certificate with HTTP→HTTPS, makes the domain the school's canonical address (`PUBLIC_SCHEME=https`, `CANONICAL_REDIRECT=true`, secure cookies, HSTS for a year without subdomains), points the deploy health check at it, and checks the result. It stops at the first problem and is safe to run again.
 ```bash
-cp /var/www/dml-lms/current/deploy/apache/dml-lms-domain.conf /etc/httpd/conf.d/
-apachectl configtest && systemctl reload httpd
-certbot --apache -d dmlschooloftechnology.com -d www.dmlschooloftechnology.com
-sudo -u dmldeploy -H php /var/www/dml-lms/current/bin/console tenant:add-domain dml dmlschooloftechnology.com
-sudo -u dmldeploy -H php /var/www/dml-lms/current/bin/console tenant:add-domain dml www.dmlschooloftechnology.com
-sed -i 's/^SESSION_SECURE_COOKIE=false/SESSION_SECURE_COOKIE=true/' /var/www/dml-lms/shared/.env
-sed -i 's/^HEALTH_HOST=.*/HEALTH_HOST=dmlschooloftechnology.com/; s/^HEALTH_SCHEME=.*/HEALTH_SCHEME=https/; s/^HEALTH_PORT=.*/HEALTH_PORT=443/' ~dmldeploy/.dml-deploy.conf
-# then retire the temporary port
+bash /var/www/dml-lms/current/deploy/server/setup-domain.sh dmlschooloftechnology.org <your-email-for-certificate-notices>
+# when the old address is no longer needed:
 rm /etc/httpd/conf.d/dml-lms.conf && apachectl configtest && systemctl reload httpd
 firewall-cmd --permanent --remove-port=8088/tcp && firewall-cmd --reload
 ```
+Undo: the script prints the exact commands (restore the backup tarball, remove `dml-lms-domain*.conf`, and set the old primary address back with `tenant:primary-domain`).
 
 ### Backups (nightly, encrypted, restore-tested weekly)
 
@@ -157,7 +152,7 @@ sudo -u dmldeploy -H php /var/www/dml-lms/current/bin/console school:brand dml -
 
 ### Search engines
 
-Each school address serves `/robots.txt` and `/sitemap.xml` (public pages only). Once `dmlschooloftechnology.com` is on HTTPS, add it in Google Search Console and submit `https://dmlschooloftechnology.com/sitemap.xml`. Signed-in pages tell search engines not to index them.
+Each school address serves `/robots.txt` and `/sitemap.xml` (public pages only, on the canonical address). Once `dmlschooloftechnology.org` is on HTTPS, add it in Google Search Console and Bing Webmaster Tools (DNS TXT verification, or paste the meta-tag code under School → Website), and submit `https://dmlschooloftechnology.org/sitemap.xml`. Signed-in pages tell search engines not to index them. Full checklist: `docs/seo.md`.
 
 ### Classes and cohorts
 
@@ -195,7 +190,7 @@ Until `MAIL_DRIVER=smtp` is set, nothing is emailed: admins get a one-time passw
    MAIL_ENCRYPTION=tls
    MAIL_USERNAME=…
    MAIL_PASSWORD=…
-   MAIL_FROM_ADDRESS=no-reply@dmlschooloftechnology.com
+   MAIL_FROM_ADDRESS=no-reply@dmlschooloftechnology.org
    MAIL_FROM_NAME="DML School of Technology"
    ```
    Local relay on this server instead: `MAIL_HOST=127.0.0.1`, `MAIL_PORT=25`, `MAIL_ENCRYPTION=none`, no username/password. SELinux must let PHP-FPM reach mail ports (25, 465, 587): `setsebool -P httpd_can_sendmail on`. A provider on any other port also needs `httpd_can_network_connect`.
@@ -225,7 +220,7 @@ Platform administrators (`bin/console user:platform-admin`) create more schools 
    apachectl configtest && systemctl reload httpd
    ```
    (On the temporary IP-and-port setup every name that reaches the port already lands on the app.)
-3. **HTTPS**: `certbot --apache --expand -d dmlschooloftechnology.com -d www.dmlschooloftechnology.com -d learn.sunriseacademy.ng` (list every name the certificate should cover).
+3. **HTTPS**: `certbot --apache --expand -d dmlschooloftechnology.org -d www.dmlschooloftechnology.org -d learn.sunriseacademy.ng` (list every name the certificate should cover). Make the school's own name canonical with `bin/console tenant:primary-domain <slug> <host>`.
 4. **In the app**: System → Schools → Add a school (or open the school and *Add an address*). The address works as soon as DNS and the web server do. The owner gets an invitation by email, or you see a one-time password to give them.
 
 ### Two-step sign-in

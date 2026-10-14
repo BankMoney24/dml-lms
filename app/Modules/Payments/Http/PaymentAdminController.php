@@ -149,8 +149,8 @@ final class PaymentAdminController
         return Response::html($this->view->render('school/payments', [
             'pageTitle' => 'Payments',
             'account' => $account,
-            'webhookUrl' => $request->baseUrl() . '/webhooks/paystack',
-            'callbackUrl' => $request->baseUrl() . '/payments/paystack/callback',
+            'webhookUrl' => RequestContext::baseUrl($request) . '/webhooks/paystack',
+            'callbackUrl' => RequestContext::baseUrl($request) . '/payments/paystack/callback',
             'rows' => $this->payments->listForSchool($tenant->id, $filter === '' ? null : self::FILTERS[$filter]),
             'filter' => $filter,
             'totals' => $this->payments->totals($tenant->id, $this->clock->now()->modify('-30 days')->format('Y-m-d H:i:s')),

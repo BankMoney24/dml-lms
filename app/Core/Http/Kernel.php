@@ -31,6 +31,8 @@ final class Kernel
         private readonly View $view,
         private readonly Logger $logger,
         private readonly bool $debug,
+        /** Strict-Transport-Security value sent on HTTPS responses; empty to send none. */
+        private readonly string $hsts = 'max-age=31536000',
     ) {
     }
 
@@ -78,7 +80,7 @@ final class Kernel
             $response = $this->renderError(500, $message, $requestId);
         }
 
-        return (new SecurityHeaders($request->secure))->process($request, static fn () => $response)
+        return (new SecurityHeaders($request->secure ? $this->hsts : ''))->process($request, static fn () => $response)
             ->withHeader('X-Request-Id', $requestId);
     }
 
@@ -104,7 +106,7 @@ final class Kernel
         }
         $response ??= $render();
 
-        return (new SecurityHeaders($request->secure))->process($request, static fn () => $response)
+        return (new SecurityHeaders($request->secure ? $this->hsts : ''))->process($request, static fn () => $response)
             ->withHeader('X-Request-Id', $requestId);
     }
 

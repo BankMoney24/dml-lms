@@ -46,6 +46,7 @@ final class ConsoleApplication
                 'migrate:status' => $this->migrateStatus(),
                 'tenant:create' => $this->tenantCreate($args),
                 'tenant:add-domain' => $this->tenantAddDomain($args),
+                'tenant:primary-domain' => $this->tenantPrimaryDomain($args),
                 'user:create' => $this->userCreate($args),
                 'seed:demo' => $this->seedDemo($args),
                 'mail:work' => $this->mailWork(),
@@ -76,7 +77,10 @@ final class ConsoleApplication
           migrate                                   Apply pending database migrations
           migrate:status                            List migrations and whether they are applied
           tenant:create <slug> "<name>" <host>      Create a tenant with a verified primary host
-          tenant:add-domain <slug> <host>           Map another verified host to a tenant
+          tenant:add-domain <slug> <host> [--primary]
+                                                    Map another verified host to a tenant (--primary: make it
+                                                    the canonical address search engines and links use)
+          tenant:primary-domain <slug> <host>       Make an already-mapped host the canonical address
           user:create <tenant-slug> <email> "<name>" <role>
                                                     Create a user and membership. Password is read
                                                     from STDIN, or generated and printed once.
@@ -185,8 +189,38 @@ final class ConsoleApplication
         if ($tenant === null) {
             throw new \RuntimeException('No tenant with that slug.');
         }
-        $this->container->get(TenantRepository::class)->addDomain($tenant->id, $host, true);
-        printf("Mapped %s to %s\n", $host, $slug);
+        $host = strtolower(trim($host));
+        if (preg_match('/^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/', $host) !== 1) {
+            throw new \RuntimeException('Give a host name only, for example dmlschooloftechnology.org (no https://, path or port).');
+        }
+        $repo = $this->container->get(TenantRepository::class);
+        $existing = $repo->domains($tenant->id);
+        if (in_array($host, array_column($existing, 'host'), true)) {
+            printf("%s is already mapped to %s\n", $host, $slug);
+        } else {
+            $repo->addDomain($tenant->id, $host, true);
+            printf("Mapped %s to %s\n", $host, $slug);
+        }
+        if (in_array('--primary', $args, true)) {
+            $repo->setPrimaryDomain($tenant->id, $host);
+            printf("%s is now the primary (canonical) address of %s\n", $host, $slug);
+        }
+
+        return 0;
+    }
+
+    /** @param list<string> $args */
+    private function tenantPrimaryDomain(array $args): int
+    {
+        [$slug, $host] = $this->requireArgs($args, 2, 'tenant:primary-domain <slug> <host>');
+        $tenant = $this->container->get(TenantRepository::class)->findBySlug($slug);
+        if ($tenant === null) {
+            throw new \RuntimeException('No tenant with that slug.');
+        }
+        if (!$this->container->get(TenantRepository::class)->setPrimaryDomain($tenant->id, $host)) {
+            throw new \RuntimeException('Map the host first with tenant:add-domain.');
+        }
+        printf("%s is now the primary (canonical) address of %s\n", strtolower($host), $slug);
 
         return 0;
     }

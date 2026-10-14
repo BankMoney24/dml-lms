@@ -237,8 +237,8 @@ final class SchoolSetupWizard implements Wizard
                     $tenant = $this->tenants->findById($ctx->tenant->id) ?? $ctx->tenant;
                     $role = Role::from($added['role']);
                     $added['existing_account']
-                        ? $this->links->sendAddedNotice($tenant, $user, $ctx->user, $role, $ctx->request->baseUrl())
-                        : $this->links->sendInvitation($tenant, $user, $ctx->user, $role, $ctx->request->baseUrl());
+                        ? $this->links->sendAddedNotice($tenant, $user, $ctx->user, $role, \App\Core\Http\RequestContext::baseUrl($ctx->request))
+                        : $this->links->sendInvitation($tenant, $user, $ctx->user, $role, \App\Core\Http\RequestContext::baseUrl($ctx->request));
                     $row['emailed'] = true;
                 }
             } catch (ValidationException $e) {

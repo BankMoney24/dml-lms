@@ -29,6 +29,8 @@ final class Course
         public readonly ?string $track = null,
         public readonly ?int $priceMinor = null,
         public readonly ?string $currency = null,
+        /** Last change to the course or its lessons (UTC), for sitemaps and share images. */
+        public readonly string $updatedAt = '',
     ) {
     }
 
@@ -51,6 +53,7 @@ final class Course
             isset($row['track']) && isset(self::TRACKS[(string) $row['track']]) ? (string) $row['track'] : null,
             isset($row['price_minor']) && (int) $row['price_minor'] > 0 ? (int) $row['price_minor'] : null,
             isset($row['currency']) && is_string($row['currency']) && $row['currency'] !== '' ? $row['currency'] : null,
+            (string) ($row['updated_at'] ?? ''),
         );
     }
 

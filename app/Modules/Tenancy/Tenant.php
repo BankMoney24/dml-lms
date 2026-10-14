@@ -61,6 +61,10 @@ final class Tenant
         public readonly bool $publicCatalogue = true,
         public readonly ?string $setupCompletedAt = null,
         public readonly ?string $groupTerm = null,
+        /** @var array<string, string> network => https URL of a profile the school controls */
+        public readonly array $socialLinks = [],
+        /** @var array<string, string> search engine => site verification code */
+        public readonly array $searchVerification = [],
     ) {
     }
 
@@ -96,7 +100,26 @@ final class Tenant
             (bool) ($row['public_catalogue'] ?? true),
             isset($row['setup_completed_at']) ? (string) $row['setup_completed_at'] : null,
             isset($row['group_term']) && isset(self::GROUP_TERMS[(string) $row['group_term']]) ? (string) $row['group_term'] : null,
+            self::stringMap($row['social_links'] ?? null),
+            self::stringMap($row['search_verification'] ?? null),
         );
+    }
+
+    /** @return array<string, string> */
+    private static function stringMap(mixed $json): array
+    {
+        $decoded = is_string($json) && $json !== '' ? json_decode($json, true) : null;
+        if (!is_array($decoded)) {
+            return [];
+        }
+        $out = [];
+        foreach ($decoded as $k => $val) {
+            if (is_string($k) && is_string($val) && $val !== '') {
+                $out[$k] = $val;
+            }
+        }
+
+        return $out;
     }
 
     public function isActive(): bool
