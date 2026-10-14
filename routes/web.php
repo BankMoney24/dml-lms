@@ -29,6 +29,9 @@ use App\Modules\Platform\SchoolsController;
 use App\Modules\Platform\SeoController;
 use App\Modules\Platform\SystemController;
 use App\Modules\Search\Http\SearchController;
+use App\Modules\Joining\Http\JoinController;
+use App\Modules\Joining\Http\JoiningAdminController;
+use App\Modules\Playground\Http\PlaygroundController;
 use App\Modules\Site\Http\SiteController;
 use App\Modules\Platform\Seo\ShareController;
 use App\Modules\Study\Http\StudyController;
@@ -63,6 +66,16 @@ return static function (Router $r): void {
     $r->post('/logout', [LoginController::class, 'logout'], ['tenant']);
     $r->get('/login/verify', [TwoFactorController::class, 'showChallenge'], ['tenant']);
     $r->post('/login/verify', [TwoFactorController::class, 'verifyChallenge'], ['tenant']);
+    // Joining (ADR 0020): sign up as a learner, parents ask for access, members ask to teach.
+    $r->get('/join', [JoinController::class, 'index'], ['tenant']);
+    $r->post('/join', [JoinController::class, 'store'], ['tenant']);
+    $r->get('/join/parent', [JoinController::class, 'parent'], ['tenant']);
+    $r->post('/join/parent', [JoinController::class, 'storeParent'], ['tenant']);
+    $r->get('/join/teach', [JoinController::class, 'teach'], ['tenant', 'auth']);
+    $r->post('/join/teach', [JoinController::class, 'storeTeach'], ['tenant', 'auth']);
+    $r->get('/account/confirm/{token}', [JoinController::class, 'confirm'], ['tenant']);
+    $r->post('/account/confirm', [JoinController::class, 'resendConfirmation'], ['tenant', 'auth']);
+    $r->post('/welcome/skip', [JoinController::class, 'skipWelcome'], ['tenant', 'auth', 'can:course.learn']);
     $r->get('/password/forgot', [PasswordResetController::class, 'showForgot'], ['tenant']);
     $r->post('/password/forgot', [PasswordResetController::class, 'sendForgot'], ['tenant']);
     $r->get('/password/reset/{token}', [PasswordResetController::class, 'showReset'], ['tenant']);
@@ -153,6 +166,9 @@ return static function (Router $r): void {
     // Calendar apps fetch this themselves: no session; the secret in the address is the key (ADR 0018).
     $r->get('/calendar/{token:code}.ics', [StudyController::class, 'feed'], [Kernel::BARE, 'host-tenant', 'tenant']);
     $r->get('/search', [SearchController::class, 'index'], $signedIn);
+    $r->get('/playground', [PlaygroundController::class, 'index'], $signedIn);
+    $r->post('/playground', [PlaygroundController::class, 'save'], $signedIn);
+    $r->post('/playground/{snippet:int}/delete', [PlaygroundController::class, 'delete'], $signedIn);
 
     $people = ['tenant', 'auth', 'can:members.manage'];
     $r->get('/people', [PeopleController::class, 'index'], $people);
@@ -206,6 +222,11 @@ return static function (Router $r): void {
     $r->post('/school/payments/disconnect', [PaymentAdminController::class, 'disconnect'], $school);
     $r->post('/school/payments/manual', [PaymentAdminController::class, 'manual'], $school);
     $r->get('/logo', [SchoolController::class, 'logo'], ['tenant']);
+    $r->get('/school/joining', [JoiningAdminController::class, 'index'], ['tenant', 'auth', 'can:members.manage']);
+    $r->post('/school/joining/settings', [JoiningAdminController::class, 'saveSettings'], $school);
+    $r->post('/school/joining/code', [JoiningAdminController::class, 'newCode'], $school);
+    $r->post('/school/joining/requests/{request:int}/approve', [JoiningAdminController::class, 'approve'], ['tenant', 'auth', 'can:members.manage']);
+    $r->post('/school/joining/requests/{request:int}/decline', [JoiningAdminController::class, 'decline'], ['tenant', 'auth', 'can:members.manage']);
     $r->get('/school/website', [SiteController::class, 'index'], $school);
     $r->post('/school/website-settings', [SiteController::class, 'saveSettings'], $school);
     $r->get('/school/website/{page}', [SiteController::class, 'edit'], $school);

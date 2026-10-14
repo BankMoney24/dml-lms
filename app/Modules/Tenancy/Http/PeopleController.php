@@ -33,6 +33,7 @@ final class PeopleController
         private readonly TwoFactorService $twoFactor,
         private readonly MailSettings $mail,
         private readonly ?\App\Modules\Guardians\GuardianRepository $guardians = null,
+        private readonly ?\App\Modules\Joining\ProfileRepository $profiles = null,
     ) {
     }
 
@@ -153,9 +154,12 @@ final class PeopleController
             $newMember = is_array($decoded) ? $decoded : null;
         }
 
+        $members = $this->memberships->listActive($tenant->id);
+
         return Response::html($this->view->render('people/index', [
             'pageTitle' => 'People',
-            'members' => $this->memberships->listActive($tenant->id),
+            'members' => $members,
+            'profiles' => $this->profiles?->many($tenant->id, array_map(static fn (array $m): int => (int) $m['user_id'], $members)) ?? [],
             'roles' => $this->members->assignableRoles($me),
             'meId' => $me->user->id,
             'iAmOwner' => $me->membership?->role === Role::Owner,

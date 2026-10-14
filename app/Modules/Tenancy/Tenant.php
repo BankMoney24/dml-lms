@@ -65,6 +65,10 @@ final class Tenant
         public readonly array $socialLinks = [],
         /** @var array<string, string> search engine => site verification code */
         public readonly array $searchVerification = [],
+        /** closed (staff add people), code (join with the school's code) or open (anyone may sign up) */
+        public readonly string $registration = 'closed',
+        public readonly ?string $joinCode = null,
+        public readonly bool $parentRequests = true,
     ) {
     }
 
@@ -102,6 +106,9 @@ final class Tenant
             isset($row['group_term']) && isset(self::GROUP_TERMS[(string) $row['group_term']]) ? (string) $row['group_term'] : null,
             self::stringMap($row['social_links'] ?? null),
             self::stringMap($row['search_verification'] ?? null),
+            in_array($row['registration'] ?? '', ['closed', 'code', 'open'], true) ? (string) $row['registration'] : 'closed',
+            isset($row['join_code']) && $row['join_code'] !== '' ? (string) $row['join_code'] : null,
+            (bool) ($row['parent_requests'] ?? true),
         );
     }
 
@@ -125,6 +132,12 @@ final class Tenant
     public function isActive(): bool
     {
         return $this->status === self::STATUS_ACTIVE;
+    }
+
+    /** Whether people can create their own learner account here (ADR 0020). */
+    public function signUpOpen(): bool
+    {
+        return $this->registration === 'open' || ($this->registration === 'code' && $this->joinCode !== null);
     }
 
     public function isSetUp(): bool

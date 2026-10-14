@@ -446,6 +446,8 @@ final class Application
             $c->get(\App\Modules\Study\Deadlines::class),
             $c->get(\App\Modules\Study\NoteRepository::class),
             $c->get(\App\Modules\Site\SitePageRepository::class),
+            $c->get(\App\Modules\Joining\ProfileRepository::class),
+            $c->get(MailSettings::class),
         ));
         $c->set(LoginController::class, static fn (Container $c) => new LoginController(
             $c->get(View::class),
@@ -520,6 +522,7 @@ final class Application
             $c->get(CourseRepository::class),
             $c->get(UserRepository::class),
             $c->get(FileRepository::class),
+            $c->get(\App\Modules\Joining\ProfileRepository::class),
         ));
         $c->set(FileController::class, static fn (Container $c) => new FileController(
             $c->get(FileRepository::class),
@@ -555,6 +558,8 @@ final class Application
             $c->get(Session::class),
             $c->get(AccountService::class),
             $c->get(PaymentRepository::class),
+            $c->get(\App\Modules\Joining\ProfileRepository::class),
+            $c->get(MailSettings::class),
         ));
         $c->set(MemberService::class, static fn (Container $c) => new MemberService(
             $c->get(Connection::class),
@@ -572,6 +577,7 @@ final class Application
             $c->get(TwoFactorService::class),
             $c->get(MailSettings::class),
             $c->get(GuardianRepository::class),
+            $c->get(\App\Modules\Joining\ProfileRepository::class),
         ));
         $c->set(PasswordResetController::class, static fn (Container $c) => new PasswordResetController(
             $c->get(View::class),
@@ -600,7 +606,55 @@ final class Application
             $c->get(Session::class),
             $c->get(Logger::class),
         ));
-        $c->set(WizardRegistry::class, static fn (Container $c) => new WizardRegistry([$c->get(SchoolSetupWizard::class)]));
+        $c->set(WizardRegistry::class, static fn (Container $c) => new WizardRegistry([
+            $c->get(SchoolSetupWizard::class),
+            new \App\Modules\Joining\Welcome\WelcomeWizard($c->get(\App\Modules\Joining\ProfileRepository::class)),
+        ]));
+        $c->set(\App\Modules\Joining\ProfileRepository::class, static fn (Container $c) => new \App\Modules\Joining\ProfileRepository($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(\App\Modules\Joining\JoinRequestRepository::class, static fn (Container $c) => new \App\Modules\Joining\JoinRequestRepository($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(\App\Modules\Joining\JoinRequests::class, static fn (Container $c) => new \App\Modules\Joining\JoinRequests(
+            $c->get(Connection::class),
+            $c->get(\App\Modules\Joining\JoinRequestRepository::class),
+            $c->get(MemberService::class),
+            $c->get(RateLimiter::class),
+            $c->get(AuditLog::class),
+            $c->get(\App\Modules\Notifications\Notifier::class),
+        ));
+        $c->set(\App\Modules\Joining\RegistrationService::class, static fn (Container $c) => new \App\Modules\Joining\RegistrationService(
+            $c->get(Connection::class),
+            $c->get(UserRepository::class),
+            $c->get(MembershipRepository::class),
+            $c->get(\App\Modules\Joining\ProfileRepository::class),
+            $c->get(AuthService::class),
+            $c->get(AccountLinkService::class),
+            $c->get(MailSettings::class),
+            $c->get(RateLimiter::class),
+            $c->get(AuditLog::class),
+        ));
+        $c->set(\App\Modules\Joining\Http\JoinController::class, static fn (Container $c) => new \App\Modules\Joining\Http\JoinController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(\App\Modules\Joining\RegistrationService::class),
+            $c->get(\App\Modules\Joining\JoinRequests::class),
+            $c->get(\App\Modules\Joining\JoinRequestRepository::class),
+            $c->get(\App\Modules\Joining\ProfileRepository::class),
+            $c->get(AccountLinkService::class),
+            $c->get(MailSettings::class),
+            $c->get(RateLimiter::class),
+        ));
+        $c->set(\App\Modules\Joining\Http\JoiningAdminController::class, static fn (Container $c) => new \App\Modules\Joining\Http\JoiningAdminController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(TenantRepository::class),
+            $c->get(\App\Modules\Joining\JoinRequests::class),
+            $c->get(\App\Modules\Joining\JoinRequestRepository::class),
+            $c->get(AuditLog::class),
+        ));
+        $c->set(\App\Modules\Playground\Http\PlaygroundController::class, static fn (Container $c) => new \App\Modules\Playground\Http\PlaygroundController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            new \App\Modules\Playground\SnippetRepository($c->get(Connection::class), $c->get(Clock::class)),
+        ));
         $c->set(WizardController::class, static fn (Container $c) => new WizardController(
             $c->get(View::class),
             $c->get(Session::class),

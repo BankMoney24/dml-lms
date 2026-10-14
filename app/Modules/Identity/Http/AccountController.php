@@ -20,6 +20,8 @@ final class AccountController
         private readonly Session $session,
         private readonly AccountService $accounts,
         private readonly ?PaymentRepository $payments = null,
+        private readonly ?\App\Modules\Joining\ProfileRepository $profiles = null,
+        private readonly ?\App\Core\Mail\MailSettings $mail = null,
     ) {
     }
 
@@ -92,6 +94,8 @@ final class AccountController
             'pageTitle' => 'Your account',
             'me' => $me,
             'payments' => $this->payments?->forUser(RequestContext::tenant($request)->id, $me->user->id) ?? [],
+            'profile' => $this->profiles?->find(RequestContext::tenant($request)->id, $me->user->id),
+            'emailing' => $this->mail?->deliveryAvailable() ?? false,
             'now' => time(),
             'errors' => $errors,
             'old' => $old + ['display_name' => $me->user->displayName],

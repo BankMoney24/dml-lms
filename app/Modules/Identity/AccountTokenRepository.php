@@ -15,6 +15,7 @@ final class AccountTokenRepository
 {
     public const RESET = 'reset';
     public const INVITE = 'invite';
+    public const VERIFY = 'verify';
 
     public function __construct(private readonly Connection $db, private readonly Clock $clock)
     {

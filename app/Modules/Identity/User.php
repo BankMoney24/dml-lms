@@ -22,6 +22,7 @@ final class User
         public readonly bool $mustChangePassword = false,
         public readonly bool $twoFactorEnabled = false,
         public readonly string $appearance = 'system',
+        public readonly bool $emailVerified = true,
     ) {
     }
 
@@ -38,6 +39,7 @@ final class User
             (bool) ($row['must_change_password'] ?? false),
             ($row['totp_enabled_at'] ?? null) !== null,
             isset(self::APPEARANCES[(string) ($row['appearance'] ?? '')]) ? (string) $row['appearance'] : 'system',
+            !array_key_exists('email_verified_at', $row) || $row['email_verified_at'] !== null,
         );
     }
 

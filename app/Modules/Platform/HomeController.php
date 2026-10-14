@@ -40,6 +40,8 @@ final class HomeController
         private readonly ?\App\Modules\Study\Deadlines $deadlines = null,
         private readonly ?\App\Modules\Study\NoteRepository $notes = null,
         private readonly ?\App\Modules\Site\SitePageRepository $sitePages = null,
+        private readonly ?\App\Modules\Joining\ProfileRepository $profiles = null,
+        private readonly ?\App\Core\Mail\MailSettings $mail = null,
     ) {
     }
 
@@ -110,8 +112,20 @@ final class HomeController
 
         $enrolledIds = array_map(static fn ($c): int => $c->id, $enrolled);
         $suggested = $user->can(Permission::CourseLearn)
-            ? array_values(array_filter($this->courses->listPublished($tenant->id, 9), static fn ($c): bool => !in_array($c->id, $enrolledIds, true)))
+            ? array_values(array_filter($this->courses->listPublished($tenant->id, 60), static fn ($c): bool => !in_array($c->id, $enrolledIds, true)))
             : [];
+        // Suggestions follow what the learner said they want (ADR 0020); otherwise the newest courses.
+        $profile = $this->profiles?->find($tenant->id, $user->user->id);
+        $reasons = [];
+        if ($profile !== null && $profile->goals !== []) {
+            $ranked = \App\Modules\Joining\Recommendations::rank($profile, $suggested, 6);
+            foreach ($ranked as $r) {
+                $reasons[$r['course']->id] = $r['reasons'];
+            }
+            $rankedIds = array_keys($reasons);
+            $rest = array_values(array_filter($suggested, static fn ($c): bool => !in_array($c->id, $rankedIds, true)));
+            $suggested = [...array_map(static fn (array $r) => $r['course'], $ranked), ...$rest];
+        }
 
         $teaching = null;
         if ($user->can(Permission::CourseManage)) {
@@ -163,6 +177,11 @@ final class HomeController
             'continue' => $continue,
             'myCards' => array_values(array_filter($myCards, static fn (array $c): bool => $continue === null || $c['course']->id !== $continue['card']['course']->id)),
             'suggestedCards' => $this->cards->build($tenant->id, array_slice($suggested, 0, 6), $user->user->id),
+            'cardReasons' => $reasons,
+            'profile' => $profile,
+            'showOnboarding' => $user->can(Permission::CourseLearn) && !$user->can(Permission::CourseManage) && ($profile === null || !$profile->isOnboarded()),
+            'justOnboarded' => $request->query('welcome') === '1',
+            'confirmEmail' => ($this->mail?->deliveryAvailable() ?? false) && !$user->user->emailVerified ? $user->user->email : null,
             'certificates' => $this->certificates->forUser($tenant->id, $user->user->id),
             'teaching' => $teaching,
             'setupPending' => $user->can(Permission::SchoolManage) && !$tenant->isSetUp(),

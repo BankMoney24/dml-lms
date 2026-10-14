@@ -55,6 +55,9 @@ foreach ($members as $m) {
             <?= $m['pending'] ? ' ' . $v->badge('Not signed in yet', 'draft') : '' ?>
             <?= $m['two_step'] ? ' ' . $v->badge('Two-step on', 'ok') : '' ?>
             <span class="small muted"><?= $v->e($m['email']) ?></span>
+            <?php $pp = ($profiles ?? [])[$m['user_id']] ?? null; if ($pp !== null): ?>
+              <span class="small people-profile"><?php if ($pp->joinedVia === 'self'): ?><?= $v->badge('Signed up online') ?><?php endif; ?><?php if ($pp->github !== null): ?> <a href="<?= $v->e((string) $pp->githubUrl()) ?>" rel="noopener noreferrer">GitHub: <?= $v->e($pp->github) ?></a><?php endif; ?></span>
+            <?php endif; ?>
             <?php if ($m['role']->value === 'learner'): $gc = $guardianCounts[$m['user_id']] ?? 0; ?>
               <a class="small people-guardians" href="/people/<?= $m['user_id'] ?>/guardians"><?= $gc === 0 ? 'Link a parent or guardian' : $v->e($v->plural($gc, 'parent or guardian', 'parents or guardians')) ?><span class="visually-hidden"> for <?= $v->e($m['name']) ?></span></a>
             <?php endif; ?></td>

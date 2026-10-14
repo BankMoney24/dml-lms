@@ -36,6 +36,8 @@ Health endpoints (`/health`, `/health/ready`) skip session, tenant and auth.
 | Study | lesson_notes, learning days, due dates, calendar link (ADR 0018) | Identity, Tenancy, Learning, Groups |
 | Search | school-wide search across courses, lessons, classes, people and pages (ADR 0018) | Courses, Groups, Identity |
 | Site | site_pages, the school's public pages and website settings (ADR 0019) | Tenancy, Audit |
+| Joining | sign-up modes and join codes, email confirmation, learner_profiles and the getting-started wizard, suggestions, join_requests (teach / guardian) (ADR 0020) | Identity, Tenancy, Wizards, Notifications, Audit |
+| Playground | code_snippets and the JavaScript playground on the sandboxed runner (ADR 0020) | Identity, VirtualLabs (runner) |
 | Platform/Seo | page metadata, share images, robots and sitemap on the canonical address (ADR 0019) | Tenancy, Courses, Site |
 | Groups | learner_groups (classes, cohorts), members, courses set for a group, progress grid (ADR 0013) | Courses, Learning, Identity, Audit |
 | Payments | course prices, payment_accounts (sealed Paystack keys), payments, payment_events, checkout, verify and webhook handling (ADR 0012) | Courses, Learning, Identity, Audit |

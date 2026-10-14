@@ -31,6 +31,7 @@ final class ReviewController
         private readonly CourseRepository $courses,
         private readonly UserRepository $users,
         private readonly FileRepository $files,
+        private readonly ?\App\Modules\Joining\ProfileRepository $profiles = null,
     ) {
     }
 
@@ -110,6 +111,7 @@ final class ReviewController
             'pageTitle' => 'Review: ' . $lesson->title,
             'submission' => $submission,
             'learner' => $this->users->findById($submission->userId),
+            'learnerProfile' => $this->profiles?->find($submission->tenantId, $submission->userId),
             'lesson' => $lesson,
             'course' => $course,
             'history' => $history,

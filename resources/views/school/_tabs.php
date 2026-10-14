@@ -3,7 +3,7 @@
  * Tabs shared by the school's administration pages.
  *
  * @var \App\Core\View\ViewHelpers $v
- * @var string $schoolTab 'overview' | 'website' | 'payments' | 'support' | 'people' | 'activity'
+ * @var string $schoolTab 'overview' | 'website' | 'joining' | 'payments' | 'support' | 'people' | 'activity'
  */
 $tabs = [];
 if ($v->can('school.manage')) {
@@ -20,6 +20,7 @@ if ($v->can('support.manage')) {
 }
 if ($v->can('members.manage')) {
     $tabs['people'] = ['/people', 'People'];
+    $tabs['joining'] = ['/school/joining', 'Joining'];
 }
 if ($v->can('audit.view')) {
     $tabs['activity'] = ['/activity', 'Activity'];

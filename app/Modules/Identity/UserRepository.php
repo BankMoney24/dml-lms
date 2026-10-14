@@ -98,6 +98,26 @@ final class UserRepository
         $this->db->execute('UPDATE users SET appearance = ?, updated_at = ? WHERE id = ?', [$appearance, $this->clock->sqlNow(), $userId]);
     }
 
+    public function markEmailVerified(int $userId): void
+    {
+        $this->db->execute('UPDATE users SET email_verified_at = COALESCE(email_verified_at, ?), updated_at = ? WHERE id = ?', [$this->clock->sqlNow(), $this->clock->sqlNow(), $userId]);
+    }
+
+    /** A person who signs themselves up: their own password, email not yet confirmed. */
+    public function register(string $email, string $displayName, string $passwordHash, bool $emailConfirmed): User
+    {
+        $now = $this->clock->sqlNow();
+        $email = self::normaliseEmail($email);
+        $id = $this->db->insert(
+            'INSERT INTO users (email, display_name, password_hash, status, is_platform_admin, session_version,
+                                password_changed_at, must_change_password, email_verified_at, created_at, updated_at)
+             VALUES (?, ?, ?, ?, 0, 1, ?, 0, ?, ?, ?)',
+            [$email, $displayName, $passwordHash, User::STATUS_ACTIVE, $now, $emailConfirmed ? $now : null, $now, $now],
+        );
+
+        return $this->findById($id) ?? throw new \RuntimeException('Account not saved');
+    }
+
     public function setStatus(int $userId, string $status): void
     {
         $this->db->execute(

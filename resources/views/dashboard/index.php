@@ -16,6 +16,12 @@ $hasLearning = $continue !== null || $myCards !== [];
 /** @var list<array{course_id: int, slug: string, title: string, due_on: string, group: string, started: bool}> $comingUp */
 /** @var list<array{lesson_id: int, lesson_title: string, course_slug: string, course_title: string, saved: bool, body: string, updated_at: string}> $recentNotes */
 $activity ??= null;
+/** @var ?\App\Modules\Joining\LearnerProfile $profile */
+$profile ??= null;
+$cardReasons ??= [];
+$showOnboarding ??= false;
+$justOnboarded ??= false;
+$confirmEmail ??= null;
 $comingUp ??= [];
 $recentNotes ??= [];
 $zone = new DateTimeZone($v->shared('tenant')?->timezone ?? 'UTC');
@@ -33,6 +39,27 @@ $hasMain = $continue !== null || $children !== [] || $myGroups !== [];
   <?php endif; ?>
 </header>
 
+<?php if ($justOnboarded): ?>
+<p class="notice notice-done" role="status">Thanks. <?= $cardReasons !== [] ? 'The courses below are ordered by what you told us.' : 'We will suggest courses as your school adds them.' ?><?= $profile?->weeklyGoal !== null ? ' Your weekly goal is ' . $v->e($v->plural((int) $profile->weeklyGoal, 'day')) . '.' : '' ?></p>
+<?php endif; ?>
+<?php if ($confirmEmail !== null): ?>
+<div class="notice confirm-email">
+  <p>Please confirm <strong><?= $v->e($confirmEmail) ?></strong> with the link we emailed you. It lets you get back in if you forget your password.</p>
+  <form method="post" action="/account/confirm"><?= $v->csrfField() ?><button type="submit" class="linklike small">Send the link again</button></form>
+</div>
+<?php endif; ?>
+<?php if ($showOnboarding): ?>
+<section class="onboard-card" aria-labelledby="onboard-h">
+  <div class="onboard-text">
+    <h2 id="onboard-h">What do you want to learn?</h2>
+    <p>Answer three quick questions and we will put the right courses first, from complete beginner to working programmer.</p>
+  </div>
+  <div class="onboard-actions">
+    <a class="button" href="/setup/welcome"><?= $v->icon('sparkle') ?>Get started</a>
+    <form method="post" action="/welcome/skip"><?= $v->csrfField() ?><button type="submit" class="linklike small">Not now</button></form>
+  </div>
+</section>
+<?php endif; ?>
 <?php if ($setupPending): ?>
 <section class="setup-nudge" aria-labelledby="setup-nudge-h">
   <div>
@@ -136,7 +163,15 @@ $hasMain = $continue !== null || $children !== [] || $myGroups !== [];
         </div>
       </figure>
       <div class="pc-foot">
-        <p class="small muted">This week: <?= $v->e($v->plural($activity['this_week'], 'day')) ?>. Longest run: <?= $v->e($v->plural($activity['best_streak'], 'day')) ?>.</p>
+        <?php if ($profile?->weeklyGoal !== null): $goal = (int) $profile->weeklyGoal; $met = min($goal, $activity['this_week']); ?>
+        <div class="week-goal">
+          <p class="small"><strong><?= $met ?> of <?= $goal ?></strong> days this week<?= $activity['this_week'] >= $goal ? ': goal reached' : '' ?></p>
+          <span class="week-pips" aria-hidden="true"><?php for ($i = 1; $i <= $goal; $i++): ?><span class="<?= $i <= $met ? 'is-on' : '' ?>"></span><?php endfor; ?></span>
+        </div>
+        <?php else: ?>
+        <p class="small muted">This week: <?= $v->e($v->plural($activity['this_week'], 'day')) ?>.</p>
+        <?php endif; ?>
+        <p class="small muted">Longest run: <?= $v->e($v->plural($activity['best_streak'], 'day')) ?>.</p>
         <p class="pc-legend" aria-hidden="true"><span>Less</span><span class="pc-day lvl-0"></span><span class="pc-day lvl-1"></span><span class="pc-day lvl-2"></span><span class="pc-day lvl-3"></span><span class="pc-day lvl-4"></span><span>More</span></p>
       </div>
     </section>
@@ -269,7 +304,7 @@ $hasMain = $continue !== null || $children !== [] || $myGroups !== [];
 
 <?php if ($suggestedCards !== []): ?>
 <section class="section" aria-labelledby="join">
-  <h2 id="join"><?= $hasLearning ? 'More courses' : 'Courses you can join' ?></h2>
+  <h2 id="join"><?= $cardReasons !== [] ? 'Suggested for you' : ($hasLearning ? 'More courses' : 'Courses you can join') ?></h2>
   <?php $cards = $suggestedCards; include __DIR__ . '/../courses/_list.php'; ?>
 </section>
 <?php elseif (!$hasLearning && $teaching === null && $v->can('course.learn')): ?>

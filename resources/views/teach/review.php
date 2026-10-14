@@ -10,12 +10,16 @@
 /** @var array<string, string> $errors */
 /** @var array<string, string> $old */
 $name = $learner?->displayName ?? 'Former member';
+/** @var ?\App\Modules\Joining\LearnerProfile $learnerProfile */
+$learnerProfile ??= null;
 ?>
 <?= $v->breadcrumbs(['Your courses' => '/teach', 'Reviews' => '/teach/reviews', $name => null]) ?>
 <header class="page-head">
   <h1><?= $v->e($lesson->title) ?></h1>
   <p class="page-head-meta">
     <span><?= $v->e($name) ?></span>
+    <?php if ($learnerProfile?->github !== null): ?><a href="<?= $v->e((string) $learnerProfile->githubUrl()) ?>" rel="noopener noreferrer"><?= $v->icon('code') ?>github.com/<?= $v->e($learnerProfile->github) ?></a><?php endif; ?>
+    <?php if ($learnerProfile?->portfolio !== null): ?><a href="<?= $v->e($learnerProfile->portfolio) ?>" rel="noopener noreferrer nofollow" class="external">Portfolio</a><?php endif; ?>
     <a href="/teach/courses/<?= $course->id ?>"><?= $v->e($course->title) ?></a>
     <?= $v->badge($submission->statusLabel(), $submission->tone()) ?>
   </p>

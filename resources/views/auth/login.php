@@ -44,6 +44,13 @@ $school = $v->shared('tenant');
       <button type="submit" class="button">Sign in</button>
     </form>
     <p class="section"><a href="/password/forgot">Forgotten your password?</a></p>
-    <p class="muted small">No account yet? Ask your school administrator. Younger learners: ask a parent or teacher to help you sign in.</p>
+    <?php if ($school !== null && $school->signUpOpen()): ?>
+      <p class="join-cta"><span>New here?</span> <a class="button button-quiet button-small" href="/join"><?= $v->icon('user-plus') ?>Create an account</a></p>
+    <?php else: ?>
+      <p class="muted small">No account yet? Ask your school administrator. Younger learners: ask a parent or teacher to help you sign in.</p>
+    <?php endif; ?>
+    <?php if ($school !== null && $school->parentRequests): ?>
+      <p class="small"><a href="/join/parent">Parent or guardian? Ask to follow your child</a></p>
+    <?php endif; ?>
   </section>
 </div>

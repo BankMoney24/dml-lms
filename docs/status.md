@@ -7,7 +7,7 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 | Item | Status | Notes |
 |---|---|---|
 | Repository, layout, coding standards | Built | PSR-12 (phpcs), PHPStan level 8, strict types |
-| Architecture overview, ADRs | Built | `docs/architecture.md`, `docs/adr/0001–0009` |
+| Architecture overview, ADRs | Built | `docs/architecture.md`, `docs/adr/0001–0020` |
 | ERD / data dictionary | Partial | Schema diagram in architecture.md; full data dictionary next |
 | Threat model | Next | Controls are listed below; a written threat model is still required |
 | CI (lint, analysis, tests, secret scan, asset budget) | Built | `.github/workflows/ci.yml`, PHP 8.3 / 8.4 / 8.5 matrix on MySQL 8.4 |
@@ -57,6 +57,8 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 | NTF-001 in-app notifications | Built | Bell with unread count and a Notifications page: new work to review (course author and class teachers), review decisions, joining a class, courses set or due dates changed, becoming a class teacher, payment confirmed, certificate ready, class announcements. Safe same-site links, current members only, read ones cleared after 90 days. Class announcements on the class page and learners' home pages. ADR 0015 |
 | SUP-001 help requests | Built | "Get help" for every signed-in member: category, subject, message and up to 3 virus-checked attachments. Threads with open / answered / resolved status; a reply reopens. Help desk tab for owners and admins with status filters. Only the person who asked and support staff see a request or its files. Notifications both ways; audited; 5 unresolved requests per person. ADR 0017 |
 | Study tools and app shell | Built | Sidebar and app bar for signed-in pages with role-based links and counts, account menu, light/dark/device appearance per person, search with as-you-type results (`/`, Ctrl/Cmd+K), saved lessons and private notes, learning days and streak, coming-up due dates, private calendar (iCalendar) link shown once and stored hashed, course covers. ADR 0018 |
+| Joining and getting started | Built | School → Joining: closed / join code / open sign-up for learners, consent ticks, bot trap and rate limits, existing DML accounts join with their own password, email confirmation links that cannot reset passwords. Three-question getting-started wizard per learner (goals, experience with optional GitHub and portfolio, weekly goal) driving "Suggested for you" with reasons and a weekly goal on the home page. Requests to teach (approve makes an educator) and parent requests (staff verify, then link). ADR 0020 |
+| Code playground | Built | JavaScript in the sandboxed runner with output, time limit, examples (loops, functions, subnet maths, async), line numbers, keyboard shortcuts; up to 50 private saved snippets per person. ADR 0020 |
 | NTF-003 | Next | SMS/WhatsApp after consent review |
 | §8 offline | Partial | Offline banner, static-asset service worker, quiz drafts on device until server confirms, idempotent submit. IndexedDB outbox and conflict handling next |
 | §9 public API v1 | Next | |

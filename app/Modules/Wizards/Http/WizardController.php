@@ -62,7 +62,7 @@ final class WizardController
         // opening a step to look must not leave "unsaved changes" behind.
         if ($run->updatedAt !== null && $run->current !== $step->key()) {
             $run->current = $step->key();
-            $this->runs->save($ctx->tenant->id, $wizard->id(), $run, $ctx->user->user->id);
+            $this->runs->save($ctx->tenant->id, $wizard->runKey($ctx), $run, $ctx->user->user->id);
         }
 
         return $this->render($wizard, $ctx, $run, $step, $this->valuesFor($step, $ctx, $run));
@@ -113,7 +113,7 @@ final class WizardController
         }
         $run->answer($step->key(), $values);
         if ($action === 'save') {
-            $this->runs->save($tenantId, $wizard->id(), $run, $userId);
+            $this->runs->save($tenantId, $wizard->runKey($ctx), $run, $userId);
             $this->session->flash('success', 'Your answers are saved. Pick up where you left off at any time.');
 
             return Response::redirect($wizard->exitPath());
@@ -121,7 +121,7 @@ final class WizardController
         if ($request->input('return') === 'review' && $this->allHandled($wizard, $run)) {
             $review = $this->reviewStep($wizard);
             $run->current = $review->key();
-            $this->runs->save($tenantId, $wizard->id(), $run, $userId);
+            $this->runs->save($tenantId, $wizard->runKey($ctx), $run, $userId);
 
             return $this->redirectTo($wizard, $review->key());
         }
@@ -132,10 +132,10 @@ final class WizardController
     public function discard(Request $request): Response
     {
         [$wizard, $ctx] = $this->open($request);
-        $run = $this->runs->find($ctx->tenant->id, $wizard->id());
+        $run = $this->runs->find($ctx->tenant->id, $wizard->runKey($ctx));
         if ($run !== null) {
             $wizard->discarded($ctx, $run->data);
-            $this->runs->delete($ctx->tenant->id, $wizard->id());
+            $this->runs->delete($ctx->tenant->id, $wizard->runKey($ctx));
             $this->session->flash('success', 'Unsaved setup changes were discarded. Nothing about your school changed.');
         }
 
@@ -151,7 +151,7 @@ final class WizardController
         }
 
         $next = $wizard->finish($ctx, $data);
-        $this->runs->delete($ctx->tenant->id, $wizard->id());
+        $this->runs->delete($ctx->tenant->id, $wizard->runKey($ctx));
         // Which steps were answered, never what was typed into them (PRD §6.3).
         $this->audit->record($ctx->tenant->id, $ctx->user->user->id, 'wizard.finished', null, null, [
             'wizard' => $wizard->id(),
@@ -169,7 +169,7 @@ final class WizardController
         $index = (int) array_search($from->key(), $keys, true);
         $target = $keys[max(0, min(count($keys) - 1, $index + $direction))];
         $run->current = $target;
-        $this->runs->save($ctx->tenant->id, $wizard->id(), $run, $ctx->user->user->id);
+        $this->runs->save($ctx->tenant->id, $wizard->runKey($ctx), $run, $ctx->user->user->id);
 
         return $this->redirectTo($wizard, $this->reachable($wizard, $run, $target));
     }
@@ -230,7 +230,7 @@ final class WizardController
 
     private function runFor(Wizard $wizard, WizardContext $ctx): WizardRun
     {
-        $run = $this->runs->find($ctx->tenant->id, $wizard->id());
+        $run = $this->runs->find($ctx->tenant->id, $wizard->runKey($ctx));
         if ($run !== null) {
             return $run;
         }

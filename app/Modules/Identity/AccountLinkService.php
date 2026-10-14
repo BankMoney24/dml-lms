@@ -111,9 +111,13 @@ final class AccountLinkService
     public function inspect(Tenant $tenant, string $rawToken): ?array
     {
         $token = $this->tokens->findValid($tenant->id, $rawToken);
-        $user = $token === null ? null : $this->users->findById($token['user_id']);
+        // Only reset and invitation links can set a password; an email-confirmation link never can.
+        if ($token === null || !in_array($token['purpose'], [AccountTokenRepository::RESET, AccountTokenRepository::INVITE], true)) {
+            return null;
+        }
+        $user = $this->users->findById($token['user_id']);
         $membership = $user === null ? null : $this->memberships->find($tenant->id, $user->id);
-        if ($token === null || $user === null || !$user->isActive() || $membership === null || !$membership->isActive()) {
+        if ($user === null || !$user->isActive() || $membership === null || !$membership->isActive()) {
             return null;
         }
 
@@ -136,10 +140,12 @@ final class AccountLinkService
 
         return $this->db->transaction(function () use ($tenant, $rawToken, $password, $clientIp): bool {
             $token = $this->tokens->findValid($tenant->id, $rawToken);
-            if ($token === null || !$this->tokens->consume($token['id'])) {
+            if ($token === null || $token['purpose'] === AccountTokenRepository::VERIFY || !$this->tokens->consume($token['id'])) {
                 return false;
             }
             $this->users->updatePassword($token['user_id'], AuthService::hashPassword($password));
+            // The link arrived by email, so the address works.
+            $this->users->markEmailVerified($token['user_id']);
             $this->tokens->revokeAllForUser($token['user_id']);
             $action = $token['purpose'] === AccountTokenRepository::INVITE ? 'auth.invitation_accepted' : 'auth.password_reset';
             $this->audit->record($tenant->id, $token['user_id'], $action, 'user', $token['user_id'], [], $clientIp);
@@ -157,5 +163,30 @@ final class AccountLinkService
             'minutes' => self::RESET_MINUTES,
             'link' => $baseUrl . '/password/reset/' . $token,
         ]));
+    }
+
+    /** Emails a link that confirms a self-registered account's address (ADR 0020). */
+    public function sendEmailConfirmation(Tenant $tenant, User $user, string $baseUrl): void
+    {
+        $token = $this->tokens->issue($tenant->id, $user->id, AccountTokenRepository::VERIFY, self::INVITE_DAYS * 86400, null);
+        $this->outbox->queue($tenant->id, $this->composer->compose('confirm_email', $user->email, $user->displayName, 'Confirm your email for ' . $tenant->name, [
+            'schoolName' => $tenant->name,
+            'name' => $user->displayName,
+            'days' => self::INVITE_DAYS,
+            'link' => $baseUrl . '/account/confirm/' . $token,
+        ]));
+    }
+
+    /** Spends a confirmation link; true when the address is now confirmed. */
+    public function confirmEmail(Tenant $tenant, string $rawToken, string $clientIp): bool
+    {
+        $token = $this->tokens->findValid($tenant->id, $rawToken);
+        if ($token === null || $token['purpose'] !== AccountTokenRepository::VERIFY || !$this->tokens->consume($token['id'])) {
+            return false;
+        }
+        $this->users->markEmailVerified($token['user_id']);
+        $this->audit->record($tenant->id, $token['user_id'], 'auth.email_confirmed', 'user', $token['user_id'], [], $clientIp);
+
+        return true;
     }
 }

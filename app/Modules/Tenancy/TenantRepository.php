@@ -83,6 +83,15 @@ final class TenantRepository
         return true;
     }
 
+    /** How people may join (ADR 0020). */
+    public function updateJoining(int $tenantId, string $registration, ?string $joinCode, bool $parentRequests): void
+    {
+        $this->db->execute(
+            'UPDATE tenants SET registration = ?, join_code = ?, parent_requests = ?, updated_at = ? WHERE id = ?',
+            [$registration, $joinCode, $parentRequests ? 1 : 0, $this->clock->sqlNow(), $tenantId],
+        );
+    }
+
     public function addDomain(int $tenantId, string $host, bool $verified, bool $primary = false): void
     {
         $now = $this->clock->sqlNow();

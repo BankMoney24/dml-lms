@@ -5,6 +5,9 @@
 /** @var \App\Modules\Identity\CurrentUser $me */
 /** @var array<string, string> $errors */
 /** @var array<string, string> $old */
+/** @var ?\App\Modules\Joining\LearnerProfile $profile */
+$profile ??= null;
+$emailing ??= false;
 $mustChange = $me->user->mustChangePassword;
 $passwordErrors = array_intersect_key($errors, array_flip(['current_password', 'new_password', 'confirm_password']));
 ?>
@@ -13,6 +16,12 @@ $passwordErrors = array_intersect_key($errors, array_flip(['current_password', '
     <h1><?= $mustChange ? 'Choose your password' : 'Your account' ?></h1>
     <p class="lead"><?= $v->e($me->user->email) ?>, <?= $v->e($me->membership?->role->label() ?? '') ?></p>
   </header>
+  <?php if ($emailing && !$me->user->emailVerified && !$mustChange): ?>
+  <div class="notice confirm-email">
+    <p>Your email address is not confirmed yet. Use the link we sent you, or get a new one.</p>
+    <form method="post" action="/account/confirm"><?= $v->csrfField() ?><button type="submit" class="button button-small button-quiet">Send a new link</button></form>
+  </div>
+  <?php endif; ?>
 
   <?php if ($mustChange): ?>
     <p class="notice">You signed in with a one-time password. Choose your own to continue. Enter the one-time password as your current password.</p>
@@ -47,6 +56,25 @@ $passwordErrors = array_intersect_key($errors, array_flip(['current_password', '
       <button type="submit" class="button button-quiet">Save name</button>
     </form>
   </section>
+
+  <?php if ($v->can('course.learn')): ?>
+  <section class="section" aria-labelledby="profile-h">
+    <h2 id="profile-h">Your learning profile</h2>
+    <?php if ($profile === null || $profile->goals === []): ?>
+      <p>Tell us what you want to learn and we will put the right courses first.</p>
+    <?php else: ?>
+      <dl class="facts">
+        <dt>Learning</dt><dd><?= $v->e(implode(', ', array_map(static fn (string $g): string => \App\Modules\Joining\LearnerProfile::GOALS[$g][0], $profile->goals))) ?></dd>
+        <?php if ($profile->experience !== null): ?><dt>Experience</dt><dd><?= $v->e(\App\Modules\Joining\LearnerProfile::EXPERIENCE[$profile->experience][0]) ?></dd><?php endif; ?>
+        <?php if ($profile->weeklyGoal !== null): ?><dt>Weekly goal</dt><dd><?= $v->e($v->plural($profile->weeklyGoal, 'day')) ?></dd><?php endif; ?>
+        <?php if ($profile->github !== null): ?><dt>GitHub</dt><dd><a href="<?= $v->e((string) $profile->githubUrl()) ?>" rel="noopener">github.com/<?= $v->e($profile->github) ?></a></dd><?php endif; ?>
+        <?php if ($profile->portfolio !== null): ?><dt>Portfolio</dt><dd><a href="<?= $v->e($profile->portfolio) ?>" rel="noopener nofollow"><?= $v->e($profile->portfolio) ?></a></dd><?php endif; ?>
+      </dl>
+    <?php endif; ?>
+    <p class="actions"><a class="button button-quiet button-small" href="/setup/welcome"><?= $v->icon('sparkle') ?><?= $profile === null || $profile->goals === [] ? 'Get started' : 'Change' ?></a>
+      <?php if (!$v->can('course.manage')): ?><a class="button button-quiet button-small" href="/join/teach"><?= $v->icon('teach') ?>Ask to teach here</a><?php endif; ?></p>
+  </section>
+  <?php endif; ?>
 
   <section class="section" aria-labelledby="look-h">
     <h2 id="look-h">Appearance</h2>

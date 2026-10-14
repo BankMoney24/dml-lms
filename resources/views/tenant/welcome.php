@@ -16,7 +16,11 @@ $admissionsPage = array_values(array_filter($sitePages, static fn ($sp): bool =>
     <h1 id="welcome-h"><?= $v->e($tenant->name) ?></h1>
     <?php if ($tenant->tagline !== ''): ?><p class="welcome-tagline"><?= $v->e($tenant->tagline) ?></p><?php endif; ?>
     <p class="lead">Practical courses you can follow on a phone, on a slow connection, at your own pace. Your teachers see your progress and review your work.</p>
-    <p class="actions"><a class="button button-accent" href="/login">Sign in</a> <?php if ($tenant->publicCatalogue): ?><a class="button button-on-dark" href="/courses">See the courses</a><?php endif; ?></p>
+    <p class="actions">
+      <?php if ($tenant->signUpOpen()): ?><a class="button button-accent" href="/join">Create an account</a> <a class="button button-on-dark" href="/login">Sign in</a>
+      <?php else: ?><a class="button button-accent" href="/login">Sign in</a><?php endif; ?>
+      <?php if ($tenant->publicCatalogue): ?><a class="button button-on-dark" href="/courses">See the courses</a><?php endif; ?>
+    </p>
   </div>
   <ol class="promise" aria-label="How each course works">
     <li class="promise-step">

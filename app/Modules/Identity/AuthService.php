@@ -87,6 +87,35 @@ final class AuthService
         return ['ok' => true, 'message' => null, 'user' => $user, 'second_factor' => false];
     }
 
+    /**
+     * Checks an existing account's password for someone joining another
+     * school with it (ADR 0020). Uses the same lock as signing in.
+     *
+     * @return array{ok: bool, message: ?string, user: ?User}
+     */
+    public function checkPassword(Tenant $tenant, string $email, string $password, string $clientIp): array
+    {
+        if ($this->throttle->isLocked($tenant->id, $email, $clientIp)) {
+            return ['ok' => false, 'message' => self::LOCKED_FAILURE, 'user' => null];
+        }
+        $user = $this->users->findByEmail($email);
+        $hash = $user === null ? null : $this->users->passwordHashFor($user->id);
+        if ($user === null || !password_verify($password, $hash ?? self::dummyHash()) || !$user->isActive()) {
+            $this->throttle->recordFailure($tenant->id, $email, $clientIp);
+            $this->audit->record($tenant->id, $user?->id, 'auth.join_password_failed', null, null, [], $clientIp);
+
+            return ['ok' => false, 'message' => null, 'user' => null];
+        }
+
+        return ['ok' => true, 'message' => null, 'user' => $user];
+    }
+
+    /** Signs in someone who has just joined and proved who they are (new password, or their existing one). */
+    public function signInAfterJoining(Tenant $tenant, User $user, string $clientIp): void
+    {
+        $this->completeLogin($tenant, $user, $clientIp, 'joined');
+    }
+
     public function hasPendingSecondFactor(Tenant $tenant): bool
     {
         return $this->pendingUserId($tenant) !== null;

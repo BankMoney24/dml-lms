@@ -19,6 +19,7 @@ $pct = $card['lessons'] === 0 ? 0 : (int) round($card['done'] * 100 / $card['les
   <?php if ($c->trackLabel() !== null): ?><p class="course-card-track"><?= $v->e($c->trackLabel()) ?></p><?php endif; ?>
   <?php $cardTag = ($cardHeading ?? 'h3') === 'h2' ? 'h2' : 'h3'; ?>
   <<?= $cardTag ?> class="course-card-title"><a href="/courses/<?= $v->e($c->slug) ?>"><?= $v->e($c->title) ?></a></<?= $cardTag ?>>
+  <?php if (isset($cardReasons) && is_array($cardReasons) && isset($cardReasons[$c->id])): ?><p class="course-card-why"><?= $v->icon('sparkle') ?>For you: <?= $v->e(implode(', ', $cardReasons[$c->id])) ?></p><?php endif; ?>
   <?php if ($c->summary !== ''): ?><p class="course-card-summary"><?= $v->e(mb_strimwidth($c->summary, 0, 220, '…')) ?></p><?php endif; ?>
   <div class="course-card-foot">
     <p class="course-card-meta">

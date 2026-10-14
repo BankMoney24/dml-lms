@@ -20,6 +20,12 @@ interface Wizard
 
     public function title(): string;
 
+    /**
+     * Where a run is saved: the wizard id for school-wide journeys (one run
+     * per school), or the id plus the person for personal ones (onboarding).
+     */
+    public function runKey(WizardContext $ctx): string;
+
     /** Checked on every request; the engine answers "not found" otherwise. */
     public function mayRun(CurrentUser $user): bool;
 

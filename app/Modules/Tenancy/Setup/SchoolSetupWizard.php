@@ -67,6 +67,11 @@ final class SchoolSetupWizard implements Wizard
         return self::ID;
     }
 
+    public function runKey(\App\Modules\Wizards\WizardContext $ctx): string
+    {
+        return $this->id();
+    }
+
     public function title(): string
     {
         return 'School setup';

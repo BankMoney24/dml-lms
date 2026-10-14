@@ -103,6 +103,7 @@ $shell = $tenant !== null && $user !== null;
         <?= $v->sideLink('/', 'Home', 'home') ?>
         <?= $v->sideLink('/courses', 'Courses', 'courses') ?>
         <?php if ($v->can('course.learn')): ?><?= $v->sideLink('/saved', 'Saved and notes', 'saved') ?><?php endif; ?>
+        <?php if ($v->can('course.learn') || $v->can('course.manage')): ?><?= $v->sideLink('/playground', 'Code playground', 'code') ?><?php endif; ?>
         <?php if (($counts['children'] ?? 0) > 0): ?><?= $v->sideLink('/children', ($counts['children'] ?? 0) === 1 ? 'Your child' : 'Your children', 'child') ?><?php endif; ?>
       </ul>
       <?php if ($isStaffish): ?>
@@ -121,6 +122,7 @@ $shell = $tenant !== null && $user !== null;
       <ul>
         <?php if ($v->can('school.manage')): ?><?= $v->sideLink('/school', 'Settings', 'school', ['/setup']) ?><?php endif; ?>
         <?php if ($v->can('members.manage')): ?><?= $v->sideLink('/people', 'People', 'people') ?><?php endif; ?>
+        <?php if ($v->can('members.manage')): ?><?= $v->sideLink('/school/joining', 'Joining', 'user-plus', [], (int) ($counts['requests'] ?? 0)) ?><?php endif; ?>
         <?php if ($v->can('support.manage')): ?><?= $v->sideLink('/school/support', 'Help desk', 'inbox', [], (int) ($counts['support'] ?? 0)) ?><?php endif; ?>
         <?php if ($v->can('school.manage')): ?><?= $v->sideLink('/school/website', 'Website', 'link') ?><?php endif; ?>
         <?php if ($v->can('school.manage')): ?><?= $v->sideLink('/school/payments', 'Payments', 'payments') ?><?php endif; ?>
@@ -133,7 +135,7 @@ $shell = $tenant !== null && $user !== null;
       <ul>
         <?= $v->sideLink('/help', 'Get help', 'help') ?>
       </ul>
-      <p class="side-credit"><?php $pixelClass = ''; include __DIR__ . '/../partials/pixels.php'; ?><span>Developed and powered by <a href="https://tridax.org">TridaxLabs</a></span></p>
+      <p class="side-credit"><img class="tridax-mark" src="/assets/brand/tridaxlabs-32.png" srcset="/assets/brand/tridaxlabs-64.png 2x" width="16" height="16" alt=""><span>Developed and powered by <a href="https://tridax.org">TridaxLabs</a></span></p>
     </div>
   </aside>
   <div class="shell-main">
@@ -252,7 +254,10 @@ $shell = $tenant !== null && $user !== null;
                 echo $v->navLink($navPath, $navLabel);
             }
         } ?></nav>
-      <div class="account"><?php if (!str_starts_with((string) $v->shared('path'), '/login')): ?><a class="button button-small" href="/login">Sign in</a><?php endif; ?></div>
+      <div class="account">
+        <?php if ($tenant->signUpOpen() && !str_starts_with($path, '/join')): ?><a class="button button-small button-quiet join-link" href="/join">Join</a><?php endif; ?>
+        <?php if (!str_starts_with($path, '/login')): ?><a class="button button-small" href="/login">Sign in</a><?php endif; ?>
+      </div>
       <?php endif; ?>
     <?php endif; ?>
   </div>
@@ -284,7 +289,7 @@ $shell = $tenant !== null && $user !== null;
     <?php else: ?>
     <p class="footer-links">Learn. Build. Grow.</p>
     <?php endif; ?>
-    <p class="footer-credit"><?php $pixelClass = 'pixels-light'; include __DIR__ . '/../partials/pixels.php'; ?><span>Developed and powered by <a href="https://tridax.org">TridaxLabs</a></span></p>
+    <p class="footer-credit"><img class="tridax-mark" src="/assets/brand/tridaxlabs-32.png" srcset="/assets/brand/tridaxlabs-64.png 2x" width="16" height="16" alt=""><span>Developed and powered by <a href="https://tridax.org">TridaxLabs</a></span></p>
   </div>
 </footer>
 </body>
