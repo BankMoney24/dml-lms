@@ -67,6 +67,19 @@ final class LearnController
     {
         $course = $this->publishedCourse($request);
         $lesson = $this->lessonOf($course, $request);
+        $user = RequestContext::user($request);
+        if ($this->learning->findEnrolment($course, $user) === null) {
+            // Not enrolled: send people where they can see this lesson instead of a dead end (ADR 0021).
+            if ($course->lessonIsReadable($lesson)) {
+                return Response::redirect('/courses/' . $course->slug . '/preview/' . $lesson->id);
+            }
+            if ($user->can(\App\Modules\Identity\Permission::CourseManage)) {
+                return Response::redirect('/teach/courses/' . $course->id . '/lessons/' . $lesson->id . '/preview');
+            }
+            $this->session->flash('error', 'Join the course to open "' . $lesson->title . '".');
+
+            return Response::redirect('/courses/' . $course->slug . '#start');
+        }
 
         return $this->renderLesson($request, $course, $lesson);
     }

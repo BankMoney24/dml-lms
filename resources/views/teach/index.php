@@ -29,7 +29,7 @@
     <tr>
       <td><a href="/teach/courses/<?= $c->id ?>"><?= $v->e($c->title) ?></a></td>
       <td class="num hide-narrow"><?= $row['lesson_count'] ?></td>
-      <td><?= $c->isPublished() ? $v->badge('Published', 'ok') : $v->badge('Draft', 'draft') ?></td>
+      <td><?= $c->isPublished() ? $v->badge('Published', 'ok') : $v->badge('Draft', 'draft') ?><?= $c->isOpen() ? ' ' . $v->badge('Open', 'open') : '' ?></td>
       <td class="num"><a href="/teach/courses/<?= $c->id ?>/progress">Progress</a></td>
     </tr>
   <?php endforeach; ?>

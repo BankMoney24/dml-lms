@@ -70,23 +70,28 @@ final class SeoController
             foreach ($this->pages->published($tenant->id) as $page) {
                 $urls[] = [$base . $page->path(), $page->updatedAt];
             }
-            if ($tenant->publicCatalogue) {
-                $courses = $this->db->fetchAll(
-                    "SELECT id, slug, updated_at FROM courses WHERE tenant_id = ? AND status = 'published' ORDER BY title LIMIT 5000",
-                    [$tenant->id],
-                );
-                $latest = $courses === [] ? null : max(array_map(static fn (array $c): string => (string) $c['updated_at'], $courses));
+            // Every published course when the list is public; otherwise only open ones (ADR 0021).
+            $open = "c.access = 'open' AND (c.price_minor IS NULL OR c.price_minor <= 0 OR c.currency IS NULL)";
+            $visible = $tenant->publicCatalogue ? '1 = 1' : $open;
+            $courses = $this->db->fetchAll(
+                "SELECT c.id, c.slug, c.updated_at FROM courses c WHERE c.tenant_id = ? AND c.status = 'published' AND {$visible} ORDER BY c.title LIMIT 5000",
+                [$tenant->id],
+            );
+            if ($courses !== []) {
+                $latest = max(array_map(static fn (array $c): string => (string) $c['updated_at'], $courses));
                 $urls[] = [$base . '/courses', $latest];
                 foreach ($courses as $c) {
                     $urls[] = [$base . '/courses/' . rawurlencode((string) $c['slug']), (string) $c['updated_at']];
                 }
-                $previews = $this->db->fetchAll(
+                // Lessons anyone can read: free previews, and readings and videos in open courses.
+                $readable = $this->db->fetchAll(
                     "SELECT l.id, l.updated_at, c.slug FROM lessons l
-                     JOIN courses c ON c.tenant_id = l.tenant_id AND c.id = l.course_id AND c.status = 'published'
-                     WHERE l.tenant_id = ? AND l.is_preview = 1 AND l.type IN ('text', 'video') ORDER BY c.title, l.position LIMIT 5000",
+                     JOIN courses c ON c.tenant_id = l.tenant_id AND c.id = l.course_id AND c.status = 'published' AND {$visible}
+                     WHERE l.tenant_id = ? AND l.type IN ('text', 'video') AND (l.is_preview = 1 OR ({$open}))
+                     ORDER BY c.title, l.position LIMIT 5000",
                     [$tenant->id],
                 );
-                foreach ($previews as $p) {
+                foreach ($readable as $p) {
                     $urls[] = [$base . '/courses/' . rawurlencode((string) $p['slug']) . '/preview/' . (int) $p['id'], (string) $p['updated_at']];
                 }
             }

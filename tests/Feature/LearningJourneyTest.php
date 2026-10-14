@@ -46,7 +46,8 @@ final class LearningJourneyTest extends AppTestCase
     {
         $this->login(self::HOST, 'learner@school.test', 'correct-horse-battery');
 
-        $this->assertSame(403, $this->get(self::HOST, $this->lessonUrl('reading'))->status);
+        $this->assertRedirectTo('/courses/physics-101#start', $this->get(self::HOST, $this->lessonUrl('reading')), 'sent to the course page to join');
+        $this->assertStringContainsString('Join the course to open', $this->get(self::HOST, '/courses/physics-101')->body);
     }
 
     public function testEnrolmentIsIdempotentAndOpensFirstLesson(): void

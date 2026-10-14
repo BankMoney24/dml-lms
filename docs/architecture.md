@@ -24,7 +24,7 @@ Health endpoints (`/health`, `/health/ready`) skip session, tenant and auth.
 |---|---|---|
 | Tenancy | tenants (profile, theme, logo), domains, memberships, tenant resolution, the school setup wizard | Core, Wizards, Courses (starter courses) |
 | Identity | users, roles → permissions, sign-in, throttling | Tenancy, Audit |
-| Courses | courses, modules, lessons, authoring | Assessments (to create quizzes), Audit |
+| Courses | courses, modules, lessons, authoring, who can read a course and the filtered course list (ADR 0021) | Assessments (to create quizzes), Audit |
 | Learning | enrolments, lesson progress, completion | Courses |
 | Assessments | assessments, questions, attempts, scoring | Learning (to record a passed quiz) |
 | Audit | audit_events | Core |

@@ -36,43 +36,99 @@ final class CatalogueController
     ) {
     }
 
+    /** Filters on the course list (ADR 0021): what each "show" value means to a learner. */
+    public const SHOW = ['free' => 'Free', 'open' => 'Open to read', 'paid' => 'Paid'];
+
     public function index(Request $request): Response
     {
         $tenant = RequestContext::tenant($request);
-        if (!$tenant->publicCatalogue && RequestContext::optionalUser($request) === null) {
+        $user = RequestContext::optionalUser($request);
+        // Visitors see everything when the course list is public; otherwise only open courses.
+        $openOnly = !$tenant->publicCatalogue && $user === null;
+        if ($openOnly && !$this->courses->hasOpen($tenant->id)) {
             return Response::redirect('/login');
         }
         $page = max(1, (int) ($request->query('page', '1') ?? '1'));
-        $track = $request->query('track');
-        $track = $track !== null && isset(\App\Modules\Courses\Course::TRACKS[$track]) ? $track : null;
-        $courses = $this->courses->listPublished($tenant->id, self::PER_PAGE + 1, ($page - 1) * self::PER_PAGE, $track);
+        $filters = [
+            'track' => self::pick($request->query('track'), \App\Modules\Courses\Course::TRACKS),
+            'show' => self::pick($request->query('show'), self::SHOW),
+            'level' => self::pick($request->query('level'), \App\Modules\Courses\Course::LEVELS),
+            'q' => mb_substr(trim((string) ($request->query('q', '') ?? '')), 0, 80),
+        ];
+        $courses = $this->courses->browse($tenant->id, $filters + ['openOnly' => $openOnly], self::PER_PAGE + 1, ($page - 1) * self::PER_PAGE);
+        $filtered = array_filter($filters, static fn (?string $f): bool => $f !== null && $f !== '') !== [];
+        $onlyShow = $filters['show'] !== null && $filters['track'] === null && $filters['level'] === null && $filters['q'] === '';
 
         return Response::html($this->view->render('courses/index', [
-            'pageTitle' => 'Courses',
-            'cards' => $this->cards->build($tenant->id, array_slice($courses, 0, self::PER_PAGE), RequestContext::optionalUser($request)?->user->id),
+            'pageTitle' => $filters['show'] === 'open' ? 'Open courses' : ($filters['show'] === 'free' ? 'Free courses' : 'Courses'),
+            'cards' => $this->cards->build($tenant->id, array_slice($courses, 0, self::PER_PAGE), $user?->user->id),
             'page' => $page,
             'hasMore' => count($courses) > self::PER_PAGE,
-            'track' => $track,
+            'track' => $filters['track'],
+            'filters' => $filters,
+            'counts' => $this->courses->browseCounts($tenant->id, $openOnly),
+            'openOnly' => $openOnly,
             'trackCounts' => $this->courses->publishedTrackCounts($tenant->id),
-            'indexable' => $tenant->publicCatalogue && $page === 1 && $track === null,
-            'canonicalPath' => '/courses',
+            'indexable' => ($tenant->publicCatalogue || $openOnly) && $page === 1 && (!$filtered || $onlyShow),
+            'canonicalPath' => $onlyShow ? '/courses?show=' . $filters['show'] : '/courses',
             'seoCrumbs' => ['Courses' => '/courses'],
-            'metaDescription' => sprintf('Courses from %s: practical lessons, hands-on labs and quizzes you can follow on a phone.', $tenant->name),
+            'metaDescription' => $filters['show'] === 'open'
+                ? sprintf('Free courses from %s that anyone can read without an account: lessons and videos you can follow on a phone.', $tenant->name)
+                : sprintf('Courses from %s: practical lessons, hands-on labs and quizzes you can follow on a phone.', $tenant->name),
         ]));
+    }
+
+    /**
+     * @template T
+     * @param array<string, T> $allowed
+     */
+    private static function pick(?string $value, array $allowed): ?string
+    {
+        return $value !== null && isset($allowed[$value]) ? $value : null;
+    }
+
+    /**
+     * "1 quiz and 2 labs": the lessons that need joining, in words.
+     *
+     * @param list<\App\Modules\Courses\Lesson> $lessons
+     */
+    private static function kinds(array $lessons): string
+    {
+        $counts = [];
+        foreach ($lessons as $l) {
+            $label = strtolower($l->typeLabel());
+            $counts[$label] = ($counts[$label] ?? 0) + 1;
+        }
+        $parts = [];
+        foreach ($counts as $label => $n) {
+            $parts[] = $n . ' ' . ($n === 1 ? $label : (str_ends_with($label, 'z') ? $label . 'zes' : $label . 's'));
+        }
+        $last = array_pop($parts);
+
+        return $parts === [] ? (string) $last : implode(', ', $parts) . ' and ' . $last;
+    }
+
+    /** Visitors may see a course when the school's list is public, or the course is open to everyone. */
+    private static function visible(\App\Modules\Tenancy\Tenant $tenant, \App\Modules\Courses\Course $course, bool $signedIn): bool
+    {
+        return $signedIn || $tenant->publicCatalogue || $course->isOpen();
     }
 
     public function show(Request $request): Response
     {
         $tenant = RequestContext::tenant($request);
-        if (!$tenant->publicCatalogue && RequestContext::optionalUser($request) === null) {
-            return Response::redirect('/login');
-        }
+        $user = RequestContext::optionalUser($request);
         $course = $this->courses->findBySlug($tenant->id, $request->routeParam('slug'));
         if ($course === null || !$course->isPublished()) {
+            if (!$tenant->publicCatalogue && $user === null) {
+                return Response::redirect('/login');
+            }
             throw HttpException::notFound();
         }
+        if (!self::visible($tenant, $course, $user !== null)) {
+            return Response::redirect('/login');
+        }
 
-        $user = RequestContext::optionalUser($request);
         $enrolment = $user === null ? null : $this->enrolments->find($tenant->id, $course->id, $user->user->id);
         $mustPay = $user !== null && $enrolment === null && $this->learning->needsPayment($course, $user);
 
@@ -83,7 +139,9 @@ final class CatalogueController
             'enrolment' => $enrolment,
             'certificate' => $this->certificates->forEnrolment($enrolment),
             'completedIds' => $enrolment === null ? [] : $this->progress->completedLessonIds($tenant->id, $enrolment->id),
-            'indexable' => $tenant->publicCatalogue,
+            'indexable' => $tenant->publicCatalogue || $course->isOpen(),
+            'signUpOpen' => $tenant->signUpOpen(),
+            'staffView' => $user !== null && $user->can(\App\Modules\Identity\Permission::CourseManage),
             'metaDescription' => $course->summary !== '' ? $course->summary : sprintf('%s, a course from %s.', $course->title, $tenant->name),
             'jsonLd' => CourseSchema::course($course, $tenant, RequestContext::baseUrl($request)),
             'seoCrumbs' => ['Courses' => '/courses', $course->title => '/courses/' . $course->slug],
@@ -97,49 +155,69 @@ final class CatalogueController
     }
 
     /**
-     * A free preview lesson (CRS-003): readings and videos the author opened to
-     * everyone, so visitors can try a course before joining or paying.
+     * A lesson anyone may read without joining: a free preview the author opened
+     * (CRS-003), or any reading or video in an open course (ADR 0021). Progress is
+     * not recorded here; joining does that.
      */
     public function preview(Request $request): Response
     {
         $tenant = RequestContext::tenant($request);
-        if (!$tenant->publicCatalogue && RequestContext::optionalUser($request) === null) {
-            return Response::redirect('/login');
-        }
+        $user = RequestContext::optionalUser($request);
         $course = $this->courses->findBySlug($tenant->id, $request->routeParam('slug'));
         if ($course === null || !$course->isPublished()) {
+            if (!$tenant->publicCatalogue && $user === null) {
+                return Response::redirect('/login');
+            }
             throw HttpException::notFound();
+        }
+        if (!self::visible($tenant, $course, $user !== null)) {
+            return Response::redirect('/login');
         }
         $lesson = $this->lessons->findInCourse($tenant->id, $course->id, $request->routeInt('lesson'));
-        if ($lesson === null || !$lesson->isOpenPreview()) {
+        if ($lesson === null || !$course->lessonIsReadable($lesson)) {
             throw HttpException::notFound();
         }
-        $user = RequestContext::optionalUser($request);
         if ($user !== null && $this->enrolments->find($tenant->id, $course->id, $user->user->id) !== null) {
             return Response::redirect('/courses/' . $course->slug . '/lessons/' . $lesson->id);
         }
         $mustPay = $user !== null && $this->learning->needsPayment($course, $user);
         $ordered = $this->lessons->orderedLessons($tenant->id, $course->id);
+        $readable = array_values(array_filter($ordered, static fn ($l): bool => $course->lessonIsReadable($l)));
         $position = 1;
         foreach ($ordered as $i => $l) {
             if ($l->id === $lesson->id) {
                 $position = $i + 1;
             }
         }
+        $at = 0;
+        foreach ($readable as $i => $l) {
+            if ($l->id === $lesson->id) {
+                $at = $i;
+            }
+        }
 
         return Response::html($this->view->render('learn/preview', [
-            'pageTitle' => $lesson->title . ': free preview',
+            'pageTitle' => $lesson->title . ($course->isOpen() ? ': ' . $course->title : ': free preview'),
             'course' => $course,
             'lesson' => $lesson,
             'position' => $position,
             'total' => count($ordered),
-            'otherPreviews' => array_values(array_filter($ordered, static fn ($l): bool => $l->isOpenPreview() && $l->id !== $lesson->id)),
+            'openCourse' => $course->isOpen(),
+            'previous' => $readable[$at - 1] ?? null,
+            'next' => $readable[$at + 1] ?? null,
+            'readableCount' => count($readable),
+            'needsJoining' => count($ordered) - count($readable),
+            'lockedKinds' => self::kinds(array_values(array_filter($ordered, static fn ($l): bool => !$course->lessonIsReadable($l)))),
+            'otherPreviews' => array_values(array_filter($readable, static fn ($l): bool => $l->id !== $lesson->id)),
             'signedIn' => $user !== null,
+            'signUpOpen' => $tenant->signUpOpen(),
             'canLearn' => $user === null || $user->can(\App\Modules\Identity\Permission::CourseLearn),
             'mustPay' => $mustPay,
             'payOnline' => $mustPay && $this->payments->isConnected($tenant),
-            'indexable' => $tenant->publicCatalogue,
-            'metaDescription' => sprintf('A free lesson from %s, a course from %s.', $course->title, $tenant->name),
+            'indexable' => $tenant->publicCatalogue || $course->isOpen(),
+            'metaDescription' => $course->isOpen()
+                ? sprintf('%s: a free lesson from %s by %s. Read it without an account.', $lesson->title, $course->title, $tenant->name)
+                : sprintf('A free lesson from %s, a course from %s.', $course->title, $tenant->name),
             'seoCrumbs' => ['Courses' => '/courses', $course->title => '/courses/' . $course->slug, $lesson->title => '/courses/' . $course->slug . '/preview/' . $lesson->id],
             'ogImage' => '/share/courses/' . rawurlencode($course->slug) . '.png?v=' . substr(hash('sha256', $course->updatedAt . $course->title), 0, 10),
             'ogImageAlt' => $course->title . ', a course from ' . $tenant->name,

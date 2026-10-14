@@ -174,6 +174,121 @@ final class CourseRepository
         );
     }
 
+    public function updateAccess(int $tenantId, int $courseId, string $access): void
+    {
+        $this->db->execute(
+            'UPDATE courses SET access = ?, updated_at = ? WHERE tenant_id = ? AND id = ?',
+            [$access === Course::ACCESS_OPEN ? Course::ACCESS_OPEN : Course::ACCESS_MEMBERS, $this->clock->sqlNow(), $tenantId, $courseId],
+        );
+    }
+
+    /** SQL for "free" (no price), "paid" and "open" (free and open to everyone), matching Course::isPaid() / isOpen(). */
+    private const PRICE_SQL = [
+        'free' => '(c.price_minor IS NULL OR c.price_minor <= 0 OR c.currency IS NULL)',
+        'paid' => '(c.price_minor > 0 AND c.currency IS NOT NULL)',
+        'open' => "(c.access = 'open' AND (c.price_minor IS NULL OR c.price_minor <= 0 OR c.currency IS NULL))",
+    ];
+
+    /**
+     * The course list with filters (ADR 0021). $f: track (Course::TRACKS), show
+     * (free, open or paid), level (Course::LEVELS), q (words in the title or
+     * summary), openOnly (visitors when the school's list is for members only).
+     *
+     * @param array{track?: ?string, show?: ?string, level?: ?string, q?: ?string, openOnly?: bool} $f
+     * @return list<Course>
+     */
+    public function browse(int $tenantId, array $f, int $limit = 24, int $offset = 0): array
+    {
+        [$where, $params] = $this->browseWhere($tenantId, $f);
+        $params[] = max(1, min($limit, 100));
+        $params[] = max(0, $offset);
+
+        return array_map(Course::fromRow(...), $this->db->fetchAll(
+            'SELECT c.* FROM courses c WHERE ' . $where . ' ORDER BY c.published_at DESC, c.id DESC LIMIT ? OFFSET ?',
+            $params,
+        ));
+    }
+
+    /**
+     * How many published courses each filter would show, for the filter labels.
+     *
+     * @return array{free: int, open: int, paid: int, levels: array<string, int>, tracks: array<string, int>, all: int}
+     */
+    public function browseCounts(int $tenantId, bool $openOnly = false): array
+    {
+        [$where, $params] = $this->browseWhere($tenantId, ['openOnly' => $openOnly]);
+        $row = $this->db->fetchOne(
+            'SELECT COUNT(*) AS all_n, SUM(' . self::PRICE_SQL['free'] . ') AS free_n, SUM(' . self::PRICE_SQL['open'] . ') AS open_n,'
+            . ' SUM(' . self::PRICE_SQL['paid'] . ') AS paid_n,'
+            . " SUM(c.level = 'beginner') AS l_beginner, SUM(c.level = 'intermediate') AS l_intermediate, SUM(c.level = 'advanced') AS l_advanced,"
+            . " SUM(c.track = 'school') AS t_school, SUM(c.track = 'skills') AS t_skills"
+            . ' FROM courses c WHERE ' . $where,
+            $params,
+        ) ?? [];
+        $levels = [];
+        foreach (array_keys(Course::LEVELS) as $level) {
+            $levels[$level] = (int) ($row['l_' . $level] ?? 0);
+        }
+        $tracks = [];
+        foreach (array_keys(Course::TRACKS) as $track) {
+            $tracks[$track] = (int) ($row['t_' . $track] ?? 0);
+        }
+
+        return [
+            'all' => (int) ($row['all_n'] ?? 0),
+            'free' => (int) ($row['free_n'] ?? 0),
+            'open' => (int) ($row['open_n'] ?? 0),
+            'paid' => (int) ($row['paid_n'] ?? 0),
+            'levels' => $levels,
+            'tracks' => $tracks,
+        ];
+    }
+
+    /** Whether the school has at least one published open course (they are visible even when its course list is for members only). */
+    public function hasOpen(int $tenantId): bool
+    {
+        return $this->db->fetchValue(
+            "SELECT 1 FROM courses c WHERE c.tenant_id = ? AND c.status = 'published' AND " . self::PRICE_SQL['open'] . ' LIMIT 1',
+            [$tenantId],
+        ) !== null;
+    }
+
+    /**
+     * @param array{track?: ?string, show?: ?string, level?: ?string, q?: ?string, openOnly?: bool} $f
+     * @return array{0: string, 1: list<int|string>}
+     */
+    private function browseWhere(int $tenantId, array $f): array
+    {
+        $where = ['c.tenant_id = ?', 'c.status = ?'];
+        $params = [$tenantId, Course::STATUS_PUBLISHED];
+        if (($f['openOnly'] ?? false) === true) {
+            $where[] = self::PRICE_SQL['open'];
+        }
+        $show = $f['show'] ?? null;
+        if ($show !== null && isset(self::PRICE_SQL[$show])) {
+            $where[] = self::PRICE_SQL[$show];
+        }
+        $track = $f['track'] ?? null;
+        if ($track !== null && isset(Course::TRACKS[$track])) {
+            $where[] = 'c.track = ?';
+            $params[] = $track;
+        }
+        $level = $f['level'] ?? null;
+        if ($level !== null && isset(Course::LEVELS[$level])) {
+            $where[] = 'c.level = ?';
+            $params[] = $level;
+        }
+        $words = array_slice(array_values(array_filter(preg_split('/\s+/u', mb_strtolower(trim((string) ($f['q'] ?? '')))) ?: [], static fn (string $w): bool => $w !== '')), 0, 6);
+        foreach ($words as $word) {
+            $like = '%' . addcslashes(mb_substr($word, 0, 40), '%_\\') . '%';
+            $where[] = '(LOWER(c.title) LIKE ? OR LOWER(c.summary) LIKE ?)';
+            $params[] = $like;
+            $params[] = $like;
+        }
+
+        return [implode(' AND ', $where), $params];
+    }
+
     public function markDraft(int $tenantId, int $courseId): void
     {
         $this->db->execute(

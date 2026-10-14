@@ -69,7 +69,10 @@ final class HomeController
         if ($user === null) {
             return Response::html($this->view->render('tenant/welcome', [
                 'pageTitle' => $tenant->name,
-                'cards' => $tenant->publicCatalogue ? $this->cards->build($tenant->id, $this->courses->listPublished($tenant->id, 6)) : [],
+                // A members-only course list still shows the courses that are open to everyone (ADR 0021).
+                'cards' => $this->cards->build($tenant->id, $tenant->publicCatalogue
+                    ? $this->courses->listPublished($tenant->id, 6)
+                    : $this->courses->browse($tenant->id, ['openOnly' => true], 6)),
                 'sitePages' => $this->sitePages?->published($tenant->id) ?? [],
                 'indexable' => true,
                 'jsonLd' => [

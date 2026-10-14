@@ -17,6 +17,7 @@ final class ShareSiteLinks implements Middleware
         private readonly SitePageRepository $pages,
         private readonly View $view,
         private readonly ?\App\Modules\Tenancy\LogoStore $logos = null,
+        private readonly ?\App\Modules\Courses\CourseRepository $courses = null,
     ) {
     }
 
@@ -29,6 +30,10 @@ final class ShareSiteLinks implements Middleware
                 $links[$page->path()] = $page->title;
             }
             $this->view->share('site_pages', $links);
+            // A members-only course list still has a public "Courses" link when some courses are open to everyone.
+            if (!$tenant->publicCatalogue) {
+                $this->view->share('open_courses', $this->courses?->hasOpen($tenant->id) ?? false);
+            }
             // The logo's size lets pages reserve its space, so nothing jumps when it loads.
             $path = $tenant->hasLogo() ? $this->logos?->path((string) $tenant->logoKey) : null;
             $size = $path !== null ? @getimagesize($path) : false;

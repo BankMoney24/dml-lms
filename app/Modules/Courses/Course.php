@@ -14,6 +14,9 @@ final class Course
     /** Formal curriculum subjects (e.g. SS1–SS3) or vocational and professional skills. */
     public const TRACKS = ['school' => 'School subject', 'skills' => 'Skills'];
 
+    public const ACCESS_MEMBERS = 'members';
+    public const ACCESS_OPEN = 'open';
+
     /** @param list<string> $outcomes */
     public function __construct(
         public readonly int $id,
@@ -31,6 +34,8 @@ final class Course
         public readonly ?string $currency = null,
         /** Last change to the course or its lessons (UTC), for sitemaps and share images. */
         public readonly string $updatedAt = '',
+        /** "members" (join to read) or "open" (anyone may read its readings and videos; ADR 0021). */
+        public readonly string $access = self::ACCESS_MEMBERS,
     ) {
     }
 
@@ -54,7 +59,23 @@ final class Course
             isset($row['price_minor']) && (int) $row['price_minor'] > 0 ? (int) $row['price_minor'] : null,
             isset($row['currency']) && is_string($row['currency']) && $row['currency'] !== '' ? $row['currency'] : null,
             (string) ($row['updated_at'] ?? ''),
+            ($row['access'] ?? '') === self::ACCESS_OPEN ? self::ACCESS_OPEN : self::ACCESS_MEMBERS,
         );
+    }
+
+    /**
+     * An open course: free, and anyone (even without an account) may read its
+     * readings and videos. A price always wins, so a paid course is never open.
+     */
+    public function isOpen(): bool
+    {
+        return $this->access === self::ACCESS_OPEN && !$this->isPaid();
+    }
+
+    /** Whether someone who is not enrolled may read this lesson (an open course, or a lesson the author made a free preview). */
+    public function lessonIsReadable(Lesson $lesson): bool
+    {
+        return $lesson->isOpenPreview() || ($this->isOpen() && $lesson->canBePreview());
     }
 
     public function isPublished(): bool

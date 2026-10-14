@@ -248,7 +248,7 @@ $shell = $tenant !== null && $user !== null;
         </form>
       </div>
       <?php else: ?>
-      <nav class="nav" aria-label="Main"><?php if ($tenant->publicCatalogue): ?><?= $v->navLink('/courses', 'Courses') ?><?php endif; ?><?php
+      <nav class="nav" aria-label="Main"><?php if ($tenant->publicCatalogue || $v->shared('open_courses', false) === true): ?><?= $v->navLink('/courses', 'Courses') ?><?php endif; ?><?php
         foreach (['/about' => 'About', '/admissions' => 'Admissions', '/contact' => 'Contact'] as $navPath => $navLabel) {
             if (isset($sitePages[$navPath])) {
                 echo $v->navLink($navPath, $navLabel);

@@ -708,6 +708,7 @@ final class Application
             $c->get(\App\Modules\Site\SitePageRepository::class),
             $c->get(View::class),
             $c->get(LogoStore::class),
+            $c->get(CourseRepository::class),
         ));
         $c->set(\App\Modules\Site\SitePages::class, static fn (Container $c) => new \App\Modules\Site\SitePages(
             $c->get(\App\Modules\Site\SitePageRepository::class),

@@ -78,6 +78,11 @@ final class LearningService
         return true;
     }
 
+    public function findEnrolment(Course $course, CurrentUser $user): ?Enrolment
+    {
+        return $this->enrolments->find($course->tenantId, $course->id, $user->user->id);
+    }
+
     /** Learners must be enrolled to open lessons; course managers may preview. */
     public function requireEnrolment(Course $course, CurrentUser $user): Enrolment
     {

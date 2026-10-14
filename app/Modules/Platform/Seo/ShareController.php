@@ -40,7 +40,7 @@ final class ShareController
     {
         $tenant = $this->tenant($request);
         $course = $this->courses->findBySlug($tenant->id, $request->routeParam('slug'));
-        if ($course === null || !$course->isPublished() || !$tenant->publicCatalogue) {
+        if ($course === null || !$course->isPublished() || !($tenant->publicCatalogue || $course->isOpen())) {
             throw HttpException::notFound();
         }
 

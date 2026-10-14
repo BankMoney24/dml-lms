@@ -19,7 +19,7 @@ $admissionsPage = array_values(array_filter($sitePages, static fn ($sp): bool =>
     <p class="actions">
       <?php if ($tenant->signUpOpen()): ?><a class="button button-accent" href="/join">Create an account</a> <a class="button button-on-dark" href="/login">Sign in</a>
       <?php else: ?><a class="button button-accent" href="/login">Sign in</a><?php endif; ?>
-      <?php if ($tenant->publicCatalogue): ?><a class="button button-on-dark" href="/courses">See the courses</a><?php endif; ?>
+      <?php if ($tenant->publicCatalogue || $cards !== []): ?><a class="button button-on-dark" href="/courses"><?= $tenant->publicCatalogue ? 'See the courses' : 'See the free courses' ?></a><?php endif; ?>
     </p>
   </div>
   <ol class="promise" aria-label="How each course works">

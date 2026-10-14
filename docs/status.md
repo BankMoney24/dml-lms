@@ -7,7 +7,7 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 | Item | Status | Notes |
 |---|---|---|
 | Repository, layout, coding standards | Built | PSR-12 (phpcs), PHPStan level 8, strict types |
-| Architecture overview, ADRs | Built | `docs/architecture.md`, `docs/adr/0001–0020` |
+| Architecture overview, ADRs | Built | `docs/architecture.md`, `docs/adr/0001–0021` |
 | ERD / data dictionary | Partial | Schema diagram in architecture.md; full data dictionary next |
 | Threat model | Next | Controls are listed below; a written threat model is still required |
 | CI (lint, analysis, tests, secret scan, asset budget) | Built | `.github/workflows/ci.yml`, PHP 8.3 / 8.4 / 8.5 matrix on MySQL 8.4 |
@@ -59,6 +59,7 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 | Study tools and app shell | Built | Sidebar and app bar for signed-in pages with role-based links and counts, account menu, light/dark/device appearance per person, search with as-you-type results (`/`, Ctrl/Cmd+K), saved lessons and private notes, learning days and streak, coming-up due dates, private calendar (iCalendar) link shown once and stored hashed, course covers. ADR 0018 |
 | Joining and getting started | Built | School → Joining: closed / join code / open sign-up for learners, consent ticks, bot trap and rate limits, existing DML accounts join with their own password, email confirmation links that cannot reset passwords. Three-question getting-started wizard per learner (goals, experience with optional GitHub and portfolio, weekly goal) driving "Suggested for you" with reasons and a weekly goal on the home page. Requests to teach (approve makes an educator) and parent requests (staff verify, then link). ADR 0020 |
 | Code playground | Built | JavaScript in the sandboxed runner with output, time limit, examples (loops, functions, subnet maths, async), line numbers, keyboard shortcuts; up to 50 private saved snippets per person. ADR 0020 |
+| Open courses and course filters | Built | Per-course "Who can read it": open courses are free and anyone can read their readings and videos without an account (quizzes, labs, assignments still need joining), listed for visitors even when the course list is members-only, in the sitemap. Course list filters: free / open / paid, level, kind, words. Teachers preview any lesson from the course page; non-enrolled learners are sent to a page they can use. ADR 0021 |
 | NTF-003 | Next | SMS/WhatsApp after consent review |
 | §8 offline | Partial | Offline banner, static-asset service worker, quiz drafts on device until server confirms, idempotent submit. IndexedDB outbox and conflict handling next |
 | §9 public API v1 | Next | |

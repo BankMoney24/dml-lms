@@ -8,6 +8,8 @@
  */
 $currentLessonId ??= null;
 $savedIds ??= [];
+$staffView ??= false;
+$openCourse = $course->isOpen();
 $n = 0;
 ?>
 <div class="trace">
@@ -38,12 +40,14 @@ $n = 0;
         <span class="trace-text">
           <?php if ($linkLessons): ?>
             <a href="/courses/<?= $v->e($course->slug) ?>/lessons/<?= $lesson->id ?>"<?= $current ? ' aria-current="page"' : '' ?>><?= $v->e($lesson->title) ?></a>
-          <?php elseif ($lesson->isOpenPreview()): ?>
+          <?php elseif ($course->lessonIsReadable($lesson)): ?>
             <a href="/courses/<?= $v->e($course->slug) ?>/preview/<?= $lesson->id ?>"<?= $current ? ' aria-current="page"' : '' ?>><?= $v->e($lesson->title) ?></a>
+          <?php elseif ($staffView): ?>
+            <a href="/teach/courses/<?= $course->id ?>/lessons/<?= $lesson->id ?>/preview"><?= $v->e($lesson->title) ?></a>
           <?php else: ?>
             <?= $v->e($lesson->title) ?>
           <?php endif; ?>
-          <span class="trace-meta"><?= $v->e($lesson->typeLabel()) ?><?= $done ? ', done' : '' ?><?php if (!$linkLessons && $lesson->isOpenPreview()): ?> <span class="tag tag-preview">Free preview</span><?php endif; ?><?php if (in_array($lesson->id, $savedIds, true)): ?> <span class="tag tag-saved">Saved</span><?php endif; ?></span>
+          <span class="trace-meta"><?= $v->e($lesson->typeLabel()) ?><?= $done ? ', done' : '' ?><?php if (!$linkLessons && !$openCourse && $lesson->isOpenPreview()): ?> <span class="tag tag-preview">Free preview</span><?php elseif (!$linkLessons && $openCourse && !$course->lessonIsReadable($lesson)): ?> <span class="tag tag-locked">Join to do this</span><?php endif; ?><?php if (in_array($lesson->id, $savedIds, true)): ?> <span class="tag tag-saved">Saved</span><?php endif; ?></span>
         </span>
       </li>
       <?php endforeach; ?>

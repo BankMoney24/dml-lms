@@ -126,6 +126,7 @@ return static function (Router $r): void {
     $r->get('/teach/courses/{course:int}', [TeachController::class, 'edit'], $teach);
     $r->post('/teach/courses/{course:int}/details', [TeachController::class, 'updateDetails'], $teach);
     $r->post('/teach/courses/{course:int}/price', [TeachController::class, 'updatePrice'], ['tenant', 'auth', 'can:school.manage']);
+    $r->post('/teach/courses/{course:int}/access', [TeachController::class, 'updateAccess'], $teach);
     $r->post('/teach/courses/{course:int}/modules', [TeachController::class, 'addModule'], $teach);
     $r->post('/teach/courses/{course:int}/modules/{module:int}', [TeachController::class, 'renameModule'], $teach);
     $r->post('/teach/courses/{course:int}/modules/{module:int}/delete', [TeachController::class, 'deleteModule'], $teach);

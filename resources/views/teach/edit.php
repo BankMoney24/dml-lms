@@ -151,6 +151,29 @@ $n = 0;
       </form>
     </section>
 
+    <section class="panel" aria-labelledby="access-h">
+      <h2 id="access-h">Who can read it</h2>
+      <?php $accessNow = $o('access', $course->access); ?>
+      <form method="post" action="<?= $base ?>/access" class="form" novalidate>
+        <?= $v->csrfField() ?>
+        <fieldset class="field pick-list<?= isset($errors['access']) ? ' has-error' : '' ?>">
+          <legend class="visually-hidden">Who can read this course</legend>
+          <?php if (isset($errors['access'])): ?><p class="field-error" id="access"><?= $v->e($errors['access']) ?></p><?php endif; ?>
+          <label class="choice pick">
+            <input type="radio" name="access" value="members"<?= $accessNow !== 'open' ? ' checked' : '' ?>>
+            <span><strong>People who join</strong><span class="pick-hint">Learners join the course to read it<?= $course->isPaid() ? ' after paying' : '' ?>. Lessons you mark as a free preview stay open to everyone.</span></span>
+          </label>
+          <label class="choice pick<?= $course->isPaid() ? ' is-disabled' : '' ?>">
+            <input type="radio" name="access" value="open"<?= $accessNow === 'open' ? ' checked' : '' ?><?= $course->isPaid() ? ' disabled' : '' ?>>
+            <span><strong>Everyone <?= $v->badge('Open', 'open') ?></strong><span class="pick-hint"><?= $course->isPaid()
+                ? 'Only free courses can be open. Remove the price first.'
+                : 'Anyone can read the readings and videos, even without an account, and it shows in the course list for visitors. Quizzes, labs and assignments still need joining, so progress and certificates work as usual.' ?></span></span>
+          </label>
+        </fieldset>
+        <button type="submit" class="button button-small">Save</button>
+      </form>
+    </section>
+
     <section class="panel" aria-labelledby="price-h">
       <h2 id="price-h">Price</h2>
       <?php if ($v->can('school.manage')): ?>

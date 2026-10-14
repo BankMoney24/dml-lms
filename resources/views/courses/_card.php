@@ -37,6 +37,8 @@ $pct = $card['lessons'] === 0 ? 0 : (int) round($card['done'] * 100 / $card['les
       </div>
     <?php elseif ($c->isPaid()): ?>
       <p class="course-card-end course-card-price"><?= $v->e((string) $c->priceLabel()) ?></p>
+    <?php else: ?>
+      <p class="course-card-end course-card-free"><?php if ($c->isOpen()): ?><span class="tag tag-open" title="Anyone can read the lessons, no account needed">Open</span><?php endif; ?>Free</p>
     <?php endif; ?>
   </div>
 </article>

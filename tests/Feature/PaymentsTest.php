@@ -104,7 +104,7 @@ final class PaymentsTest extends AppTestCase
 
         $this->assertRedirectTo('/courses/networking', $this->post(self::HOST, '/courses/networking/enrol'));
         $this->assertSame(0, $this->enrolments());
-        $this->assertSame(403, $this->get(self::HOST, '/courses/networking/lessons/' . $this->firstLessonId())->status);
+        $this->assertRedirectTo('/courses/networking#start', $this->get(self::HOST, '/courses/networking/lessons/' . $this->firstLessonId()), 'no lesson without paying');
 
         // The rule lives in the service too, not just the button.
         $membership = $this->app->get(MembershipRepository::class)->find($this->tenant->id, $this->learner->id);

@@ -108,6 +108,23 @@ final class TeachController
         return Response::redirect('/teach/courses/' . $course->id);
     }
 
+    /** Who can read the course: people who join, or everyone (ADR 0021). */
+    public function updateAccess(Request $request): Response
+    {
+        $course = $this->course($request);
+        $access = $request->input('access', '') ?? '';
+        try {
+            $this->authoring->setAccess($course, RequestContext::user($request), $access);
+        } catch (ValidationException $e) {
+            return $this->renderEdit($course, $e->errors, ['access' => $access], 422);
+        }
+        $this->session->flash('success', $access === Course::ACCESS_OPEN
+            ? 'This course is now open: anyone can read its readings and videos, even without an account.' . ($course->isPublished() ? '' : ' It shows once you publish it.')
+            : 'Only people who join can read this course now.');
+
+        return Response::redirect('/teach/courses/' . $course->id);
+    }
+
     public function addModule(Request $request): Response
     {
         $course = $this->course($request);

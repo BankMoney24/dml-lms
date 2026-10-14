@@ -131,6 +131,9 @@ final class CourseAuthoring
 
             return;
         }
+        if ($course->access === Course::ACCESS_OPEN) {
+            throw ValidationException::single('price', 'This course is open to everyone, so it is free. Change "Who can read it" to "People who join" first, then set a price.');
+        }
         $errors = [];
         $minor = Money::parse($priceText);
         if ($minor === null || $minor < Money::MIN_MINOR || $minor > Money::MAX_MINOR) {
@@ -144,6 +147,27 @@ final class CourseAuthoring
         }
         $this->courses->updatePrice($course->tenantId, $course->id, $minor, $currency);
         $this->audit->record($course->tenantId, $admin->user->id, 'course.priced', 'course', $course->id, ['amount' => $minor, 'currency' => $currency]);
+    }
+
+    /**
+     * Who can read the course (ADR 0021): "members" (people who join) or "open"
+     * (anyone, without an account, can read its readings and videos). Only free
+     * courses can be open.
+     */
+    public function setAccess(Course $course, CurrentUser $author, string $access): void
+    {
+        $this->authoriseFor($course, $author);
+        if (!in_array($access, [Course::ACCESS_MEMBERS, Course::ACCESS_OPEN], true)) {
+            throw ValidationException::single('access', 'Choose who can read this course.');
+        }
+        if ($access === Course::ACCESS_OPEN && $course->isPaid()) {
+            throw ValidationException::single('access', 'Only free courses can be open to everyone. Remove the price first, or keep it for people who join.');
+        }
+        if ($access === $course->access) {
+            return;
+        }
+        $this->courses->updateAccess($course->tenantId, $course->id, $access);
+        $this->audit->record($course->tenantId, $author->user->id, 'course.access_changed', 'course', $course->id, ['access' => $access]);
     }
 
     public function addModule(Course $course, CurrentUser $author, string $title): int
