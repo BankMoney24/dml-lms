@@ -34,6 +34,9 @@ use App\Modules\Joining\Http\JoiningAdminController;
 use App\Modules\Playground\Http\PlaygroundController;
 use App\Modules\Discussions\Http\DiscussionController;
 use App\Modules\Reports\Http\ReportsController;
+use App\Modules\Paths\Http\PathController;
+use App\Modules\Achievements\Http\AchievementsController;
+use App\Modules\Paths\Http\PathEditorController;
 use App\Modules\Site\Http\SiteController;
 use App\Modules\Platform\Seo\ShareController;
 use App\Modules\Study\Http\StudyController;
@@ -177,6 +180,20 @@ return static function (Router $r): void {
     $r->post('/courses/{slug}/answers/{answer:int}/delete', [DiscussionController::class, 'deleteAnswer'], $signedIn);
     $r->post('/courses/{slug}/questions/moderate', [DiscussionController::class, 'moderate'], ['tenant', 'auth', 'can:course.manage']);
     $r->get('/teach/questions', [DiscussionController::class, 'inbox'], ['tenant', 'auth', 'can:course.manage']);
+    // Learning paths and achievements (ADR 0023).
+    $r->get('/achievements', [AchievementsController::class, 'index'], ['tenant', 'auth', 'can:course.learn']);
+    $r->get('/paths/{slug}', [PathController::class, 'show'], ['tenant']);
+    $r->post('/paths/{slug}/start', [PathController::class, 'start'], ['tenant', 'auth', 'can:course.learn']);
+    $r->post('/paths/{slug}/leave', [PathController::class, 'leave'], ['tenant', 'auth']);
+    $r->get('/teach/paths', [PathEditorController::class, 'index'], ['tenant', 'auth', 'can:course.manage']);
+    $r->post('/teach/paths', [PathEditorController::class, 'store'], ['tenant', 'auth', 'can:course.manage']);
+    $r->get('/teach/paths/{path:int}', [PathEditorController::class, 'edit'], ['tenant', 'auth', 'can:course.manage']);
+    $r->post('/teach/paths/{path:int}', [PathEditorController::class, 'update'], ['tenant', 'auth', 'can:course.manage']);
+    $r->post('/teach/paths/{path:int}/courses', [PathEditorController::class, 'addCourse'], ['tenant', 'auth', 'can:course.manage']);
+    $r->post('/teach/paths/{path:int}/courses/{course:int}/remove', [PathEditorController::class, 'removeCourse'], ['tenant', 'auth', 'can:course.manage']);
+    $r->post('/teach/paths/{path:int}/courses/{course:int}/move', [PathEditorController::class, 'move'], ['tenant', 'auth', 'can:course.manage']);
+    $r->post('/teach/paths/{path:int}/publish', [PathEditorController::class, 'publish'], ['tenant', 'auth', 'can:course.manage']);
+    $r->post('/teach/paths/{path:int}/delete', [PathEditorController::class, 'delete'], ['tenant', 'auth', 'can:course.manage']);
     // School reports and spreadsheet downloads (ADR 0022).
     $r->get('/school/reports', [ReportsController::class, 'index'], ['tenant', 'auth', 'can:reports.view']);
     $r->get('/school/reports/courses.csv', [ReportsController::class, 'coursesCsv'], ['tenant', 'auth', 'can:reports.view']);

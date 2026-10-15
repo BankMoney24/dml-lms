@@ -448,6 +448,9 @@ final class Application
             $c->get(\App\Modules\Site\SitePageRepository::class),
             $c->get(\App\Modules\Joining\ProfileRepository::class),
             $c->get(MailSettings::class),
+            $c->get(\App\Modules\Paths\PathRepository::class),
+            $c->get(\App\Modules\Paths\PathService::class),
+            $c->get(\App\Modules\Achievements\Achievements::class),
         ));
         $c->set(LoginController::class, static fn (Container $c) => new LoginController(
             $c->get(View::class),
@@ -464,6 +467,7 @@ final class Application
             $c->get(CourseCards::class),
             $c->get(LearningService::class),
             $c->get(PaymentService::class),
+            $c->get(\App\Modules\Paths\PathRepository::class),
         ));
         $c->set(LearnController::class, static fn (Container $c) => new LearnController(
             $c->get(View::class),
@@ -655,6 +659,39 @@ final class Application
             $c->get(View::class),
             $c->get(Session::class),
             new \App\Modules\Playground\SnippetRepository($c->get(Connection::class), $c->get(Clock::class)),
+        ));
+        $c->set(\App\Modules\Paths\PathRepository::class, static fn (Container $c) => new \App\Modules\Paths\PathRepository($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(\App\Modules\Paths\PathService::class, static fn (Container $c) => new \App\Modules\Paths\PathService(
+            $c->get(Connection::class),
+            $c->get(\App\Modules\Paths\PathRepository::class),
+            $c->get(CourseRepository::class),
+            $c->get(LearningService::class),
+            $c->get(AuditLog::class),
+        ));
+        $c->set(\App\Modules\Achievements\Achievements::class, static fn (Container $c) => new \App\Modules\Achievements\Achievements(
+            $c->get(Connection::class),
+            $c->get(Clock::class),
+            $c->get(\App\Modules\Notifications\Notifier::class),
+            $c->get(\App\Modules\Paths\PathRepository::class),
+            $c->get(\App\Modules\Paths\PathService::class),
+        ));
+        $c->set(\App\Modules\Achievements\Http\AchievementsController::class, static fn (Container $c) => new \App\Modules\Achievements\Http\AchievementsController(
+            $c->get(View::class),
+            $c->get(\App\Modules\Achievements\Achievements::class),
+            $c->get(\App\Modules\Study\ActivityReport::class),
+        ));
+        $c->set(\App\Modules\Paths\Http\PathController::class, static fn (Container $c) => new \App\Modules\Paths\Http\PathController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(\App\Modules\Paths\PathRepository::class),
+            $c->get(\App\Modules\Paths\PathService::class),
+        ));
+        $c->set(\App\Modules\Paths\Http\PathEditorController::class, static fn (Container $c) => new \App\Modules\Paths\Http\PathEditorController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(\App\Modules\Paths\PathRepository::class),
+            $c->get(\App\Modules\Paths\PathService::class),
+            $c->get(CourseRepository::class),
         ));
         $c->set(\App\Modules\Reports\Http\ReportsController::class, static fn (Container $c) => new \App\Modules\Reports\Http\ReportsController(
             $c->get(View::class),

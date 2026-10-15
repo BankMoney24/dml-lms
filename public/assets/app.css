@@ -1930,3 +1930,81 @@ kbd { font: 700 0.8125rem/1 var(--font-body); padding: 0.15rem 0.4rem; border: 1
 .report-table td { white-space: nowrap; }
 .report-table th[scope="row"] { min-width: 12rem; }
 .report-bar { min-width: 6rem; }
+
+/* Learning paths (ADR 0023) */
+.path-layout { display: grid; gap: var(--space-6); align-items: start; }
+@media (min-width: 60rem) { .path-layout { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: var(--space-7); } .path-intro { position: sticky; top: var(--space-5); } }
+.path-kind { display: inline-flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-1); color: var(--primary); font-weight: 700; font-size: var(--step--1); }
+.path-kind .icon { width: 1rem; height: 1rem; }
+.path-intro h1 { margin-top: 0; }
+.path-start { margin-top: var(--space-5); }
+.path-steps h2 { margin-top: 0; }
+.route { list-style: none; margin: 0; padding: 0; display: grid; }
+.route-step { position: relative; display: grid; grid-template-columns: 2.5rem minmax(0, 1fr); gap: var(--space-4); padding-bottom: var(--space-5); }
+.route-step:not(:last-child)::before { content: ""; position: absolute; left: calc(1.25rem - 1px); top: 2.5rem; bottom: 0; width: 2px; background: var(--line-strong); }
+.route-step.is-completed:not(:last-child)::before { background: var(--primary); }
+.route-node { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: 8px; border: 2px solid var(--line-strong); background: var(--surface); font-weight: 800; color: var(--ink-soft); position: relative; z-index: 1; }
+.route-step.is-completed .route-node { background: var(--primary); border-color: var(--primary); color: var(--primary-ink); }
+.route-step.is-enrolled .route-node { border-color: var(--lamp); color: var(--primary); }
+.route-step.is-next .route-node { background: #d52f2f; border-color: #d52f2f; color: #fff; }
+.route-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); padding: var(--space-3) var(--space-4); min-width: 0; }
+.route-step.is-next .route-card { border-color: #d52f2f; box-shadow: var(--shadow-1); }
+.route-card h3 { margin: 0 0 var(--space-1); font-size: var(--step-1); }
+.route-card h3 a { text-decoration: none; color: var(--ink); }
+.route-card h3 a:hover { text-decoration: underline; }
+.route-summary { margin: 0 0 var(--space-2); color: var(--ink-soft); font-size: var(--step--1); }
+.route-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); margin: 0; font-size: var(--step--1); color: var(--ink-soft); }
+.route-meta .tag { margin-right: -0.25rem; }
+.route-price { font-weight: 700; color: var(--ink); }
+.route-progress { font-weight: 650; color: var(--primary); }
+.route-next { font-weight: 700; color: #d52f2f; }
+.route-edit .row-actions { display: flex; flex-wrap: wrap; gap: 0 var(--space-4); margin-top: var(--space-2); }
+.route-edit .row-actions form { margin: 0; }
+.path-add { margin-top: var(--space-3); max-width: 28rem; }
+.path-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.path-list li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); padding: var(--space-3) var(--space-4); }
+.path-list a { font-weight: 700; margin-right: auto; }
+.path-strip { margin-bottom: var(--space-6); }
+.path-cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); gap: var(--space-3); }
+.path-card { position: relative; background: var(--brand-navy); color: #dfe4ee; border-radius: var(--radius-m); padding: var(--space-4) var(--space-5); border: 1px solid var(--brand-navy-line); }
+.path-card:hover { border-color: var(--lamp); }
+.path-card h3 { margin: var(--space-3) 0 var(--space-1); font-size: var(--step-1); }
+.path-card h3 a { color: #fff; text-decoration: none; }
+.path-card h3 a::after { content: ""; position: absolute; inset: 0; }
+.path-card h3 a:focus-visible { outline: none; }
+.path-card:focus-within { outline: 3px solid var(--focus); outline-offset: 2px; }
+.path-card .muted { color: var(--brand-navy-soft); }
+.path-card p { margin: 0; }
+.path-card-steps { display: flex; align-items: center; gap: 0; }
+.path-card-steps span { width: 0.75rem; height: 0.75rem; border-radius: 2px; background: var(--lamp); }
+.path-card-steps span + span { margin-left: 1rem; position: relative; }
+.path-card-steps span + span::before { content: ""; position: absolute; right: 100%; top: calc(50% - 1px); width: 1rem; height: 2px; background: #4a556d; }
+.path-card-steps span:last-child { background: #d52f2f; }
+.my-path-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
+.my-path { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); padding: var(--space-3) var(--space-4); }
+.my-path-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-1) var(--space-3); }
+.my-path-head a { font-weight: 700; }
+.my-path-steps { display: flex; gap: 4px; margin: var(--space-2) 0; }
+.my-path-steps span { flex: 1 1 0; height: 0.5rem; border-radius: 2px; background: var(--line); }
+.my-path-steps .is-enrolled { background: var(--lamp); }
+.my-path-steps .is-completed { background: var(--primary); }
+.my-path-next { margin: 0; }
+
+/* Achievements (ADR 0023) */
+.badge-meter { max-width: 28rem; margin-bottom: var(--space-5); }
+.badge-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr)); gap: var(--space-3); }
+.badge-card { display: grid; grid-template-columns: 3.5rem minmax(0, 1fr); gap: var(--space-3); align-items: start; padding: var(--space-4); border: 1px dashed var(--line-strong); border-radius: var(--radius-m); color: var(--ink-soft); }
+.badge-card.is-earned { border-style: solid; border-color: var(--line); background: var(--surface); color: var(--ink); box-shadow: var(--shadow-1); }
+.badge-medal { position: relative; display: grid; place-items: center; width: 3.5rem; height: 3.5rem; border-radius: 10px; background: var(--paper); border: 2px solid var(--line-strong); color: var(--ink-soft); }
+.badge-medal .icon { width: 1.6rem; height: 1.6rem; }
+.badge-card.is-earned .badge-medal { background: var(--brand-navy); border-color: var(--brand-navy); color: var(--lamp); }
+.badge-card.is-earned .badge-medal::after { content: ""; position: absolute; top: -4px; right: -4px; width: 0.75rem; height: 0.75rem; border-radius: 2px; background: #d52f2f; }
+.badge-text { display: flex; flex-direction: column; gap: 0.15rem; font-size: var(--step--1); }
+.badge-text strong { font-size: var(--step-0); }
+.badge-when { font-weight: 650; }
+.badge-card.is-earned .badge-when { color: var(--primary); }
+.badge-panel h2 { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+.badge-row { list-style: none; margin: 0 0 var(--space-2); padding: 0; display: flex; gap: var(--space-2); }
+.badge-mini { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: 8px; background: var(--brand-navy); color: var(--lamp); }
+.badge-mini .icon { width: 1.2rem; height: 1.2rem; }
+.path-intro .page-head-meta { margin: var(--space-2) 0 var(--space-4); }

@@ -28,8 +28,10 @@ $zone = new DateTimeZone($v->shared('tenant')?->timezone ?? 'UTC');
 $now = new DateTimeImmutable('now', $zone);
 $hour = (int) $now->format('G');
 $greeting = $hour < 12 ? 'Good morning' : ($hour < 17 ? 'Good afternoon' : 'Good evening');
-$hasSide = $activity !== null || $comingUp !== [] || $recentNotes !== [];
-$hasMain = $continue !== null || $children !== [] || $myGroups !== [];
+$myPaths ??= [];
+$earned ??= [];
+$hasSide = $activity !== null || $comingUp !== [] || $recentNotes !== [] || $earned !== [];
+$hasMain = $continue !== null || $children !== [] || $myGroups !== [] || $myPaths !== [];
 ?>
 <header class="home-head">
   <p class="home-date"><?= $v->e($now->format('l j F')) ?></p>
@@ -89,6 +91,23 @@ $hasMain = $continue !== null || $children !== [] || $myGroups !== [];
 </section>
 <?php endif; ?>
 
+<?php if (($myPaths ?? []) !== []): ?>
+<section class="section my-paths" aria-labelledby="paths-h">
+  <h2 id="paths-h">Your learning paths</h2>
+  <ul class="my-path-list">
+    <?php foreach ($myPaths as ['path' => $p, 'progress' => $pr]): ?>
+    <li class="my-path<?= $pr['complete'] ? ' is-done' : '' ?>">
+      <div class="my-path-head">
+        <a href="/paths/<?= $v->e($p->slug) ?>"><?= $v->e($p->title) ?></a>
+        <span class="small muted"><?= $pr['completed'] ?> of <?= $pr['total'] ?> courses</span>
+      </div>
+      <span class="my-path-steps" aria-hidden="true"><?php foreach ($pr['steps'] as $st): ?><span class="is-<?= $v->e($st['state']) ?>"></span><?php endforeach; ?></span>
+      <?php if ($pr['next'] !== null): ?><p class="small my-path-next">Next: <a href="/courses/<?= $v->e($pr['next']->slug) ?>"><?= $v->e($pr['next']->title) ?></a></p><?php else: ?><p class="small my-path-next">Path complete</p><?php endif; ?>
+    </li>
+    <?php endforeach; ?>
+  </ul>
+</section>
+<?php endif; ?>
 <?php if ($children !== []): ?>
 <section class="section" aria-labelledby="children-h">
   <h2 id="children-h"><?= count($children) === 1 ? 'Your child' : 'Your children' ?></h2>
@@ -174,6 +193,17 @@ $hasMain = $continue !== null || $children !== [] || $myGroups !== [];
         <p class="small muted">Longest run: <?= $v->e($v->plural($activity['best_streak'], 'day')) ?>.</p>
         <p class="pc-legend" aria-hidden="true"><span>Less</span><span class="pc-day lvl-0"></span><span class="pc-day lvl-1"></span><span class="pc-day lvl-2"></span><span class="pc-day lvl-3"></span><span class="pc-day lvl-4"></span><span>More</span></p>
       </div>
+    </section>
+    <?php endif; ?>
+    <?php if ($earned !== []): $badges = \App\Modules\Achievements\Achievements::BADGES; ?>
+    <section class="panel badge-panel" aria-labelledby="badges-h">
+      <h2 id="badges-h">Achievements <span class="muted small"><?= count($earned) ?> of <?= count($badges) ?></span></h2>
+      <ul class="badge-row">
+        <?php foreach (array_slice(array_reverse($earned, true), 0, 4, true) as $code => $at): ?>
+        <li class="badge-mini" title="<?= $v->e($badges[$code][0]) ?>"><?= $v->icon($badges[$code][2]) ?><span class="visually-hidden"><?= $v->e($badges[$code][0]) ?></span></li>
+        <?php endforeach; ?>
+      </ul>
+      <p class="small"><a href="/achievements">See all achievements</a></p>
     </section>
     <?php endif; ?>
 

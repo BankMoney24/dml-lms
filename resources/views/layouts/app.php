@@ -103,6 +103,7 @@ $shell = $tenant !== null && $user !== null;
         <?= $v->sideLink('/', 'Home', 'home') ?>
         <?= $v->sideLink('/courses', 'Courses', 'courses') ?>
         <?php if ($v->can('course.learn')): ?><?= $v->sideLink('/saved', 'Saved and notes', 'saved') ?><?php endif; ?>
+        <?php if ($v->can('course.learn')): ?><?= $v->sideLink('/achievements', 'Achievements', 'sparkle') ?><?php endif; ?>
         <?php if ($v->can('course.learn') || $v->can('course.manage')): ?><?= $v->sideLink('/playground', 'Code playground', 'code') ?><?php endif; ?>
         <?php if (($counts['children'] ?? 0) > 0): ?><?= $v->sideLink('/children', ($counts['children'] ?? 0) === 1 ? 'Your child' : 'Your children', 'child') ?><?php endif; ?>
       </ul>
@@ -111,6 +112,7 @@ $shell = $tenant !== null && $user !== null;
       <ul>
         <?php if ($v->can('course.manage')): ?>
           <?= $v->sideLink('/teach', 'Your courses', 'teach', ['/teach/courses']) ?>
+          <?= $v->sideLink('/teach/paths', 'Learning paths', 'link') ?>
           <?= $v->sideLink('/teach/reviews', 'Reviews', 'review', [], (int) ($counts['reviews'] ?? 0)) ?>
           <?= $v->sideLink('/teach/questions', 'Questions', 'help', [], (int) ($counts['questions'] ?? 0)) ?>
           <?php if ($v->can('reports.view')): ?><?= $v->sideLink('/school/reports', 'Reports', 'chart') ?><?php endif; ?>

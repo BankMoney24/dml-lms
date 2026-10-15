@@ -95,6 +95,12 @@ final class SeoController
                     $urls[] = [$base . '/courses/' . rawurlencode((string) $p['slug']) . '/preview/' . (int) $p['id'], (string) $p['updated_at']];
                 }
             }
+            if ($tenant->publicCatalogue) {
+                // Published learning paths (ADR 0023).
+                foreach ($this->db->fetchAll("SELECT slug, updated_at FROM learning_paths WHERE tenant_id = ? AND status = 'published' ORDER BY title LIMIT 500", [$tenant->id]) as $p) {
+                    $urls[] = [$base . '/paths/' . rawurlencode((string) $p['slug']), (string) $p['updated_at']];
+                }
+            }
         }
 
         $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n" . '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";

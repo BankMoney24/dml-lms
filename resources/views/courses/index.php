@@ -79,6 +79,20 @@ $levelChoices = array_filter(Course::LEVELS, static fn (string $label, string $k
 </div>
 <?php endif; ?>
 
+<?php if (($paths ?? []) !== []): ?>
+<section class="section path-strip" aria-labelledby="paths-h">
+  <h2 id="paths-h">Learning paths</h2>
+  <ul class="path-cards">
+    <?php foreach ($paths as $p): ?>
+    <li class="path-card">
+      <span class="path-card-steps" aria-hidden="true"><?php for ($i = 0; $i < min($p->courseCount, 8); $i++): ?><span></span><?php endfor; ?></span>
+      <h3><a href="/paths/<?= $v->e($p->slug) ?>"><?= $v->e($p->title) ?></a></h3>
+      <p class="small muted"><?= $v->e($v->plural($p->courseCount, 'course')) ?> in order<?= $p->levelLabel() !== null ? ', ' . $v->e(strtolower($p->levelLabel())) : '' ?></p>
+    </li>
+    <?php endforeach; ?>
+  </ul>
+</section>
+<?php endif; ?>
 <?php if ($cards === []): ?>
   <?php if ($page > 1): ?>
     <?= $v->emptyState('No more courses', 'You have reached the end of the list.', '/courses', 'Back to the first page') ?>

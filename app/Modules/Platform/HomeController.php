@@ -42,6 +42,9 @@ final class HomeController
         private readonly ?\App\Modules\Site\SitePageRepository $sitePages = null,
         private readonly ?\App\Modules\Joining\ProfileRepository $profiles = null,
         private readonly ?\App\Core\Mail\MailSettings $mail = null,
+        private readonly ?\App\Modules\Paths\PathRepository $pathRepo = null,
+        private readonly ?\App\Modules\Paths\PathService $paths = null,
+        private readonly ?\App\Modules\Achievements\Achievements $achievements = null,
     ) {
     }
 
@@ -169,8 +172,23 @@ final class HomeController
         )) : [];
         $recentNotes = $learns ? array_slice($this->notes?->forUser($tenant->id, $user->user->id, 3) ?? [], 0, 3) : [];
 
+        // Paths this learner follows, and achievements (ADR 0023).
+        $myPaths = [];
+        if ($learns && $this->paths !== null) {
+            foreach ($this->pathRepo?->followedBy($tenant->id, $user->user->id) ?? [] as $path) {
+                $myPaths[] = ['path' => $path, 'progress' => $this->paths->progress($path, $user->user->id)];
+            }
+        }
+        $earned = [];
+        if ($learns && $this->achievements !== null) {
+            $this->achievements->refresh($tenant->id, $user->user->id, $activity['best_streak'] ?? null);
+            $earned = $this->achievements->earned($tenant->id, $user->user->id);
+        }
+
         return Response::html($this->view->render('dashboard/index', [
             'activity' => $activity,
+            'myPaths' => $myPaths,
+            'earned' => $earned,
             'comingUp' => array_slice($comingUp, 0, 5),
             'recentNotes' => $recentNotes,
             'myGroups' => $myGroups,

@@ -33,6 +33,7 @@ final class CatalogueController
         private readonly CourseCards $cards,
         private readonly LearningService $learning,
         private readonly PaymentService $payments,
+        private readonly ?\App\Modules\Paths\PathRepository $paths = null,
     ) {
     }
 
@@ -67,6 +68,8 @@ final class CatalogueController
             'track' => $filters['track'],
             'filters' => $filters,
             'counts' => $this->courses->browseCounts($tenant->id, $openOnly),
+            // Learning paths lead the unfiltered first page (ADR 0023).
+            'paths' => !$openOnly && !$filtered && $page === 1 ? ($this->paths?->published($tenant->id) ?? []) : [],
             'openOnly' => $openOnly,
             'trackCounts' => $this->courses->publishedTrackCounts($tenant->id),
             'indexable' => ($tenant->publicCatalogue || $openOnly) && $page === 1 && (!$filtered || $onlyShow),
