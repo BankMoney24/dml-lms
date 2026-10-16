@@ -139,7 +139,7 @@ $shell = $tenant !== null && $user !== null;
       <ul>
         <?= $v->sideLink('/help', 'Get help', 'help') ?>
       </ul>
-      <p class="side-credit"><img class="tridax-mark" src="/assets/brand/tridaxlabs-32.png" srcset="/assets/brand/tridaxlabs-64.png 2x" width="16" height="16" alt=""><span>Developed and powered by <a href="https://tridax.org">TridaxLabs</a></span></p>
+      <p class="side-credit"><?php include __DIR__ . '/../partials/tridax_credit.php'; ?></p>
     </div>
   </aside>
   <div class="shell-main">
@@ -210,6 +210,7 @@ $shell = $tenant !== null && $user !== null;
   </div>
 </div>
 <div class="nav-scrim" data-nav-close hidden></div>
+<?php include __DIR__ . '/../partials/tridax_popover.php'; ?>
 </body>
 </html>
 <?php else: ?>
@@ -293,9 +294,10 @@ $shell = $tenant !== null && $user !== null;
     <?php else: ?>
     <p class="footer-links">Learn. Build. Grow.</p>
     <?php endif; ?>
-    <p class="footer-credit"><img class="tridax-mark" src="/assets/brand/tridaxlabs-32.png" srcset="/assets/brand/tridaxlabs-64.png 2x" width="16" height="16" alt=""><span>Developed and powered by <a href="https://tridax.org">TridaxLabs</a></span></p>
+    <p class="footer-credit"><?php include __DIR__ . '/../partials/tridax_credit.php'; ?></p>
   </div>
 </footer>
+<?php include __DIR__ . '/../partials/tridax_popover.php'; ?>
 </body>
 </html>
 <?php endif; ?>

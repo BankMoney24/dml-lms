@@ -99,6 +99,7 @@ return static function (Router $r): void {
     $r->post('/courses/{slug}/enrol', [LearnController::class, 'enrol'], $learn);
     // Paid courses (ADR 0012): access follows a payment Paystack itself confirms.
     $r->post('/courses/{slug}/pay', [PaymentController::class, 'pay'], $learn);
+    $r->get('/account/receipts/{reference:code}', [\App\Modules\Payments\Http\ReceiptController::class, 'show'], ['tenant', 'auth']);
     $r->get('/payments/paystack/callback', [PaymentController::class, 'callback'], ['tenant', 'auth']);
     // No session or CSRF: Paystack's HMAC signature, checked with the school's key, is the authentication.
     $r->post('/webhooks/paystack', [PaymentController::class, 'webhook'], [Kernel::BARE, 'host-tenant', 'tenant']);

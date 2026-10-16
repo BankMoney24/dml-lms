@@ -73,9 +73,14 @@ final class HomeController
             return Response::html($this->view->render('tenant/welcome', [
                 'pageTitle' => $tenant->name,
                 // A members-only course list still shows the courses that are open to everyone (ADR 0021).
-                'cards' => $this->cards->build($tenant->id, $tenant->publicCatalogue
-                    ? $this->courses->listPublished($tenant->id, 6)
-                    : $this->courses->browse($tenant->id, ['openOnly' => true], 6)),
+                'cards' => $this->cards->build($tenant->id, $this->courses->popular($tenant->id, 6, !$tenant->publicCatalogue)),
+                // Real numbers and the other ways in, for a fuller front page (ADR 0024).
+                'figures' => $this->courses->publicFigures($tenant->id, !$tenant->publicCatalogue),
+                'paths' => $tenant->publicCatalogue ? ($this->pathRepo?->published($tenant->id) ?? []) : [],
+                'openCards' => $tenant->publicCatalogue
+                    ? $this->cards->build($tenant->id, $this->courses->browse($tenant->id, ['openOnly' => true], 3))
+                    : [],
+                'signUpOpen' => $tenant->signUpOpen(),
                 'sitePages' => $this->sitePages?->published($tenant->id) ?? [],
                 'indexable' => true,
                 'jsonLd' => [

@@ -646,6 +646,9 @@ final class Application
             $c->get(AccountLinkService::class),
             $c->get(MailSettings::class),
             $c->get(RateLimiter::class),
+            $c->get(CourseRepository::class),
+            $c->get(LearningService::class),
+            $c->get(MembershipRepository::class),
         ));
         $c->set(\App\Modules\Joining\Http\JoiningAdminController::class, static fn (Container $c) => new \App\Modules\Joining\Http\JoiningAdminController(
             $c->get(View::class),
@@ -659,6 +662,12 @@ final class Application
             $c->get(View::class),
             $c->get(Session::class),
             new \App\Modules\Playground\SnippetRepository($c->get(Connection::class), $c->get(Clock::class)),
+        ));
+        $c->set(\App\Modules\Payments\Http\ReceiptController::class, static fn (Container $c) => new \App\Modules\Payments\Http\ReceiptController(
+            $c->get(View::class),
+            $c->get(\App\Modules\Payments\PaymentRepository::class),
+            $c->get(CourseRepository::class),
+            $c->get(UserRepository::class),
         ));
         $c->set(\App\Modules\Paths\PathRepository::class, static fn (Container $c) => new \App\Modules\Paths\PathRepository($c->get(Connection::class), $c->get(Clock::class)));
         $c->set(\App\Modules\Paths\PathService::class, static fn (Container $c) => new \App\Modules\Paths\PathService(

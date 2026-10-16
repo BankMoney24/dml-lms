@@ -493,3 +493,83 @@
     navigator.serviceWorker.register('/sw.js').catch(function () { /* optional */ });
   }
 })();
+
+// TridaxLabs credit: pointing at (or focusing) the name opens a panel of what
+// TridaxLabs builds; a click or tap keeps it open. Without JS it is a plain link.
+(function () {
+  var pop = document.querySelector('[data-tridax-pop]');
+  var triggers = document.querySelectorAll('[data-tridax]');
+  if (!pop || !triggers.length) { return; }
+  var closeBtn = pop.querySelector('[data-tridax-close]');
+  var current = null, mode = null, timer = null;
+  var finePointer = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+  var place = function (trigger) {
+    var narrow = window.innerWidth < 640;
+    pop.classList.toggle('is-sheet', narrow);
+    if (narrow) { pop.style.left = ''; pop.style.top = ''; pop.style.bottom = ''; return; }
+    var r = trigger.getBoundingClientRect();
+    var w = pop.offsetWidth, h = pop.offsetHeight, gap = 10;
+    var left = Math.min(Math.max(12, r.left - 24), window.innerWidth - w - 12);
+    var top = r.top - h - gap >= 12 ? r.top - h - gap : Math.min(r.bottom + gap, window.innerHeight - h - 12);
+    pop.style.left = Math.round(left) + 'px';
+    pop.style.top = Math.round(Math.max(12, top)) + 'px';
+  };
+  var open = function (trigger, how) {
+    clearTimeout(timer);
+    if (current && current !== trigger) { current.setAttribute('aria-expanded', 'false'); }
+    current = trigger;
+    mode = how;
+    pop.hidden = false;
+    place(trigger);
+    trigger.setAttribute('aria-expanded', 'true');
+    if (how === 'click' && closeBtn) { closeBtn.focus(); }
+  };
+  var close = function (returnFocus) {
+    clearTimeout(timer);
+    if (pop.hidden) { return; }
+    pop.hidden = true;
+    if (current) {
+      current.setAttribute('aria-expanded', 'false');
+      if (returnFocus) { current.focus(); }
+    }
+    current = null;
+    mode = null;
+  };
+  var later = function () {
+    clearTimeout(timer);
+    timer = setTimeout(function () { if (mode === 'hover') { close(false); } }, 300);
+  };
+
+  Array.prototype.forEach.call(triggers, function (t) {
+    t.addEventListener('click', function (e) {
+      e.preventDefault();
+      if (!pop.hidden && current === t && mode === 'click') { close(true); } else { open(t, 'click'); }
+    });
+    if (finePointer) {
+      t.addEventListener('mouseenter', function () {
+        clearTimeout(timer);
+        if (pop.hidden) { timer = setTimeout(function () { open(t, 'hover'); }, 350); }
+      });
+      t.addEventListener('mouseleave', later);
+    }
+    t.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); open(t, 'click'); }
+    });
+  });
+  pop.addEventListener('mouseenter', function () { clearTimeout(timer); });
+  pop.addEventListener('mouseleave', later);
+  pop.addEventListener('focusin', function () { if (mode === 'hover') { mode = 'click'; } });
+  if (closeBtn) { closeBtn.addEventListener('click', function () { close(true); }); }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !pop.hidden) { close(pop.contains(document.activeElement)); }
+  });
+  document.addEventListener('click', function (e) {
+    if (pop.hidden || pop.contains(e.target)) { return; }
+    var onTrigger = false;
+    Array.prototype.forEach.call(triggers, function (t) { onTrigger = onTrigger || t.contains(e.target); });
+    if (!onTrigger) { close(false); }
+  });
+  window.addEventListener('resize', function () { if (!pop.hidden && current) { place(current); } });
+  window.addEventListener('scroll', function () { if (mode === 'hover') { close(false); } else if (!pop.hidden && current) { place(current); } }, { passive: true });
+}());

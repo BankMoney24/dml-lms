@@ -42,13 +42,18 @@ final class JoinController
         private readonly AccountLinkService $links,
         private readonly MailSettings $mail,
         private readonly RateLimiter $limiter,
+        private readonly ?\App\Modules\Courses\CourseRepository $courses = null,
+        private readonly ?\App\Modules\Learning\LearningService $learning = null,
+        private readonly ?\App\Modules\Tenancy\MembershipRepository $memberships = null,
     ) {
     }
 
     public function index(Request $request): Response
     {
         if (RequestContext::optionalUser($request) !== null) {
-            return Response::redirect('/');
+            $course = $this->joiningFor($request);
+
+            return Response::redirect($course !== null ? '/courses/' . $course->slug : '/');
         }
 
         return $this->joinPage($request);
@@ -73,12 +78,20 @@ final class JoinController
         } catch (ValidationException $e) {
             return $this->joinPage($request, $e->errors, ['name' => $input['name'], 'email' => $input['email'], 'code' => $input['code']], 422);
         }
+        $course = $this->joiningFor($request);
         if ($result['second_factor']) {
+            if ($course !== null) {
+                $this->session->set(\App\Modules\Identity\Middleware\RequireAuthentication::INTENDED_KEY, '/courses/' . $course->slug);
+            }
             $this->session->flash('success', 'You have joined ' . $tenant->name . '. Sign in with your password and authenticator code to continue.');
 
             return Response::redirect('/login');
         }
-        $this->session->flash('success', 'Welcome to ' . $tenant->name . '!' . ($result['confirmation_sent'] ? ' We sent a link to ' . $result['user']->email . ' to confirm your email.' : ''));
+        $welcome = 'Welcome to ' . $tenant->name . '!' . ($result['confirmation_sent'] ? ' We sent a link to ' . $result['user']->email . ' to confirm your email.' : '');
+        if ($course !== null) {
+            return $this->continueToCourse($course, $result['user'], $welcome);
+        }
+        $this->session->flash('success', $welcome);
 
         return Response::redirect('/setup/welcome');
     }
@@ -137,6 +150,36 @@ final class JoinController
         return Response::redirect('/join/teach');
     }
 
+    /** The course someone was looking at when they chose to join (?course=slug), if it is published. */
+    private function joiningFor(Request $request): ?\App\Modules\Courses\Course
+    {
+        $slug = $request->input('course') ?? $request->query('course');
+        if ($slug === null || $slug === '' || $this->courses === null) {
+            return null;
+        }
+        $course = $this->courses->findBySlug(RequestContext::tenant($request)->id, mb_substr($slug, 0, 190));
+
+        return $course !== null && $course->isPublished() ? $course : null;
+    }
+
+    /**
+     * Just joined from a course page: free courses start straight away; paid
+     * ones go back to the course to pay (the welcome questions wait on the home page).
+     */
+    private function continueToCourse(\App\Modules\Courses\Course $course, \App\Modules\Identity\User $user, string $welcome): Response
+    {
+        $me = new \App\Modules\Identity\CurrentUser($user, $this->memberships?->find($course->tenantId, $user->id));
+        if ($this->learning !== null && $me->can(\App\Modules\Identity\Permission::CourseLearn) && !$this->learning->needsPayment($course, $me)) {
+            $this->learning->enrol($course, $me);
+            $this->session->flash('success', $welcome . ' You are enrolled in ' . $course->title . '. Start with the first lesson below.');
+
+            return Response::redirect('/courses/' . $course->slug . '#start');
+        }
+        $this->session->flash('success', $welcome . ' Your account is ready: pay below to start ' . $course->title . '.');
+
+        return Response::redirect('/courses/' . $course->slug . '#pay');
+    }
+
     /** The link in the confirmation email. Works signed in or not. */
     public function confirm(Request $request): Response
     {
@@ -191,6 +234,7 @@ final class JoinController
             'emailing' => $this->mail->deliveryAvailable(),
             'errors' => $errors,
             'old' => $old + ['name' => '', 'email' => '', 'code' => $request->query('code', '') ?? ''],
+            'joiningFor' => $this->joiningFor($request),
             'indexable' => $tenant->signUpOpen() && $tenant->registration === 'open',
             'metaDescription' => sprintf('Create your free learner account at %s: courses, hands-on labs and certificates.', $tenant->name),
         ]), $status);

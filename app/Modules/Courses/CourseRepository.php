@@ -244,6 +244,45 @@ final class CourseRepository
         ];
     }
 
+    /**
+     * Real figures for the public home page: published courses, their lessons
+     * and labs (ADR 0024). With $openOnly, only open courses count.
+     *
+     * @return array{courses: int, lessons: int, labs: int, learners: int}
+     */
+    public function publicFigures(int $tenantId, bool $openOnly = false): array
+    {
+        $where = "c.tenant_id = ? AND c.status = 'published'" . ($openOnly ? ' AND ' . self::PRICE_SQL['open'] : '');
+        $row = $this->db->fetchOne(
+            'SELECT COUNT(DISTINCT c.id) AS courses, COUNT(l.id) AS lessons, COALESCE(SUM(l.type = \'lab\'), 0) AS labs
+             FROM courses c LEFT JOIN lessons l ON l.tenant_id = c.tenant_id AND l.course_id = c.id WHERE ' . $where,
+            [$tenantId],
+        ) ?? [];
+
+        return [
+            'courses' => (int) ($row['courses'] ?? 0),
+            'lessons' => (int) ($row['lessons'] ?? 0),
+            'labs' => (int) ($row['labs'] ?? 0),
+            'learners' => (int) $this->db->fetchValue("SELECT COUNT(*) FROM memberships WHERE tenant_id = ? AND status = 'active' AND role = 'learner'", [$tenantId]),
+        ];
+    }
+
+    /**
+     * Published courses with the most learners, for "Popular" on the home page.
+     *
+     * @return list<Course>
+     */
+    public function popular(int $tenantId, int $limit = 6, bool $openOnly = false): array
+    {
+        return array_map(Course::fromRow(...), $this->db->fetchAll(
+            "SELECT c.* FROM courses c
+             WHERE c.tenant_id = ? AND c.status = 'published'" . ($openOnly ? ' AND ' . self::PRICE_SQL['open'] : '') . "
+             ORDER BY (SELECT COUNT(*) FROM enrolments e WHERE e.tenant_id = c.tenant_id AND e.course_id = c.id AND e.status <> 'withdrawn') DESC,
+                      c.published_at DESC, c.id DESC LIMIT " . max(1, min($limit, 24)),
+            [$tenantId],
+        ));
+    }
+
     /** Whether the school has at least one published open course (they are visible even when its course list is for members only). */
     public function hasOpen(int $tenantId): bool
     {

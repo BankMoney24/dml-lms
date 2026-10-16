@@ -6,7 +6,9 @@
  * @var bool $emailing
  * @var array<string, string> $errors
  * @var array<string, string> $old
+ * @var ?\App\Modules\Courses\Course $joiningFor
  */
+$joiningFor ??= null;
 $pages = (array) $v->shared('site_pages', []);
 $link = static fn (string $path, string $text): string => isset($pages[$path]) ? '<a href="' . $path . '" target="_blank" rel="noopener">' . $text . '</a>' : $text;
 $formError = $errors['form'] ?? null;
@@ -28,12 +30,21 @@ unset($errors['form']);
     <?php else: ?>
       <header class="page-head">
         <h1>Create your account</h1>
-        <p class="lead">It takes a minute. Courses with a price show it before you join them.</p>
+        <p class="lead"><?= $joiningFor === null ? 'It takes a minute. Courses with a price show it before you join them.' : 'It takes a minute, then you go straight back to your course.' ?></p>
       </header>
+      <?php if ($joiningFor !== null): ?>
+      <div class="join-for">
+        <?= $v->icon('courses') ?>
+        <p><span class="small muted">You are joining to take</span><strong><?= $v->e($joiningFor->title) ?></strong><span class="small"><?= $joiningFor->isPaid()
+            ? $v->e((string) $joiningFor->priceLabel()) . ', paid on the next step on Paystack\'s secure page'
+            : 'Free: you start as soon as your account is ready' ?></span></p>
+      </div>
+      <?php endif; ?>
       <?php if ($formError !== null): ?><p class="notice notice-err" role="alert"><?= $v->e($formError) ?></p><?php endif; ?>
       <?= $v->errorSummary($errors) ?>
       <form method="post" action="/join" class="form join-form" novalidate>
         <?= $v->csrfField() ?>
+        <?php if ($joiningFor !== null): ?><input type="hidden" name="course" value="<?= $v->e($joiningFor->slug) ?>"><?php endif; ?>
         <div class="hp" aria-hidden="true"><label for="website">Leave this empty</label><input id="website" name="website" tabindex="-1" autocomplete="off"></div>
         <?= $v->field('name', 'Full name', ['value' => $old['name'], 'error' => $errors['name'] ?? null, 'autocomplete' => 'name', 'maxlength' => 120, 'hint' => 'As you would like it on your certificates.']) ?>
         <?= $v->field('email', 'Email address', ['type' => 'email', 'value' => $old['email'], 'error' => $errors['email'] ?? null, 'autocomplete' => 'email', 'maxlength' => 254,
@@ -59,7 +70,7 @@ unset($errors['form']);
         </fieldset>
         <button type="submit" class="button join-submit"><?= $v->icon('user-plus') ?>Create my account</button>
       </form>
-      <p class="join-signin">Already have an account here? <a href="/login">Sign in</a></p>
+      <p class="join-signin">Already have an account here? <a href="/login<?= $joiningFor !== null ? '?next=' . $v->e(rawurlencode('/courses/' . $joiningFor->slug)) : '' ?>">Sign in</a></p>
     <?php endif; ?>
 
     <div class="join-others">

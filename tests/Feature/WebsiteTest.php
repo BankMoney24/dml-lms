@@ -224,7 +224,7 @@ final class WebsiteTest extends AppTestCase
         $this->post(self::HOST, '/school/website/about/publish');
         $this->newBrowser();
         $about = $this->get(self::HOST, '/about')->body;
-        $this->assertStringContainsString('developed and are powered by <a href="https://tridax.org">TridaxLabs</a>', $about);
+        $this->assertStringContainsString('Developed and powered by <a href="https://tridax.org" class="tridax-link"', $about);
         $this->assertSame(['AboutPage', 'BreadcrumbList'], self::types(self::jsonLd($about)));
 
         $this->signIn('admin@school.test');

@@ -34,7 +34,10 @@ final class SeoTest extends AppTestCase
         $this->assertStringNotContainsString('noindex', $home);
         $this->assertStringContainsString('<meta property="og:title"', $home);
         $this->assertStringContainsString('"@type":"EducationalOrganization"', $home);
-        $this->assertStringContainsString('Developed and powered by <a href="https://tridax.org">TridaxLabs</a>', $home);
+        $this->assertStringContainsString('Developed and powered by <a href="https://tridax.org" class="tridax-link"', $home);
+        $this->assertStringContainsString('Over 40 kinds of software', $home, 'the TridaxLabs panel');
+        $this->assertStringContainsString('Learning management systems (LMS)', $home);
+        $this->assertSame(1, substr_count($home, 'id="tridax-pop"'), 'one panel per page');
 
         $course = $this->get(self::HOST, '/courses/networking')->body;
         $this->assertStringContainsString('<link rel="canonical" href="http://school.test/courses/networking">', $course);

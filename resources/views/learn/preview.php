@@ -71,10 +71,10 @@ $certificates = (bool) ($v->shared('tenant')?->certificatesEnabled ?? false);
     <?php if (!$signedIn): ?>
       <?php if ($course->isPaid()): ?><p class="course-price"><strong><?= $v->e((string) $course->priceLabel()) ?></strong> for the whole course</p><?php endif; ?>
       <?php if ($signUpOpen): ?>
-        <p><a class="button" href="/join"><?= $v->icon('user-plus') ?>Create a free account</a></p>
-        <p class="small">Already have one? <a href="/login">Sign in</a></p>
+        <p><a class="button" href="/join?course=<?= $v->e($course->slug) ?>"><?= $v->icon('user-plus') ?><?= $course->isPaid() ? 'Create an account' : 'Create a free account' ?></a></p>
+        <p class="small">Already have one? <a href="/login?next=<?= $v->e(rawurlencode('/courses/' . $course->slug . '/preview/' . $lesson->id)) ?>">Sign in</a></p>
       <?php else: ?>
-        <p><a class="button" href="/login">Sign in to join</a></p>
+        <p><a class="button" href="/login?next=<?= $v->e(rawurlencode('/courses/' . $course->slug . '/preview/' . $lesson->id)) ?>">Sign in to join</a></p>
       <?php endif; ?>
     <?php elseif ($canLearn && $mustPay): ?>
       <p class="course-price"><strong><?= $v->e((string) $course->priceLabel()) ?></strong> for the whole course</p>

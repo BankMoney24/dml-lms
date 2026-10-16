@@ -45,6 +45,18 @@ foreach ($outline as $module) {
     }
 }
 $slug = $v->e($course->slug);
+$joinHref = '/join?course=' . $slug;
+// What a paid course includes, from the course itself (no promises it cannot keep).
+$included = [];
+foreach ($counts as $label => $n) {
+    $included[] = $n . ' ' . strtolower($label) . ($n === 1 ? '' : (str_ends_with(strtolower($label), 'z') ? 'zes' : 's'));
+}
+$includedList = '<ul class="included">'
+    . ($included !== [] ? '<li>' . $v->e(implode(', ', $included)) . '</li>' : '')
+    . ($course->durationHours !== null ? '<li>' . $v->e('About ' . $v->plural($course->durationHours, 'hour') . ' of learning, at your own pace') . '</li>' : '')
+    . (($v->shared('tenant')?->certificatesEnabled ?? false) ? '<li>A certificate anyone can check online when you finish</li>' : '')
+    . '<li>Ask questions under every lesson; teachers answer</li></ul>';
+$signInHref = '/login?next=' . $v->e(rawurlencode('/courses/' . $course->slug));
 ?>
 <div class="course-layout">
   <section class="course-intro">
@@ -81,14 +93,17 @@ $slug = $v->e($course->slug);
       <p class="start-title">Free and open to everyone</p>
       <p>Read the lessons and watch the videos without an account. <?= $signUpOpen ? 'Create a free account' : 'Sign in' ?> when you want to save your progress<?= $lessonCount > $readableCount ? ', take the quizzes and labs' : '' ?><?= $v->shared('tenant')?->certificatesEnabled ? ' and earn the certificate' : '' ?>.</p>
       <p class="start-action"><a class="button" href="/courses/<?= $slug ?>/preview/<?= $firstReadable->id ?>"><?= $v->icon('lesson') ?>Start reading: <?= $v->e($firstReadable->title) ?></a></p>
-      <p class="start-alt"><a href="<?= $signUpOpen ? '/join' : '/login' ?>"><?= $signUpOpen ? 'Create a free account' : 'Sign in' ?></a><?= $signUpOpen ? ' or <a href="/login">sign in</a>' : '' ?> to keep your progress.</p>
+      <p class="start-alt"><a href="<?= $signUpOpen ? $joinHref : $signInHref ?>"><?= $signUpOpen ? 'Create a free account' : 'Sign in' ?></a><?= $signUpOpen ? ' or <a href="' . $signInHref . '">sign in</a>' : '' ?> to keep your progress.</p>
     <?php elseif ($user === null): ?>
-      <?php if ($course->isPaid()): ?><p class="course-price"><strong><?= $v->e((string) $course->priceLabel()) ?></strong> for the whole course</p><?php endif; ?>
-      <p class="start-action"><a class="button" href="<?= $signUpOpen ? '/join' : '/login' ?>"><?= $signUpOpen ? 'Create an account to enrol' : 'Sign in to enrol' ?></a></p>
-      <?php if ($signUpOpen): ?><p class="start-alt">Already have an account? <a href="/login">Sign in</a></p><?php endif; ?>
+      <?php if ($course->isPaid()): ?><p class="course-price"><strong><?= $v->e((string) $course->priceLabel()) ?></strong> for the whole course</p><?= $includedList ?><?php endif; ?>
+      <p class="start-action"><a class="button" href="<?= $signUpOpen ? $joinHref : $signInHref ?>"><?= $signUpOpen
+          ? ($course->isPaid() ? 'Create an account and pay' : 'Create an account to enrol')
+          : ($course->isPaid() ? 'Sign in to pay' : 'Sign in to enrol') ?></a></p>
+      <?php if ($signUpOpen): ?><p class="start-alt">Already have an account? <a href="<?= $signInHref ?>">Sign in</a></p><?php endif; ?>
     <?php elseif ($v->can('course.learn') && $mustPay): ?>
       <div id="pay">
         <p class="course-price"><strong><?= $v->e((string) $course->priceLabel()) ?></strong> for the whole course</p>
+        <?= $includedList ?>
         <?php if ($waiting !== null): ?>
           <p class="notice">You started a payment of <?= $v->e($waiting->amount()) ?> on <?= $v->e($v->datetime($waiting->createdAt)) ?>.
             If money left your account, the course opens as soon as Paystack confirms it.

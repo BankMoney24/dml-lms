@@ -24,8 +24,13 @@ final class LoginController
     public function show(Request $request): Response
     {
         RequestContext::tenant($request);
+        $next = $request->query('next');
+        if (is_string($next) && self::isLocalPath($next)) {
+            // e.g. "Sign in to pay" on a course page: come back there afterwards.
+            $this->session->set(RequireAuthentication::INTENDED_KEY, $next);
+        }
         if (RequestContext::optionalUser($request) !== null) {
-            return Response::redirect('/');
+            return Response::redirect(is_string($next) && self::isLocalPath($next) ? $next : '/');
         }
 
         return Response::html($this->view->render('auth/login', ['pageTitle' => 'Sign in', 'email' => '', 'error' => null]));
@@ -64,5 +69,11 @@ final class LoginController
         $this->session->flash('success', 'You have signed out.');
 
         return Response::redirect('/login');
+    }
+
+    /** A path on this site only: no scheme, no protocol-relative "//", no backslashes. */
+    public static function isLocalPath(string $path): bool
+    {
+        return preg_match('#^/(?![/\\\\])[^\s\\\\]*$#', $path) === 1 && strlen($path) <= 300;
     }
 }

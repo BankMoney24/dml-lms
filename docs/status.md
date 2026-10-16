@@ -7,7 +7,7 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 | Item | Status | Notes |
 |---|---|---|
 | Repository, layout, coding standards | Built | PSR-12 (phpcs), PHPStan level 8, strict types |
-| Architecture overview, ADRs | Built | `docs/architecture.md`, `docs/adr/0001–0023` |
+| Architecture overview, ADRs | Built | `docs/architecture.md`, `docs/adr/0001–0024` |
 | ERD / data dictionary | Partial | Schema diagram in architecture.md; full data dictionary next |
 | Threat model | Next | Controls are listed below; a written threat model is still required |
 | CI (lint, analysis, tests, secret scan, asset budget) | Built | `.github/workflows/ci.yml`, PHP 8.3 / 8.4 / 8.5 matrix on MySQL 8.4 |
@@ -63,6 +63,8 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 | Lesson questions and answers | Built | Ask and answer under every lesson (enrolled learners and course builders only), safe Markdown with code, accepted answers, teacher badge, delete own / teachers hide, rate limits, notifications, teachers' inbox with a waiting count. ADR 0022 |
 | Learning paths | Built | Courses in order (Teach → Learning paths): publish rules, public path pages with per-course progress, start/follow (joins the next free course), home page progress, course list and sitemap. ADR 0023 |
 | Achievements | Built | Ten achievements from real activity (lessons, courses, full marks, labs, streak, questions, accepted answers, code snippets, paths), stored once with the real time, recent ones notified; Achievements page and home panel. ADR 0023 |
+| Enrol and pay from a course | Built | Join or sign in from any course and come back to pay (paid) or start (free); what the price includes; printable receipts for every confirmed payment. ADR 0024 |
+| Front page and TridaxLabs panel | Built | Search, real catalogue figures, learning paths, popular and open courses, who learns here; the TridaxLabs credit opens a panel of 40+ software categories by sector (editable list). ADR 0024 |
 | NTF-003 | Next | SMS/WhatsApp after consent review |
 | §8 offline | Partial | Offline banner, static-asset service worker, quiz drafts on device until server confirms, idempotent submit. IndexedDB outbox and conflict handling next |
 | §9 public API v1 | Next | |

@@ -38,7 +38,7 @@
   <?php if ($page->slug === 'about'): ?>
   <section class="site-credit" aria-labelledby="credit-h">
     <h2 id="credit-h">About this website</h2>
-    <p class="credit-line"><img class="tridax-mark" src="/assets/brand/tridaxlabs-32.png" srcset="/assets/brand/tridaxlabs-64.png 2x" width="24" height="24" alt=""><span><?= $v->e($school->name) ?>'s website and learning platform were developed and are powered by <a href="https://tridax.org">TridaxLabs</a>.</span></p>
+    <p class="credit-line"><?php $creditSize = 24; include __DIR__ . '/../partials/tridax_credit.php'; ?></p>
   </section>
   <?php endif; ?>
 

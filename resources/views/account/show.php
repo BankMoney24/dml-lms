@@ -101,13 +101,14 @@ $passwordErrors = array_intersect_key($errors, array_flip(['current_password', '
     <h2 id="payments-h">Your payments</h2>
     <div class="table-wrap">
       <table class="table">
-        <thead><tr><th scope="col">Course</th><th scope="col" class="num">Amount</th><th scope="col">Status</th></tr></thead>
+        <thead><tr><th scope="col">Course</th><th scope="col" class="num">Amount</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Receipt</span></th></tr></thead>
         <tbody>
         <?php foreach ($payments as $row): $p = $row['payment']; ?>
           <tr>
             <td><?= $v->e($row['course']) ?><span class="small muted"><?= $v->datetime($p->paidAt ?? $p->createdAt) ?>, <span class="ref"><?= $v->e($p->reference) ?></span></span></td>
             <td class="num"><?= $v->e($p->amount()) ?></td>
             <td><?= $v->e($p->statusLabel($now)) ?></td>
+            <td><?php if ($p->isPaid()): ?><a href="/account/receipts/<?= $v->e(rawurlencode($p->reference)) ?>">Receipt</a><?php endif; ?></td>
           </tr>
         <?php endforeach; ?>
         </tbody>
