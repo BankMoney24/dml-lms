@@ -17,6 +17,9 @@ final class Course
     public const ACCESS_MEMBERS = 'members';
     public const ACCESS_OPEN = 'open';
 
+    public const ENROL_OPEN = 'open';
+    public const ENROL_APPLY = 'apply';
+
     /** @param list<string> $outcomes */
     public function __construct(
         public readonly int $id,
@@ -36,6 +39,10 @@ final class Course
         public readonly string $updatedAt = '',
         /** "members" (join to read) or "open" (anyone may read its readings and videos; ADR 0021). */
         public readonly string $access = self::ACCESS_MEMBERS,
+        /** "open" (join or pay directly) or "apply" (apply and wait to be added; ADR 0025). */
+        public readonly string $enrolment = self::ENROL_OPEN,
+        /** Most learners at once; when full, new people join the waiting list. */
+        public readonly ?int $capacity = null,
     ) {
     }
 
@@ -60,6 +67,8 @@ final class Course
             isset($row['currency']) && is_string($row['currency']) && $row['currency'] !== '' ? $row['currency'] : null,
             (string) ($row['updated_at'] ?? ''),
             ($row['access'] ?? '') === self::ACCESS_OPEN ? self::ACCESS_OPEN : self::ACCESS_MEMBERS,
+            ($row['enrolment'] ?? '') === self::ENROL_APPLY ? self::ENROL_APPLY : self::ENROL_OPEN,
+            isset($row['capacity']) && (int) $row['capacity'] > 0 ? (int) $row['capacity'] : null,
         );
     }
 
@@ -70,6 +79,11 @@ final class Course
     public function isOpen(): bool
     {
         return $this->access === self::ACCESS_OPEN && !$this->isPaid();
+    }
+
+    public function takesApplications(): bool
+    {
+        return $this->enrolment === self::ENROL_APPLY;
     }
 
     /** Whether someone who is not enrolled may read this lesson (an open course, or a lesson the author made a free preview). */

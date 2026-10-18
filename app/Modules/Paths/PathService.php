@@ -199,7 +199,7 @@ final class PathService
         }
         $this->paths->follow($path->tenantId, $path->id, $learner->user->id);
         $next = $this->progress($path, $learner->user->id)['next'];
-        if ($next !== null && $this->learning->findEnrolment($next, $learner) === null && !$this->learning->needsPayment($next, $learner)) {
+        if ($next !== null && $this->learning->findEnrolment($next, $learner) === null && !$this->learning->mustApply($next, $learner) && !$this->learning->needsPayment($next, $learner)) {
             $this->learning->enrol($next, $learner);
         }
         $this->audit->record($path->tenantId, $learner->user->id, 'path.started', 'learning_path', $path->id);

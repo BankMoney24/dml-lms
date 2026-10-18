@@ -108,6 +108,23 @@ final class TeachController
         return Response::redirect('/teach/courses/' . $course->id);
     }
 
+    /** How people join: open or apply-and-wait, and how many places (ADR 0025). */
+    public function updateEnrolment(Request $request): Response
+    {
+        $course = $this->course($request);
+        $old = ['enrolment' => $request->input('enrolment', '') ?? '', 'capacity' => $request->input('capacity', '') ?? ''];
+        try {
+            $this->authoring->setEnrolment($course, RequestContext::user($request), $old['enrolment'], $old['capacity']);
+        } catch (ValidationException $e) {
+            return $this->renderEdit($course, $e->errors, $old, 422);
+        }
+        $this->session->flash('success', $old['enrolment'] === Course::ENROL_APPLY
+            ? 'Saved. People now apply and wait; offer places under Applications.'
+            : 'Saved. People join directly' . ($old['capacity'] !== '' ? ' until the ' . (int) $old['capacity'] . ' places are taken, then join the waiting list.' : '.'));
+
+        return Response::redirect('/teach/courses/' . $course->id);
+    }
+
     /** Who can read the course: people who join, or everyone (ADR 0021). */
     public function updateAccess(Request $request): Response
     {

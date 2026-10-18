@@ -44,6 +44,11 @@ final class PaymentController
         if ($course === null || !$course->isPublished()) {
             throw HttpException::notFound();
         }
+        if ($this->learning->mustApply($course, $user)) {
+            $this->session->flash('error', 'This course takes applications. Apply for a place first; you pay once the school offers you one.');
+
+            return Response::redirect('/courses/' . $course->slug . '#apply');
+        }
         if (!$this->learning->needsPayment($course, $user)) {
             // Free, already paid, or a course builder: nothing to pay.
             $this->learning->enrol($course, $user);

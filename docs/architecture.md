@@ -42,6 +42,7 @@ Health endpoints (`/health`, `/health/ready`) skip session, tenant and auth.
 | Reports | school-wide figures and CSV downloads (ADR 0022) | Tenancy, Courses, Learning, Payments, Audit |
 | Paths | learning_paths, their ordered courses and followers (ADR 0023) | Courses, Learning, Audit |
 | Achievements | achievements worked out from learning records (ADR 0023) | Learning, Assessments, VirtualLabs, Discussions, Playground, Paths, Notifications |
+| Applications | course_applications, the waiting list and offering places (ADR 0025) | Courses, Learning, Tenancy (members), Identity, Notifications |
 | Platform/Seo | page metadata, share images, robots and sitemap on the canonical address (ADR 0019) | Tenancy, Courses, Site |
 | Groups | learner_groups (classes, cohorts), members, courses set for a group, progress grid (ADR 0013) | Courses, Learning, Identity, Audit |
 | Payments | course prices, payment_accounts (sealed Paystack keys), payments, payment_events, checkout, verify and webhook handling (ADR 0012) | Courses, Learning, Identity, Audit |

@@ -45,6 +45,12 @@ final class EnrolmentRepository
         return $enrolment;
     }
 
+    /** Learners holding a place on the course (not withdrawn). */
+    public function countForCourse(int $tenantId, int $courseId): int
+    {
+        return (int) $this->db->fetchValue("SELECT COUNT(*) FROM enrolments WHERE tenant_id = ? AND course_id = ? AND status <> 'withdrawn'", [$tenantId, $courseId]);
+    }
+
     public function markCompleted(int $tenantId, int $enrolmentId): void
     {
         $this->db->execute(

@@ -170,6 +170,30 @@ final class CourseAuthoring
         $this->audit->record($course->tenantId, $author->user->id, 'course.access_changed', 'course', $course->id, ['access' => $access]);
     }
 
+    /** How people get in (ADR 0025): open, or apply and wait; with an optional number of places. */
+    public function setEnrolment(Course $course, CurrentUser $author, string $mode, string $capacityText): void
+    {
+        $this->authoriseFor($course, $author);
+        $errors = [];
+        if (!in_array($mode, [Course::ENROL_OPEN, Course::ENROL_APPLY], true)) {
+            $errors['enrolment'] = 'Choose how people join this course.';
+        }
+        $capacityText = trim($capacityText);
+        $capacity = null;
+        if ($capacityText !== '') {
+            if (preg_match('/^\d{1,5}$/', $capacityText) !== 1 || (int) $capacityText < 1) {
+                $errors['capacity'] = 'Enter the number of places, for example 30, or leave it empty for no limit.';
+            } else {
+                $capacity = (int) $capacityText;
+            }
+        }
+        if ($errors !== []) {
+            throw new ValidationException($errors);
+        }
+        $this->courses->updateEnrolment($course->tenantId, $course->id, $mode, $capacity);
+        $this->audit->record($course->tenantId, $author->user->id, 'course.enrolment_changed', 'course', $course->id, ['mode' => $mode, 'capacity' => $capacity]);
+    }
+
     public function addModule(Course $course, CurrentUser $author, string $title): int
     {
         $this->authoriseFor($course, $author);

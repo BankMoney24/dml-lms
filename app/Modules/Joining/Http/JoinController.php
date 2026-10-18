@@ -169,6 +169,11 @@ final class JoinController
     private function continueToCourse(\App\Modules\Courses\Course $course, \App\Modules\Identity\User $user, string $welcome): Response
     {
         $me = new \App\Modules\Identity\CurrentUser($user, $this->memberships?->find($course->tenantId, $user->id));
+        if ($this->learning !== null && $this->learning->mustApply($course, $me)) {
+            $this->session->flash('success', $welcome . ' Your account is ready: apply for a place on ' . $course->title . ' below.');
+
+            return Response::redirect('/courses/' . $course->slug . '#apply');
+        }
         if ($this->learning !== null && $me->can(\App\Modules\Identity\Permission::CourseLearn) && !$this->learning->needsPayment($course, $me)) {
             $this->learning->enrol($course, $me);
             $this->session->flash('success', $welcome . ' You are enrolled in ' . $course->title . '. Start with the first lesson below.');

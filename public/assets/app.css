@@ -1,3 +1,7 @@
+/* Plus Jakarta Sans (SIL Open Font License, see fonts/plus-jakarta-sans-OFL.txt), self-hosted, one variable file per script. */
+@font-face { font-family: "Plus Jakarta Sans"; font-style: normal; font-display: swap; font-weight: 200 800; src: url("fonts/plus-jakarta-sans-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Plus Jakarta Sans"; font-style: normal; font-display: swap; font-weight: 200 800; src: url("fonts/plus-jakarta-sans-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+
 /* DML Learning Platform — hand-written, no build step, system fonts only (low bandwidth).
    Brand: DML Technologies. Blue and black on light surfaces, navy with red on dark ones,
    and the logo's square "pixels" as the unit of progress (board strips, traces, markers). */
@@ -29,8 +33,8 @@
   --brand-navy-line: #2c3446;
   --brand-navy-soft: #a7b0c2;
 
-  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", Ubuntu, sans-serif;
-  --font-head: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", Ubuntu, sans-serif;
+  --font-head: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
   --step--1: 0.875rem;
   --step-0: 1.0625rem;
@@ -2087,3 +2091,62 @@ kbd { font: 700 0.8125rem/1 var(--font-body); padding: 0.15rem 0.4rem; border: 1
 .audience-list h3 { margin: var(--space-3) 0 var(--space-1); font-size: var(--step-1); }
 .audience-list p { margin: 0; color: var(--ink-soft); }
 .audience-cta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+
+/* Course page: hero band, sticky join card (ADR 0025) */
+.course-hero { position: relative; overflow: hidden; margin: var(--space-2) 0 var(--space-6); padding: var(--space-6) var(--space-5); border-radius: var(--radius-l); background: var(--brand-navy); color: #dfe4ee; border: 1px solid var(--brand-navy-line); }
+.course-hero-art { position: absolute; inset: 0 0 0 auto; width: min(60%, 44rem); opacity: 0.9; -webkit-mask-image: linear-gradient(90deg, transparent, #000 45%); mask-image: linear-gradient(90deg, transparent, #000 45%); pointer-events: none; }
+.course-hero-art .cover-px { position: absolute; inset: 0; width: 100%; height: 100%; }
+.course-hero-text { position: relative; max-width: 46rem; }
+.course-kicker { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0 0 var(--space-2); font-size: var(--step--1); font-weight: 650; color: var(--brand-navy-soft); }
+.course-kicker a { color: #8fd0f2; }
+.course-hero h1 { color: #fff; margin: 0 0 var(--space-3); font-size: clamp(1.9rem, 4.5vw, 3rem); line-height: 1.08; letter-spacing: -0.02em; max-width: 22ch; }
+.course-hero-summary { color: #c3cad8; font-size: var(--step-0); max-width: 60ch; }
+.course-hero-summary p { margin: 0 0 var(--space-2); }
+.course-chips { list-style: none; margin: var(--space-4) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.course-chips li { display: inline-flex; align-items: center; gap: var(--space-1); padding: 0.3rem 0.75rem; border-radius: 999px; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.14); color: #e9edf4; font-size: var(--step--1); font-weight: 650; }
+.course-chips .icon { width: 1rem; height: 1rem; color: #8fd0f2; }
+.course-chips .chip-price { background: #fff; color: var(--brand-navy); border-color: #fff; font-weight: 800; }
+.course-chips .chip-free, .course-chips .chip-open { background: #1d5c3f; border-color: #2f9e62; color: #d7f5e5; }
+.course-chips .chip-apply { background: #5a1f22; border-color: #d52f2f; color: #ffd9da; }
+.course-hero-edit { margin: var(--space-4) 0 0; }
+.course-hero-edit a { display: inline-flex; align-items: center; gap: var(--space-1); color: #8fd0f2; font-weight: 650; }
+.course-hero-edit .icon { width: 1rem; height: 1rem; }
+.course-page { display: grid; gap: var(--space-6); align-items: start; }
+.course-main { min-width: 0; }
+.course-main > section:first-child h2 { margin-top: 0; }
+.course-aside .start-box { margin: 0; max-width: none; box-shadow: var(--shadow-2); border-left-width: 1px; border-top: 4px solid var(--primary); }
+.course-aside .start-box.is-paid { border-top-color: #d52f2f; }
+.course-aside .start-box.is-done { border-top-color: var(--lamp); }
+.course-aside .start-action .button, .course-aside .start-box form > .button, .course-aside #pay .button { width: 100%; justify-content: center; }
+@media (min-width: 60rem) {
+  .course-hero { padding: var(--space-7); }
+  .course-page { grid-template-columns: minmax(0, 1fr) 22rem; gap: var(--space-7); }
+  .course-aside { grid-column: 2; grid-row: 1; position: sticky; top: calc(var(--appbar-h) + var(--space-4)); }
+  .course-main { grid-column: 1; grid-row: 1; }
+}
+.apply .start-title { display: flex; align-items: center; gap: var(--space-2); }
+.apply .start-title .icon { width: 1.2rem; height: 1.2rem; color: var(--primary); }
+.apply-form { gap: var(--space-3); }
+.apply-form .button { width: 100%; justify-content: center; }
+.apply-status { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-3); align-items: center; margin: var(--space-2) 0; }
+.apply-status p { margin: 0; font-size: var(--step--1); }
+.apply-position { display: grid; place-items: center; min-width: 4.5rem; padding: var(--space-2); border-radius: var(--radius-m); background: var(--brand-navy); color: #fff; text-align: center; }
+.apply-position .small { color: var(--brand-navy-soft); font-size: 0.6875rem; line-height: 1.2; }
+.apply-position strong { font-size: var(--step-3); line-height: 1; font-variant-numeric: tabular-nums; }
+
+/* Teach → Applications */
+.app-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
+.app-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--space-4); align-items: start; padding: var(--space-4) var(--space-5); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); }
+.app-pos { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: 8px; background: var(--brand-navy); color: #fff; font-weight: 800; }
+.app-main p { margin: 0 0 var(--space-1); }
+.app-course a { font-weight: 700; color: var(--primary); }
+.app-who a { margin-left: var(--space-2); overflow-wrap: anywhere; }
+.app-message { color: var(--ink-soft); border-left: 2px solid var(--line); padding-left: var(--space-3); margin: var(--space-2) 0; }
+.app-message p { margin: 0 0 var(--space-1); }
+.app-actions { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2); }
+.app-actions form { margin: 0; }
+@media (max-width: 40rem) { .app-card { grid-template-columns: auto minmax(0, 1fr); } .app-actions { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: flex-start; } }
+.course-hero-art { width: min(42%, 30rem); opacity: 0.7; }
+.course-hero-summary { max-width: 52ch; }
+@media (max-width: 40rem) { .course-hero-art { width: 70%; opacity: 0.3; } }
+.button:disabled, .button[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; filter: none; }

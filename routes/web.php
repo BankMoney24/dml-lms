@@ -181,6 +181,13 @@ return static function (Router $r): void {
     $r->post('/courses/{slug}/answers/{answer:int}/delete', [DiscussionController::class, 'deleteAnswer'], $signedIn);
     $r->post('/courses/{slug}/questions/moderate', [DiscussionController::class, 'moderate'], ['tenant', 'auth', 'can:course.manage']);
     $r->get('/teach/questions', [DiscussionController::class, 'inbox'], ['tenant', 'auth', 'can:course.manage']);
+    // Applying for a place and waiting to be added (ADR 0025).
+    $r->post('/courses/{slug}/apply', [\App\Modules\Applications\Http\ApplyController::class, 'apply'], ['tenant']);
+    $r->post('/courses/{slug}/apply/withdraw', [\App\Modules\Applications\Http\ApplyController::class, 'withdraw'], ['tenant', 'auth']);
+    $r->get('/teach/applications', [\App\Modules\Applications\Http\ApplicationsAdminController::class, 'index'], ['tenant', 'auth', 'can:course.manage']);
+    $r->post('/teach/applications/{application:int}/offer', [\App\Modules\Applications\Http\ApplicationsAdminController::class, 'offer'], ['tenant', 'auth', 'can:course.manage']);
+    $r->post('/teach/applications/{application:int}/decline', [\App\Modules\Applications\Http\ApplicationsAdminController::class, 'decline'], ['tenant', 'auth', 'can:course.manage']);
+    $r->post('/teach/courses/{course:int}/enrolment', [TeachController::class, 'updateEnrolment'], ['tenant', 'auth', 'can:course.manage']);
     // Learning paths and achievements (ADR 0023).
     $r->get('/achievements', [AchievementsController::class, 'index'], ['tenant', 'auth', 'can:course.learn']);
     $r->get('/paths/{slug}', [PathController::class, 'show'], ['tenant']);

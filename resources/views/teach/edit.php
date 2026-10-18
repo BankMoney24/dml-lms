@@ -151,6 +151,30 @@ $n = 0;
       </form>
     </section>
 
+    <section class="panel" aria-labelledby="enrol-h">
+      <h2 id="enrol-h">How people join</h2>
+      <?php $enrolNow = $o('enrolment', $course->enrolment); ?>
+      <form method="post" action="<?= $base ?>/enrolment" class="form" novalidate>
+        <?= $v->csrfField() ?>
+        <fieldset class="field pick-list<?= isset($errors['enrolment']) ? ' has-error' : '' ?>">
+          <legend class="visually-hidden">How people join this course</legend>
+          <label class="choice pick">
+            <input type="radio" name="enrolment" value="open"<?= $enrolNow !== 'apply' ? ' checked' : '' ?>>
+            <span><strong>They join directly</strong><span class="pick-hint">Learners enrol themselves<?= $course->isPaid() ? ' after paying' : '' ?>.</span></span>
+          </label>
+          <label class="choice pick">
+            <input type="radio" name="enrolment" value="apply"<?= $enrolNow === 'apply' ? ' checked' : '' ?>>
+            <span><strong>They apply and wait</strong><span class="pick-hint">People fill a short form; you offer places under Applications, in the order they applied<?= $course->isPaid() ? ', and they pay once offered' : '' ?>.</span></span>
+          </label>
+        </fieldset>
+        <?= $v->field('capacity', 'Number of places', [
+            'value' => $o('capacity', $course->capacity === null ? '' : (string) $course->capacity), 'inputmode' => 'numeric', 'optional' => true,
+            'error' => $errors['capacity'] ?? null, 'hint' => 'When this many people have joined, new people go on the waiting list. Leave empty for no limit.',
+        ]) ?>
+        <button type="submit" class="button button-small">Save</button>
+      </form>
+    </section>
+
     <section class="panel" aria-labelledby="access-h">
       <h2 id="access-h">Who can read it</h2>
       <?php $accessNow = $o('access', $course->access); ?>

@@ -70,6 +70,7 @@ $shell = $tenant !== null && $user !== null;
 <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/assets/brand/favicon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png">
+<link rel="preload" href="/assets/fonts/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="<?= $v->asset('app.css') ?>">
 <script src="<?= $v->asset('app.js') ?>" defer></script>
 <?php if ($meta['jsonLd'] !== null): ?>
@@ -115,6 +116,7 @@ $shell = $tenant !== null && $user !== null;
           <?= $v->sideLink('/teach/paths', 'Learning paths', 'link') ?>
           <?= $v->sideLink('/teach/reviews', 'Reviews', 'review', [], (int) ($counts['reviews'] ?? 0)) ?>
           <?= $v->sideLink('/teach/questions', 'Questions', 'help', [], (int) ($counts['questions'] ?? 0)) ?>
+          <?= $v->sideLink('/teach/applications', 'Applications', 'inbox', [], (int) ($counts['applications'] ?? 0)) ?>
           <?php if ($v->can('reports.view')): ?><?= $v->sideLink('/school/reports', 'Reports', 'chart') ?><?php endif; ?>
           <?= $v->sideLink('/teach/labs', 'Lab catalogue', 'lab') ?>
         <?php endif; ?>

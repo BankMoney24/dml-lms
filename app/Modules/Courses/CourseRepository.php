@@ -182,6 +182,20 @@ final class CourseRepository
         );
     }
 
+    public function updateEnrolment(int $tenantId, int $courseId, string $mode, ?int $capacity): void
+    {
+        $this->db->execute(
+            'UPDATE courses SET enrolment = ?, capacity = ?, updated_at = ? WHERE tenant_id = ? AND id = ?',
+            [$mode === Course::ENROL_APPLY ? Course::ENROL_APPLY : Course::ENROL_OPEN, $capacity, $this->clock->sqlNow(), $tenantId, $courseId],
+        );
+    }
+
+    /** Learners holding a place now (not withdrawn), counted against the capacity. */
+    public function placesTaken(int $tenantId, int $courseId): int
+    {
+        return (int) $this->db->fetchValue("SELECT COUNT(*) FROM enrolments WHERE tenant_id = ? AND course_id = ? AND status <> 'withdrawn'", [$tenantId, $courseId]);
+    }
+
     /** SQL for "free" (no price), "paid" and "open" (free and open to everyone), matching Course::isPaid() / isOpen(). */
     private const PRICE_SQL = [
         'free' => '(c.price_minor IS NULL OR c.price_minor <= 0 OR c.currency IS NULL)',

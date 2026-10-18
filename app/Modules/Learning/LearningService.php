@@ -26,7 +26,31 @@ final class LearningService
         private readonly AuditLog $audit,
         private readonly CertificateService $certificates,
         private readonly PaymentRepository $payments,
+        private readonly ?\App\Modules\Applications\ApplicationRepository $applications = null,
     ) {
+    }
+
+    /**
+     * Whether this person has to apply and wait before joining (ADR 0025): the
+     * course takes applications, or it is full. Course builders, people already
+     * enrolled and people who were offered a place go straight in.
+     */
+    public function mustApply(Course $course, CurrentUser $learner): bool
+    {
+        if ($learner->can(Permission::CourseManage) || $this->enrolments->find($course->tenantId, $course->id, $learner->user->id) !== null) {
+            return false;
+        }
+        if (!$this->isGated($course)) {
+            return false;
+        }
+
+        return !($this->applications?->hasPlace($course->tenantId, $course->id, $learner->user->id) ?? false);
+    }
+
+    /** The course takes applications, or every place is taken. */
+    public function isGated(Course $course): bool
+    {
+        return $course->takesApplications() || ($course->capacity !== null && $this->enrolments->countForCourse($course->tenantId, $course->id) >= $course->capacity);
     }
 
     /** Paid courses need a confirmed payment first; people who build courses can always look inside. */
@@ -47,11 +71,15 @@ final class LearningService
         if ($existing !== null) {
             return $existing;
         }
+        if ($this->mustApply($course, $learner)) {
+            throw new HttpException(403, 'This course takes applications. Apply for a place on the course page.');
+        }
         if ($this->needsPayment($course, $learner)) {
             // Access to a paid course follows a payment confirmed on the server (PAY-003).
             throw new HttpException(403, 'This course is paid. Pay for it on the course page to start.');
         }
         $enrolment = $this->enrolments->enrol($course->tenantId, $course->id, $learner->user->id);
+        $this->applications?->markEnrolled($course->tenantId, $course->id, $learner->user->id);
         $this->audit->record($course->tenantId, $learner->user->id, 'learning.enrolled', 'course', $course->id);
 
         return $enrolment;
@@ -73,6 +101,7 @@ final class LearningService
             return false;
         }
         $this->enrolments->enrol($course->tenantId, $course->id, $learner->user->id);
+        $this->applications?->markEnrolled($course->tenantId, $course->id, $learner->user->id);
         $this->audit->record($course->tenantId, $assignedBy, 'learning.enrolled_by_group', 'course', $course->id, ['learner' => $learner->user->id, 'group' => $groupId]);
 
         return true;

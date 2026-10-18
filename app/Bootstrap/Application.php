@@ -259,7 +259,12 @@ final class Application
             $c->get(AuditLog::class),
             $c->get(CertificateService::class),
             $c->get(PaymentRepository::class),
+            $c->get(\App\Modules\Applications\ApplicationRepository::class),
         ));
+        $c->set(
+            \App\Modules\Applications\ApplicationRepository::class,
+            static fn (Container $c) => new \App\Modules\Applications\ApplicationRepository($c->get(Connection::class), $c->get(Clock::class)),
+        );
         $c->set(FileRepository::class, static fn (Container $c) => new FileRepository($c->get(Connection::class), $c->get(Clock::class)));
         $c->set(VirusScanner::class, static fn () => strtolower($config->get('UPLOAD_SCANNER', '') ?? '') === 'clamd'
             ? new ClamdScanner($config->get('CLAMD_HOST', '127.0.0.1') ?? '127.0.0.1', $config->int('CLAMD_PORT', 3310))
@@ -468,6 +473,8 @@ final class Application
             $c->get(LearningService::class),
             $c->get(PaymentService::class),
             $c->get(\App\Modules\Paths\PathRepository::class),
+            $c->get(Session::class),
+            $c->get(\App\Modules\Applications\ApplicationRepository::class),
         ));
         $c->set(LearnController::class, static fn (Container $c) => new LearnController(
             $c->get(View::class),
@@ -668,6 +675,31 @@ final class Application
             $c->get(\App\Modules\Payments\PaymentRepository::class),
             $c->get(CourseRepository::class),
             $c->get(UserRepository::class),
+        ));
+        $c->set(\App\Modules\Applications\Admissions::class, static fn (Container $c) => new \App\Modules\Applications\Admissions(
+            $c->get(Connection::class),
+            $c->get(\App\Modules\Applications\ApplicationRepository::class),
+            $c->get(CourseRepository::class),
+            $c->get(LearningService::class),
+            $c->get(UserRepository::class),
+            $c->get(MembershipRepository::class),
+            $c->get(MemberService::class),
+            $c->get(AccountLinkService::class),
+            $c->get(MailSettings::class),
+            $c->get(RateLimiter::class),
+            $c->get(AuditLog::class),
+            $c->get(\App\Modules\Notifications\Notifier::class),
+        ));
+        $c->set(\App\Modules\Applications\Http\ApplyController::class, static fn (Container $c) => new \App\Modules\Applications\Http\ApplyController(
+            $c->get(Session::class),
+            $c->get(CourseRepository::class),
+            $c->get(\App\Modules\Applications\Admissions::class),
+        ));
+        $c->set(\App\Modules\Applications\Http\ApplicationsAdminController::class, static fn (Container $c) => new \App\Modules\Applications\Http\ApplicationsAdminController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(\App\Modules\Applications\ApplicationRepository::class),
+            $c->get(\App\Modules\Applications\Admissions::class),
         ));
         $c->set(\App\Modules\Paths\PathRepository::class, static fn (Container $c) => new \App\Modules\Paths\PathRepository($c->get(Connection::class), $c->get(Clock::class)));
         $c->set(\App\Modules\Paths\PathService::class, static fn (Container $c) => new \App\Modules\Paths\PathService(

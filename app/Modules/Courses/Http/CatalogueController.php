@@ -34,6 +34,8 @@ final class CatalogueController
         private readonly LearningService $learning,
         private readonly PaymentService $payments,
         private readonly ?\App\Modules\Paths\PathRepository $paths = null,
+        private readonly ?\App\Core\Session\Session $session = null,
+        private readonly ?\App\Modules\Applications\ApplicationRepository $applications = null,
     ) {
     }
 
@@ -111,6 +113,32 @@ final class CatalogueController
         return $parts === [] ? (string) $last : implode(', ', $parts) . ' and ' . $last;
     }
 
+    /**
+     * Where this person stands with applying (ADR 0025).
+     *
+     * @return array{gated: bool, mustApply: bool, application: ?\App\Modules\Applications\Application, position: ?int, placesLeft: ?int,
+     *                form: array{errors: array<string, string>, old: array<string, string>}, received: ?string}
+     */
+    private function admission(\App\Modules\Courses\Course $course, ?\App\Modules\Identity\CurrentUser $user, bool $enrolled): array
+    {
+        $gated = $this->learning->isGated($course);
+        $application = $user === null || $enrolled ? null : $this->applications?->latestFor($course->tenantId, $course->id, $user->user->id, $user->user->email);
+
+        return [
+            'gated' => $gated,
+            'mustApply' => $user === null ? $gated : $this->learning->mustApply($course, $user),
+            'application' => $application,
+            'position' => $application !== null && $this->applications !== null && $application->status === \App\Modules\Applications\Application::WAITING
+                ? $this->applications->position($application)
+                : null,
+            'placesLeft' => $course->capacity === null ? null : max(0, $course->capacity - $this->courses->placesTaken($course->tenantId, $course->id)),
+            'form' => $this->session !== null ? \App\Modules\Applications\Http\ApplyController::formFrom($this->session) : ['errors' => [], 'old' => []],
+            'received' => $user === null && $this->session !== null
+                ? (is_string($sent = $this->session->get(\App\Modules\Applications\Http\ApplyController::RECEIVED_KEY . $course->id)) ? $sent : null)
+                : null,
+        ];
+    }
+
     /** Visitors may see a course when the school's list is public, or the course is open to everyone. */
     private static function visible(\App\Modules\Tenancy\Tenant $tenant, \App\Modules\Courses\Course $course, bool $signedIn): bool
     {
@@ -144,6 +172,7 @@ final class CatalogueController
             'completedIds' => $enrolment === null ? [] : $this->progress->completedLessonIds($tenant->id, $enrolment->id),
             'indexable' => $tenant->publicCatalogue || $course->isOpen(),
             'signUpOpen' => $tenant->signUpOpen(),
+            'admission' => $this->admission($course, $user, $enrolment !== null),
             'staffView' => $user !== null && $user->can(\App\Modules\Identity\Permission::CourseManage),
             'metaDescription' => $course->summary !== '' ? $course->summary : sprintf('%s, a course from %s.', $course->title, $tenant->name),
             'jsonLd' => CourseSchema::course($course, $tenant, RequestContext::baseUrl($request)),

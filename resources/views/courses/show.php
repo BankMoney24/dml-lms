@@ -57,87 +57,113 @@ $includedList = '<ul class="included">'
     . (($v->shared('tenant')?->certificatesEnabled ?? false) ? '<li>A certificate anyone can check online when you finish</li>' : '')
     . '<li>Ask questions under every lesson; teachers answer</li></ul>';
 $signInHref = '/login?next=' . $v->e(rawurlencode('/courses/' . $course->slug));
+/** @var array{gated: bool, mustApply: bool, application: ?\App\Modules\Applications\Application, position: ?int, placesLeft: ?int, form: array{errors: array<string, string>, old: array<string, string>}} $admission */
+$admission ??= ['gated' => false, 'mustApply' => false, 'application' => null, 'position' => null, 'placesLeft' => null, 'form' => ['errors' => [], 'old' => []]];
+// Apply-and-wait (ADR 0025): who sees the form, and who sees where they stand.
+$applyState = null;
+if ($enrolment === null && !($staffView && !$v->can('course.learn'))) {
+    $app = $admission['application'];
+    if (($admission['received'] ?? null) !== null) {
+        $applyState = 'received';
+    } elseif ($app !== null && $app->status === 'waiting') {
+        $applyState = 'waiting';
+    } elseif ($admission['mustApply']) {
+        $applyState = 'form';
+    }
+}
+$chips = [];
+if ($course->levelLabel() !== null) {
+    $chips[] = $course->levelLabel();
+}
+if ($course->durationHours !== null) {
+    $chips[] = 'About ' . $v->plural($course->durationHours, 'hour');
+}
+$chips[] = $v->plural(count($outline), 'module');
+$chips[] = $v->plural($lessonCount, 'lesson');
 ?>
-<div class="course-layout">
-  <section class="course-intro">
+<header class="course-hero">
+  <div class="course-hero-art" aria-hidden="true"><?php $c = $course; include __DIR__ . '/_cover.php'; ?></div>
+  <div class="course-hero-text">
+    <p class="course-kicker"><a href="/courses">Courses</a><?php if ($course->trackLabel() !== null): ?><span aria-hidden="true">/</span><span><?= $v->e($course->trackLabel()) ?></span><?php endif; ?></p>
     <h1><?= $v->e($course->title) ?></h1>
-    <p class="page-head-meta">
-      <?php if ($course->levelLabel() !== null): ?><?= $v->badge($course->levelLabel(), 'level') ?><?php endif; ?>
-      <?php if ($course->durationHours !== null): ?><?= $v->badge('About ' . $v->plural($course->durationHours, 'hour')) ?><?php endif; ?>
-      <?= $v->badge($v->plural(count($outline), 'module')) ?>
-      <?php if ($course->isOpen()): ?><?= $v->badge('Open to everyone', 'open') ?><?php elseif (!$course->isPaid()): ?><?= $v->badge('Free', 'free') ?><?php endif; ?>
-      <?php if ($v->can('course.manage')): ?><a href="/teach/courses/<?= $course->id ?>">Edit this course</a><?php endif; ?>
-    </p>
-    <?= $v->paragraphs($course->summary) ?>
-    <?php if ($counts !== []): ?>
-    <?php
-      $parts = array_map(static fn ($label, $n) => $n . ' ' . strtolower($label) . ($n === 1 ? '' : (str_ends_with(strtolower($label), 'z') ? 'zes' : 's')), array_keys($counts), $counts);
-      $last = array_pop($parts);
-    ?>
-    <p class="small muted course-counts"><?= $v->e($parts === [] ? (string) $last : implode(', ', $parts) . ' and ' . $last) ?></p>
-    <?php endif; ?>
+    <?php if ($course->summary !== ''): ?><div class="course-hero-summary"><?= $v->paragraphs($course->summary) ?></div><?php endif; ?>
+    <ul class="course-chips">
+      <?php foreach ($chips as $chip): ?><li><?= $v->e($chip) ?></li><?php endforeach; ?>
+      <?php if (($counts['Lab'] ?? 0) > 0): ?><li class="chip-lab"><?= $v->icon('lab') ?><?= $v->e($v->plural((int) $counts['Lab'], 'hands-on lab')) ?></li><?php endif; ?>
+      <?php if ($course->isOpen()): ?><li class="chip-open">Open to everyone</li><?php elseif ($course->isPaid()): ?><li class="chip-price"><?= $v->e((string) $course->priceLabel()) ?></li><?php else: ?><li class="chip-free">Free</li><?php endif; ?>
+      <?php if ($course->takesApplications()): ?><li class="chip-apply">Apply for a place</li><?php elseif ($admission['placesLeft'] !== null): ?><li class="chip-apply"><?= $admission['placesLeft'] === 0 ? 'Full: waiting list' : $v->e($v->plural($admission['placesLeft'], 'place') . ' left') ?></li><?php endif; ?>
+    </ul>
+    <?php if ($v->can('course.manage')): ?><p class="course-hero-edit"><a href="/teach/courses/<?= $course->id ?>"><?= $v->icon('teach') ?>Edit this course</a></p><?php endif; ?>
+  </div>
+</header>
 
+<div class="course-page">
+  <aside class="course-aside" aria-label="Join this course">
     <div class="start-box<?= $enrolment !== null && $enrolment->isCompleted() ? ' is-done' : '' ?><?= $mustPay ? ' is-paid' : '' ?>" id="start">
-    <?php if ($certificate !== null): ?>
-      <p class="start-title">You completed this course</p>
-      <p>Your certificate is ready. Anyone can check it online with its number.</p>
-      <p><a class="button" href="/certificates/<?= $v->e($certificate->displayCode()) ?>">View and print your certificate</a></p>
-    <?php elseif ($enrolment !== null && $enrolment->isCompleted()): ?>
-      <p class="start-title">You completed this course</p>
-      <p class="muted">Open any lesson below to go over it again.</p>
-    <?php elseif ($enrolment !== null && $firstOpen !== null): ?>
-      <p class="start-progress"><strong><?= $done ?> of <?= $lessonCount ?></strong> lessons done</p>
-      <progress class="meter" max="<?= max(1, $lessonCount) ?>" value="<?= $done ?>" aria-label="Your progress"></progress>
-      <p class="start-action"><a class="button" href="/courses/<?= $v->e($course->slug) ?>/lessons/<?= $firstOpen->id ?>"><?= $done === 0 ? 'Start' : 'Continue' ?>: <?= $v->e($firstOpen->title) ?></a></p>
-    <?php elseif ($user === null && $course->isOpen() && $firstReadable !== null): ?>
-      <p class="start-title">Free and open to everyone</p>
-      <p>Read the lessons and watch the videos without an account. <?= $signUpOpen ? 'Create a free account' : 'Sign in' ?> when you want to save your progress<?= $lessonCount > $readableCount ? ', take the quizzes and labs' : '' ?><?= $v->shared('tenant')?->certificatesEnabled ? ' and earn the certificate' : '' ?>.</p>
-      <p class="start-action"><a class="button" href="/courses/<?= $slug ?>/preview/<?= $firstReadable->id ?>"><?= $v->icon('lesson') ?>Start reading: <?= $v->e($firstReadable->title) ?></a></p>
-      <p class="start-alt"><a href="<?= $signUpOpen ? $joinHref : $signInHref ?>"><?= $signUpOpen ? 'Create a free account' : 'Sign in' ?></a><?= $signUpOpen ? ' or <a href="' . $signInHref . '">sign in</a>' : '' ?> to keep your progress.</p>
-    <?php elseif ($user === null): ?>
-      <?php if ($course->isPaid()): ?><p class="course-price"><strong><?= $v->e((string) $course->priceLabel()) ?></strong> for the whole course</p><?= $includedList ?><?php endif; ?>
-      <p class="start-action"><a class="button" href="<?= $signUpOpen ? $joinHref : $signInHref ?>"><?= $signUpOpen
-          ? ($course->isPaid() ? 'Create an account and pay' : 'Create an account to enrol')
-          : ($course->isPaid() ? 'Sign in to pay' : 'Sign in to enrol') ?></a></p>
-      <?php if ($signUpOpen): ?><p class="start-alt">Already have an account? <a href="<?= $signInHref ?>">Sign in</a></p><?php endif; ?>
-    <?php elseif ($v->can('course.learn') && $mustPay): ?>
-      <div id="pay">
-        <p class="course-price"><strong><?= $v->e((string) $course->priceLabel()) ?></strong> for the whole course</p>
-        <?= $includedList ?>
-        <?php if ($waiting !== null): ?>
-          <p class="notice">You started a payment of <?= $v->e($waiting->amount()) ?> on <?= $v->e($v->datetime($waiting->createdAt)) ?>.
-            If money left your account, the course opens as soon as Paystack confirms it.
-            <a href="/payments/paystack/callback?reference=<?= $v->e(rawurlencode($waiting->reference)) ?>">Check now</a></p>
-        <?php endif; ?>
-        <?php if ($payOnline): ?>
-          <form method="post" action="/courses/<?= $v->e($course->slug) ?>/pay">
-            <?= $v->csrfField() ?>
-            <button type="submit" class="button">Pay <?= $v->e((string) $course->priceLabel()) ?> and start</button>
-          </form>
-          <p class="small muted">You pay on Paystack's secure page by card, bank transfer or USSD, then come straight back here.</p>
-        <?php else: ?>
-          <p>This school does not take payments online yet. Ask the school how to pay. Once they record your payment, the course opens for you here.</p>
-        <?php endif; ?>
-      </div>
-    <?php elseif ($v->can('course.learn')): ?>
-      <form method="post" action="/courses/<?= $v->e($course->slug) ?>/enrol" class="start-action">
-        <?= $v->csrfField() ?>
-        <button type="submit" class="button">Enrol and start</button>
-      </form>
-      <p class="small muted"><?= $course->isPaid() ? 'You can open it without paying because you build courses here.' : 'Free. Your progress is saved as you go.' ?></p>
-      <?php if ($course->isOpen() && $firstReadable !== null): ?><p class="start-alt">Or just <a href="/courses/<?= $slug ?>/preview/<?= $firstReadable->id ?>">start reading</a> without enrolling.</p><?php endif; ?>
-    <?php elseif ($staffView && $firstLesson !== null): ?>
-      <p class="start-title">You teach here</p>
-      <p>Open any lesson in the outline to see it as learners do, quizzes and labs included. Nothing you do is recorded as progress.</p>
-      <p class="start-action"><a class="button" href="/teach/courses/<?= $course->id ?>/lessons/<?= $firstLesson->id ?>/preview">Preview the first lesson</a></p>
-    <?php else: ?>
-      <p class="muted">You can look through the outline. Learners enrol from this page.</p>
-    <?php endif; ?>
-    <?php if ($enrolment === null && $firstPreview !== null && !$course->isOpen()): ?>
-      <p class="start-preview"><?= $v->icon('lesson') ?><span>Not sure yet? <a href="/courses/<?= $v->e($course->slug) ?>/preview/<?= $firstPreview->id ?>">Read “<?= $v->e($firstPreview->title) ?>” free</a>, no sign-up needed.</span></p>
-    <?php endif; ?>
+  <?php if ($certificate !== null): ?>
+    <p class="start-title">You completed this course</p>
+    <p>Your certificate is ready. Anyone can check it online with its number.</p>
+    <p><a class="button" href="/certificates/<?= $v->e($certificate->displayCode()) ?>">View and print your certificate</a></p>
+  <?php elseif ($enrolment !== null && $enrolment->isCompleted()): ?>
+    <p class="start-title">You completed this course</p>
+    <p class="muted">Open any lesson below to go over it again.</p>
+  <?php elseif ($enrolment !== null && $firstOpen !== null): ?>
+    <p class="start-progress"><strong><?= $done ?> of <?= $lessonCount ?></strong> lessons done</p>
+    <progress class="meter" max="<?= max(1, $lessonCount) ?>" value="<?= $done ?>" aria-label="Your progress"></progress>
+    <p class="start-action"><a class="button" href="/courses/<?= $v->e($course->slug) ?>/lessons/<?= $firstOpen->id ?>"><?= $done === 0 ? 'Start' : 'Continue' ?>: <?= $v->e($firstOpen->title) ?></a></p>
+  <?php elseif ($applyState !== null): ?>
+    <?php include __DIR__ . '/_apply.php'; ?>
+  <?php elseif ($user === null && $course->isOpen() && $firstReadable !== null): ?>
+    <p class="start-title">Free and open to everyone</p>
+    <p>Read the lessons and watch the videos without an account. <?= $signUpOpen ? 'Create a free account' : 'Sign in' ?> when you want to save your progress<?= $lessonCount > $readableCount ? ', take the quizzes and labs' : '' ?><?= $v->shared('tenant')?->certificatesEnabled ? ' and earn the certificate' : '' ?>.</p>
+    <p class="start-action"><a class="button" href="/courses/<?= $slug ?>/preview/<?= $firstReadable->id ?>"><?= $v->icon('lesson') ?>Start reading: <?= $v->e($firstReadable->title) ?></a></p>
+    <p class="start-alt"><a href="<?= $signUpOpen ? $joinHref : $signInHref ?>"><?= $signUpOpen ? 'Create a free account' : 'Sign in' ?></a><?= $signUpOpen ? ' or <a href="' . $signInHref . '">sign in</a>' : '' ?> to keep your progress.</p>
+  <?php elseif ($user === null): ?>
+    <?php if ($course->isPaid()): ?><p class="course-price"><strong><?= $v->e((string) $course->priceLabel()) ?></strong> for the whole course</p><?= $includedList ?><?php endif; ?>
+    <p class="start-action"><a class="button" href="<?= $signUpOpen ? $joinHref : $signInHref ?>"><?= $signUpOpen
+        ? ($course->isPaid() ? 'Create an account and pay' : 'Create an account to enrol')
+        : ($course->isPaid() ? 'Sign in to pay' : 'Sign in to enrol') ?></a></p>
+    <?php if ($signUpOpen): ?><p class="start-alt">Already have an account? <a href="<?= $signInHref ?>">Sign in</a></p><?php endif; ?>
+  <?php elseif ($v->can('course.learn') && $mustPay): ?>
+    <div id="pay">
+      <p class="course-price"><strong><?= $v->e((string) $course->priceLabel()) ?></strong> for the whole course</p>
+      <?= $includedList ?>
+      <?php if ($waiting !== null): ?>
+        <p class="notice">You started a payment of <?= $v->e($waiting->amount()) ?> on <?= $v->e($v->datetime($waiting->createdAt)) ?>.
+          If money left your account, the course opens as soon as Paystack confirms it.
+          <a href="/payments/paystack/callback?reference=<?= $v->e(rawurlencode($waiting->reference)) ?>">Check now</a></p>
+      <?php endif; ?>
+      <?php if ($payOnline): ?>
+        <form method="post" action="/courses/<?= $v->e($course->slug) ?>/pay">
+          <?= $v->csrfField() ?>
+          <button type="submit" class="button">Pay <?= $v->e((string) $course->priceLabel()) ?> and start</button>
+        </form>
+        <p class="small muted">You pay on Paystack's secure page by card, bank transfer or USSD, then come straight back here.</p>
+      <?php else: ?>
+        <p>This school does not take payments online yet. Ask the school how to pay. Once they record your payment, the course opens for you here.</p>
+      <?php endif; ?>
     </div>
+  <?php elseif ($v->can('course.learn')): ?>
+    <form method="post" action="/courses/<?= $v->e($course->slug) ?>/enrol" class="start-action">
+      <?= $v->csrfField() ?>
+      <button type="submit" class="button">Enrol and start</button>
+    </form>
+    <p class="small muted"><?= $course->isPaid() ? 'You can open it without paying because you build courses here.' : 'Free. Your progress is saved as you go.' ?></p>
+    <?php if ($course->isOpen() && $firstReadable !== null): ?><p class="start-alt">Or just <a href="/courses/<?= $slug ?>/preview/<?= $firstReadable->id ?>">start reading</a> without enrolling.</p><?php endif; ?>
+  <?php elseif ($staffView && $firstLesson !== null): ?>
+    <p class="start-title">You teach here</p>
+    <p>Open any lesson in the outline to see it as learners do, quizzes and labs included. Nothing you do is recorded as progress.</p>
+    <p class="start-action"><a class="button" href="/teach/courses/<?= $course->id ?>/lessons/<?= $firstLesson->id ?>/preview">Preview the first lesson</a></p>
+  <?php else: ?>
+    <p class="muted">You can look through the outline. Learners enrol from this page.</p>
+  <?php endif; ?>
+  <?php if ($enrolment === null && $firstPreview !== null && !$course->isOpen()): ?>
+    <p class="start-preview"><?= $v->icon('lesson') ?><span>Not sure yet? <a href="/courses/<?= $v->e($course->slug) ?>/preview/<?= $firstPreview->id ?>">Read “<?= $v->e($firstPreview->title) ?>” free</a>, no sign-up needed.</span></p>
+  <?php endif; ?>
+  </div>
+  </aside>
 
+  <div class="course-main">
     <?php if ($course->outcomes !== []): ?>
     <section class="outcomes" aria-labelledby="outcomes-h">
       <h2 id="outcomes-h">What you will be able to do</h2>
@@ -153,11 +179,11 @@ $signInHref = '/login?next=' . $v->e(rawurlencode('/courses/' . $course->slug));
       <div class="prose"><?= $v->markdown($course->prerequisites) ?></div>
     </section>
     <?php endif; ?>
-  </section>
 
-  <section class="course-outline" aria-labelledby="outline-title">
+    <section class="course-outline" aria-labelledby="outline-title">
     <h2 id="outline-title">Course outline</h2>
     <?php $linkLessons = $enrolment !== null; include __DIR__ . '/_trace.php'; ?>
     <?php if ($enrolment === null && $course->isOpen()): ?><p class="small muted trace-note">Readings and videos open for everyone. Join to do the quizzes, labs and assignments and keep your progress.</p><?php endif; ?>
   </section>
+  </div>
 </div>
