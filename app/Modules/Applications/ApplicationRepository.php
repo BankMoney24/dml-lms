@@ -48,6 +48,12 @@ final class ApplicationRepository
         return $row === null ? null : Application::fromRow($row);
     }
 
+    /** @return list<Application> this person's applications, newest first */
+    public function forUser(int $tenantId, int $userId): array
+    {
+        return array_map(Application::fromRow(...), $this->db->fetchAll(self::SELECT . ' WHERE a.tenant_id = ? AND a.user_id = ? ORDER BY a.id DESC LIMIT 50', [$tenantId, $userId]));
+    }
+
     /** Whether this person was given a place (offered or already enrolled through an application). */
     public function hasPlace(int $tenantId, int $courseId, int $userId): bool
     {

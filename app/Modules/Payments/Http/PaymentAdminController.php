@@ -17,6 +17,7 @@ use App\Modules\Payments\Payment;
 use App\Modules\Payments\PaymentAccountRepository;
 use App\Modules\Payments\PaymentRepository;
 use App\Modules\Payments\PaymentService;
+use App\Modules\Payments\TransferPayments;
 
 /**
  * The school's Payments page: connect Paystack, see who paid, record a
@@ -34,6 +35,7 @@ final class PaymentAdminController
         private readonly PaymentAccountRepository $accounts,
         private readonly CourseRepository $courses,
         private readonly Clock $clock,
+        private readonly ?TransferPayments $transfers = null,
     ) {
     }
 
@@ -89,6 +91,54 @@ final class PaymentAdminController
         $this->session->flash('success', sprintf('Payment of %s recorded and the learner is enrolled.', $payment->amount()));
 
         return Response::redirect('/school/payments');
+    }
+
+    /** How learners pay the school directly: shown on every paid course's subscribe page (ADR 0026). */
+    public function instructions(Request $request): Response
+    {
+        $text = $request->input('instructions', '') ?? '';
+        try {
+            $this->transfers()->saveInstructions(RequestContext::tenant($request), RequestContext::user($request), $text, $request->clientIp);
+        } catch (ValidationException $e) {
+            return $this->render($request, $e->errors, ['instructions' => $text], 422);
+        }
+        $this->session->flash('success', trim($text) === '' ? 'Payment details removed.' : 'Payment details saved. Learners see them when they subscribe to a paid course.');
+
+        return Response::redirect('/school/payments#claims');
+    }
+
+    /** The money arrived: record it and enrol the learner. */
+    public function confirmClaim(Request $request): Response
+    {
+        try {
+            $claim = $this->transfers()->confirm(RequestContext::tenant($request), RequestContext::user($request), (int) $request->routeParam('claim'), $request->clientIp);
+        } catch (ValidationException $e) {
+            $this->session->flash('error', implode(' ', $e->errors));
+
+            return Response::redirect('/school/payments#claims');
+        }
+        $this->session->flash('success', sprintf('%s from %s confirmed. They are enrolled in %s.', $claim->amount(), $claim->learnerName, $claim->courseTitle));
+
+        return Response::redirect('/school/payments#claims');
+    }
+
+    public function rejectClaim(Request $request): Response
+    {
+        try {
+            $this->transfers()->reject(RequestContext::tenant($request), RequestContext::user($request), (int) $request->routeParam('claim'), $request->input('reason', '') ?? '', $request->clientIp);
+        } catch (ValidationException $e) {
+            $this->session->flash('error', implode(' ', $e->errors));
+
+            return Response::redirect('/school/payments#claims');
+        }
+        $this->session->flash('success', 'The learner has been told the payment was not found, with your reason.');
+
+        return Response::redirect('/school/payments#claims');
+    }
+
+    private function transfers(): TransferPayments
+    {
+        return $this->transfers ?? throw new \LogicException('Transfer payments are not wired.');
     }
 
     /** All payments as a spreadsheet; cells that a spreadsheet would run as a formula are neutralised. */
@@ -157,6 +207,8 @@ final class PaymentAdminController
             'paidCourses' => $paidCourses,
             'currencies' => array_map(static fn (array $c): string => $c[1] . ' (' . $c[0] . ')', Money::CURRENCIES),
             'now' => $this->clock->now()->getTimestamp(),
+            'claims' => $this->transfers?->pending($tenant) ?? [],
+            'instructions' => $old['instructions'] ?? ($this->transfers?->instructions($tenant) ?? ''),
             'errors' => $errors,
             'old' => $old,
         ]), $status);

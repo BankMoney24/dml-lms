@@ -271,6 +271,17 @@ final class PaymentService
             throw ValidationException::single('email', 'That learner has already paid for this course.');
         }
 
+        return $this->storeManual($tenant, $admin, $user, $course, (int) $amount, $note, $clientIp);
+    }
+
+    /**
+     * Stores a payment the school received directly and enrols the learner.
+     * Callers have checked the person, the course and the amount. Runs inside
+     * the caller's transaction when there is one.
+     */
+    public function storeManual(Tenant $tenant, CurrentUser $admin, \App\Modules\Identity\User $user, Course $course, int $amount, string $note, string $clientIp): Payment
+    {
+        $admin->authorise(Permission::SchoolManage);
         $payment = $this->db->transaction(function () use ($tenant, $admin, $user, $course, $amount, $note): Payment {
             $reference = sprintf('MAN-%d-%s', $tenant->id, strtoupper(bin2hex(random_bytes(6))));
             $id = $this->payments->create([
@@ -280,7 +291,7 @@ final class PaymentService
                 'reference' => $reference,
                 'provider' => 'manual',
                 'mode' => 'live',
-                'amount_minor' => (int) $amount,
+                'amount_minor' => $amount,
                 'currency' => (string) $course->currency,
                 'status' => Payment::PAID,
                 'note' => $note,

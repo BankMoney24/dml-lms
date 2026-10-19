@@ -2150,3 +2150,85 @@ kbd { font: 700 0.8125rem/1 var(--font-body); padding: 0.15rem 0.4rem; border: 1
 .course-hero-summary { max-width: 52ch; }
 @media (max-width: 40rem) { .course-hero-art { width: 70%; opacity: 0.3; } }
 .button:disabled, .button[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; filter: none; }
+
+/* ---------- Subscribing to a course (ADR 0026) ---------- */
+.sub-head h1 { max-width: 30ch; }
+/* The three steps. Square marks echo the logo's pixels; the line between them fills as you go. */
+.sub-steps { list-style: none; margin: 0 0 var(--space-6); padding: 0; display: flex; gap: 0; max-width: 46rem; counter-reset: none; }
+.sub-step { flex: 1 1 0; position: relative; display: flex; flex-direction: column; gap: var(--space-2); padding-right: var(--space-3); color: var(--ink-soft); font-size: var(--step--1); font-weight: 600; }
+.sub-step::before { content: ""; position: absolute; top: 0.9rem; left: 2.25rem; right: 0.25rem; height: 2px; background: var(--line); }
+.sub-step:last-child::before { display: none; }
+.sub-step.is-done::before { background: var(--lamp); }
+.sub-step-mark { position: relative; z-index: 1; display: inline-grid; place-items: center; width: 1.875rem; height: 1.875rem; border-radius: 4px; border: 2px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); font-variant-numeric: tabular-nums; font-weight: 700; }
+.sub-step-mark .icon { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 3; }
+.sub-step.is-current { color: var(--ink); }
+.sub-step.is-current .sub-step-mark { border-color: var(--primary); background: var(--primary); color: var(--primary-ink); box-shadow: 0 0 0 4px var(--primary-soft); }
+.sub-step.is-done .sub-step-mark { border-color: var(--lamp); background: var(--lamp); color: var(--lamp-ink); }
+
+.sub-layout { display: grid; gap: var(--space-6); align-items: start; }
+@media (min-width: 60rem) { .sub-layout { grid-template-columns: minmax(0, 1fr) 21rem; } .sub-ticket { position: sticky; top: var(--space-5); order: 2; } }
+.sub-main { display: grid; gap: var(--space-5); min-width: 0; }
+.sub-main > .notice { margin: 0; }
+.sub-panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-l); padding: var(--space-5); max-width: 44rem; }
+.sub-panel h2 { margin: 0 0 var(--space-2); font-size: var(--step-1); }
+.sub-panel > p { max-width: 60ch; }
+.sub-panel-done { border-left: 5px solid var(--lamp); }
+.sub-panel-wait { border-left: 5px solid var(--warn); }
+.sub-option + .sub-option { border-style: dashed; }
+.sub-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; margin: var(--space-4) 0 0; }
+.sub-bank { margin: var(--space-3) 0; padding: var(--space-4); border-radius: var(--radius-m); background: var(--paper); border: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.sub-bank p { margin: 0 0 var(--space-2); }
+.sub-bank p:last-child { margin-bottom: 0; }
+.sub-claim { margin-top: var(--space-5); padding-top: var(--space-5); border-top: 1px solid var(--line); }
+.sub-claim-title { margin: 0 0 var(--space-3); font-size: var(--step-0); }
+.field-row { display: grid; gap: 0 var(--space-4); }
+@media (min-width: 36rem) { .field-row { grid-template-columns: 1fr 1fr; } }
+
+/* The ticket: what you are subscribing to, with a torn edge between the art and the details. */
+.sub-ticket { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-l); overflow: hidden; box-shadow: var(--shadow-1); }
+.sub-ticket-art { position: relative; height: 6.5rem; background: var(--brand-navy); }
+.sub-ticket-art .cover-px { position: absolute; inset: 0; width: 100%; height: 100%; }
+.sub-ticket-body { position: relative; padding: var(--space-4) var(--space-5) var(--space-3); border-bottom: 2px dashed var(--line); }
+.sub-ticket-body::before, .sub-ticket-body::after { content: ""; position: absolute; bottom: -0.7rem; width: 1.25rem; height: 1.25rem; border-radius: 50%; background: var(--paper); border: 1px solid var(--line); }
+.sub-ticket-body::before { left: -0.7rem; }
+.sub-ticket-body::after { right: -0.7rem; }
+.sub-ticket-title { margin: 0 0 var(--space-2); font-family: var(--font-head); font-weight: 700; font-size: var(--step-1); line-height: 1.25; }
+.sub-ticket-price { margin: 0; color: var(--ink-soft); }
+.sub-ticket-price strong { font-family: var(--font-head); font-size: var(--step-2); color: var(--ink); font-variant-numeric: tabular-nums; margin-right: var(--space-1); }
+.sub-ticket-list { margin: 0; padding: var(--space-4) var(--space-5) 0 calc(var(--space-5) + 1.1rem); font-size: var(--step--1); color: var(--ink-soft); }
+.sub-ticket-list li { margin-bottom: var(--space-2); }
+.sub-ticket-list li::marker { content: "■  "; color: var(--lamp); font-size: 0.7em; }
+.sub-ticket-foot { margin: 0; padding: var(--space-2) var(--space-5) var(--space-4); font-size: var(--step--1); }
+
+/* My subscriptions */
+.subs-section { margin-bottom: var(--space-6); max-width: 52rem; }
+.subs-section h2 { font-size: var(--step-1); margin-bottom: var(--space-3); }
+.subs-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: var(--radius-m); background: var(--surface); }
+.subs-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-4); padding: var(--space-3) var(--space-4); }
+.subs-row + .subs-row { border-top: 1px solid var(--line); }
+.subs-row > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.subs-row > div > a { font-weight: 600; }
+.subs-meter { width: 8rem; }
+
+/* School: payments to confirm */
+.pay-claims { margin: var(--space-6) 0; }
+.count-pill { display: inline-block; min-width: 1.6em; padding: 0 0.45em; border-radius: 999px; background: var(--warn); color: #1e1700; font-size: 0.7em; text-align: center; vertical-align: middle; }
+.claim-list { list-style: none; margin: 0 0 var(--space-5); padding: 0; display: grid; gap: var(--space-3); }
+.claim { display: grid; gap: var(--space-3) var(--space-5); padding: var(--space-4) var(--space-5); background: var(--surface); border: 1px solid var(--line); border-left: 5px solid var(--warn); border-radius: var(--radius-m); }
+@media (min-width: 60rem) { .claim { grid-template-columns: 14rem minmax(0, 1fr) auto; align-items: start; } }
+.claim-name { margin: 0; font-weight: 700; display: flex; flex-direction: column; }
+.claim-course { margin: var(--space-1) 0 0; color: var(--ink-soft); font-size: var(--step--1); }
+.claim-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-1) var(--space-3); margin: 0; font-size: var(--step--1); }
+.claim-facts dt { color: var(--ink-soft); }
+.claim-facts dd { margin: 0; overflow-wrap: anywhere; }
+.claim-actions { display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; }
+.claim-reject summary { cursor: pointer; font-size: var(--step--1); color: var(--danger); }
+.claim-reject[open] { width: min(100%, 22rem); }
+
+/* Course cards: a way to subscribe without opening the course first */
+.course-card-sub { position: relative; z-index: 1; display: inline-block; margin-left: var(--space-3); padding: 0.15rem 0.6rem; border-radius: 999px; border: 1px solid var(--primary); color: var(--primary); font-size: var(--step--1); font-weight: 700; text-decoration: none; }
+.course-card-sub:hover { background: var(--primary); color: var(--primary-ink); }
+.course-card-sub:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+@media (max-width: 30rem) { .sub-step-name { font-size: 0.75rem; } .sub-step::before { left: 2.1rem; } }
+.sub-layout > * { min-width: 0; }
+.sub-panel .facts dd { overflow-wrap: anywhere; }

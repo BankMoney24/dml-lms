@@ -164,7 +164,8 @@ final class JoinController
 
     /**
      * Just joined from a course page: free courses start straight away; paid
-     * ones go back to the course to pay (the welcome questions wait on the home page).
+     * ones go on to the payment step of subscribing (ADR 0026; the welcome
+     * questions wait on the home page).
      */
     private function continueToCourse(\App\Modules\Courses\Course $course, \App\Modules\Identity\User $user, string $welcome): Response
     {
@@ -176,13 +177,13 @@ final class JoinController
         }
         if ($this->learning !== null && $me->can(\App\Modules\Identity\Permission::CourseLearn) && !$this->learning->needsPayment($course, $me)) {
             $this->learning->enrol($course, $me);
-            $this->session->flash('success', $welcome . ' You are enrolled in ' . $course->title . '. Start with the first lesson below.');
+            $this->session->flash('success', $welcome . ' You are subscribed to ' . $course->title . '. Start with the first lesson below.');
 
             return Response::redirect('/courses/' . $course->slug . '#start');
         }
-        $this->session->flash('success', $welcome . ' Your account is ready: pay below to start ' . $course->title . '.');
+        $this->session->flash('success', $welcome . ' Your account is ready. Next, pay for ' . $course->title . ' and it opens for you.');
 
-        return Response::redirect('/courses/' . $course->slug . '#pay');
+        return Response::redirect('/courses/' . $course->slug . '/subscribe');
     }
 
     /** The link in the confirmation email. Works signed in or not. */

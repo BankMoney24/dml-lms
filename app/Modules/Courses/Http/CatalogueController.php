@@ -36,6 +36,7 @@ final class CatalogueController
         private readonly ?\App\Modules\Paths\PathRepository $paths = null,
         private readonly ?\App\Core\Session\Session $session = null,
         private readonly ?\App\Modules\Applications\ApplicationRepository $applications = null,
+        private readonly ?\App\Modules\Payments\TransferPayments $transfers = null,
     ) {
     }
 
@@ -183,6 +184,7 @@ final class CatalogueController
             'mustPay' => $mustPay,
             'payOnline' => $mustPay && $this->payments->isConnected($tenant),
             'waiting' => $mustPay && $user !== null ? $this->payments->waiting($tenant, $user->user->id, $course) : null,
+            'claim' => $mustPay && $user !== null ? $this->transfers?->latestFor($tenant, $user, $course) : null,
         ]));
     }
 

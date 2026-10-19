@@ -78,11 +78,12 @@ $certificates = (bool) ($v->shared('tenant')?->certificatesEnabled ?? false);
       <?php endif; ?>
     <?php elseif ($canLearn && $mustPay): ?>
       <p class="course-price"><strong><?= $v->e((string) $course->priceLabel()) ?></strong> for the whole course</p>
-      <p><a class="button" href="<?= $base ?>#pay"><?= $payOnline ? 'Pay and start' : 'How to pay' ?></a></p>
+      <p><a class="button" href="<?= $base ?>/subscribe">Subscribe for <?= $v->e((string) $course->priceLabel()) ?></a></p>
+      <p class="small muted"><?= $payOnline ? 'Pay online or pay the school directly.' : 'Pay the school directly, then tell them.' ?></p>
     <?php elseif ($canLearn): ?>
-      <form method="post" action="<?= $base ?>/enrol">
+      <form method="post" action="<?= $base ?>/subscribe">
         <?= $v->csrfField() ?>
-        <button type="submit" class="button">Enrol and continue</button>
+        <button type="submit" class="button">Subscribe and continue</button>
       </form>
     <?php endif; ?>
     <p class="small"><a href="<?= $base ?>">See the whole outline</a></p>

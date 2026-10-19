@@ -77,7 +77,7 @@ final class OpenCoursesTest extends AppTestCase
 
         // A members course in the same school stays closed.
         $this->assertSame(404, $this->get(self::HOST, '/courses/school-maths/preview/' . $this->members['reading']->id)->status);
-        $this->assertStringContainsString('Sign in to enrol', $this->get(self::HOST, '/courses/school-maths')->body);
+        $this->assertStringContainsString('Sign in to subscribe', $this->get(self::HOST, '/courses/school-maths')->body);
         $this->assertStringNotContainsString('Join to do this', $this->get(self::HOST, '/courses/school-maths')->body);
     }
 
@@ -189,7 +189,7 @@ final class OpenCoursesTest extends AppTestCase
         $reading = $this->open['reading']->id;
         $this->assertRedirectTo('/courses/python-basics/preview/' . $reading, $this->get(self::HOST, '/courses/python-basics/lessons/' . $reading));
         $preview = $this->get(self::HOST, '/courses/python-basics/preview/' . $reading)->body;
-        $this->assertStringContainsString('Enrol and continue', $preview);
+        $this->assertStringContainsString('Subscribe and continue', $preview);
         $this->assertStringContainsString('start reading</a> without enrolling', $this->get(self::HOST, '/courses/python-basics')->body);
         $this->assertSame(0, (int) $this->db()->fetchValue('SELECT COUNT(*) FROM enrolments'), 'reading does not enrol anyone');
 
@@ -207,7 +207,7 @@ final class OpenCoursesTest extends AppTestCase
         $lesson = $this->get(self::HOST, '/courses/python-basics/preview/' . $this->open['reading']->id)->body;
         $this->assertStringContainsString('Create a free account', $lesson);
         $this->assertStringContainsString('href="/join"', $lesson);
-        $this->assertStringContainsString('Create an account to enrol', $this->get(self::HOST, '/courses/school-maths')->body);
+        $this->assertStringContainsString('Subscribe for free', $this->get(self::HOST, '/courses/school-maths')->body);
     }
 
     public function testTeachersPreviewAnyLessonFromTheCoursePage(): void

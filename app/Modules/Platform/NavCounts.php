@@ -18,7 +18,7 @@ final class NavCounts
     {
     }
 
-    /** @return array{reviews: int, support: int, children: int, requests: int, questions: int, applications: int} */
+    /** @return array{reviews: int, support: int, children: int, requests: int, questions: int, applications: int, claims: int} */
     public function for(CurrentUser $current, int $tenantId): array
     {
         $userId = $current->user->id;
@@ -32,6 +32,9 @@ final class NavCounts
                 : 0,
             'applications' => $current->can(Permission::CourseManage)
                 ? (int) $this->db->fetchValue("SELECT COUNT(*) FROM course_applications WHERE tenant_id = ? AND status = 'waiting'", [$tenantId])
+                : 0,
+            'claims' => $current->can(Permission::SchoolManage)
+                ? (int) $this->db->fetchValue("SELECT COUNT(*) FROM payment_claims WHERE tenant_id = ? AND status = 'pending'", [$tenantId])
                 : 0,
             'questions' => $current->can(Permission::CourseManage)
                 ? (int) $this->db->fetchValue("SELECT COUNT(*) FROM lesson_questions WHERE tenant_id = ? AND status = 'open' AND staff_answered = 0 AND accepted_answer_id IS NULL", [$tenantId])

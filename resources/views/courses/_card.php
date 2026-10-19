@@ -36,9 +36,9 @@ $pct = $card['lessons'] === 0 ? 0 : (int) round($card['done'] * 100 / $card['les
         <progress class="meter meter-thin" max="100" value="<?= $pct ?>" aria-label="<?= $v->e($c->title) ?>: <?= $pct ?>% done"></progress>
       </div>
     <?php elseif ($c->isPaid()): ?>
-      <p class="course-card-end course-card-price"><?= $v->e((string) $c->priceLabel()) ?></p>
+      <p class="course-card-end course-card-price"><?= $v->e((string) $c->priceLabel()) ?><a class="course-card-sub" href="/courses/<?= $v->e($c->slug) ?>/subscribe" aria-label="Subscribe to <?= $v->e($c->title) ?>">Subscribe</a></p>
     <?php else: ?>
-      <p class="course-card-end course-card-free"><?php if ($c->isOpen()): ?><span class="tag tag-open" title="Anyone can read the lessons, no account needed">Open</span><?php endif; ?>Free</p>
+      <p class="course-card-end course-card-free"><?php if ($c->isOpen()): ?><span class="tag tag-open" title="Anyone can read the lessons, no account needed">Open</span><?php endif; ?>Free<a class="course-card-sub" href="/courses/<?= $v->e($c->slug) ?>/subscribe" aria-label="Subscribe to <?= $v->e($c->title) ?>">Subscribe</a></p>
     <?php endif; ?>
   </div>
 </article>

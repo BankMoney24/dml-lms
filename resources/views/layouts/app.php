@@ -103,6 +103,7 @@ $shell = $tenant !== null && $user !== null;
       <ul>
         <?= $v->sideLink('/', 'Home', 'home') ?>
         <?= $v->sideLink('/courses', 'Courses', 'courses') ?>
+        <?php if ($v->can('course.learn')): ?><?= $v->sideLink('/account/subscriptions', 'My subscriptions', 'receipt') ?><?php endif; ?>
         <?php if ($v->can('course.learn')): ?><?= $v->sideLink('/saved', 'Saved and notes', 'saved') ?><?php endif; ?>
         <?php if ($v->can('course.learn')): ?><?= $v->sideLink('/achievements', 'Achievements', 'sparkle') ?><?php endif; ?>
         <?php if ($v->can('course.learn') || $v->can('course.manage')): ?><?= $v->sideLink('/playground', 'Code playground', 'code') ?><?php endif; ?>
@@ -131,7 +132,7 @@ $shell = $tenant !== null && $user !== null;
         <?php if ($v->can('members.manage')): ?><?= $v->sideLink('/school/joining', 'Joining', 'user-plus', [], (int) ($counts['requests'] ?? 0)) ?><?php endif; ?>
         <?php if ($v->can('support.manage')): ?><?= $v->sideLink('/school/support', 'Help desk', 'inbox', [], (int) ($counts['support'] ?? 0)) ?><?php endif; ?>
         <?php if ($v->can('school.manage')): ?><?= $v->sideLink('/school/website', 'Website', 'link') ?><?php endif; ?>
-        <?php if ($v->can('school.manage')): ?><?= $v->sideLink('/school/payments', 'Payments', 'payments') ?><?php endif; ?>
+        <?php if ($v->can('school.manage')): ?><?= $v->sideLink('/school/payments', 'Payments', 'payments', [], (int) ($counts['claims'] ?? 0)) ?><?php endif; ?>
         <?php if ($v->can('audit.view')): ?><?= $v->sideLink('/activity', 'Activity', 'activity') ?><?php endif; ?>
         <?php if ($user->isPlatformAdmin): ?><?= $v->sideLink('/system', 'System', 'system') ?><?php endif; ?>
       </ul>

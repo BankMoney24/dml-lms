@@ -6,6 +6,7 @@
 /** @var bool $mustPay this learner has to pay before enrolling */
 /** @var bool $payOnline the school takes payments through Paystack */
 /** @var ?\App\Modules\Payments\Payment $waiting a checkout started recently and not yet confirmed */
+/** @var ?\App\Modules\Payments\PaymentClaim $claim the learner's latest note that they paid the school directly */
 $user = $v->shared('user');
 $lessonIds = [];
 $counts = [];
@@ -57,6 +58,10 @@ $includedList = '<ul class="included">'
     . (($v->shared('tenant')?->certificatesEnabled ?? false) ? '<li>A certificate anyone can check online when you finish</li>' : '')
     . '<li>Ask questions under every lesson; teachers answer</li></ul>';
 $signInHref = '/login?next=' . $v->e(rawurlencode('/courses/' . $course->slug));
+// Subscribing (ADR 0026): one page from "I want this" to the first lesson.
+$subscribeHref = '/courses/' . $slug . '/subscribe';
+$subscribeSignIn = '/login?next=' . $v->e(rawurlencode('/courses/' . $course->slug . '/subscribe'));
+$claim ??= null;
 /** @var array{gated: bool, mustApply: bool, application: ?\App\Modules\Applications\Application, position: ?int, placesLeft: ?int, form: array{errors: array<string, string>, old: array<string, string>}} $admission */
 $admission ??= ['gated' => false, 'mustApply' => false, 'application' => null, 'position' => null, 'placesLeft' => null, 'form' => ['errors' => [], 'old' => []]];
 // Apply-and-wait (ADR 0025): who sees the form, and who sees where they stand.
@@ -119,11 +124,11 @@ $chips[] = $v->plural($lessonCount, 'lesson');
     <p class="start-action"><a class="button" href="/courses/<?= $slug ?>/preview/<?= $firstReadable->id ?>"><?= $v->icon('lesson') ?>Start reading: <?= $v->e($firstReadable->title) ?></a></p>
     <p class="start-alt"><a href="<?= $signUpOpen ? $joinHref : $signInHref ?>"><?= $signUpOpen ? 'Create a free account' : 'Sign in' ?></a><?= $signUpOpen ? ' or <a href="' . $signInHref . '">sign in</a>' : '' ?> to keep your progress.</p>
   <?php elseif ($user === null): ?>
-    <?php if ($course->isPaid()): ?><p class="course-price"><strong><?= $v->e((string) $course->priceLabel()) ?></strong> for the whole course</p><?= $includedList ?><?php endif; ?>
-    <p class="start-action"><a class="button" href="<?= $signUpOpen ? $joinHref : $signInHref ?>"><?= $signUpOpen
-        ? ($course->isPaid() ? 'Create an account and pay' : 'Create an account to enrol')
-        : ($course->isPaid() ? 'Sign in to pay' : 'Sign in to enrol') ?></a></p>
-    <?php if ($signUpOpen): ?><p class="start-alt">Already have an account? <a href="<?= $signInHref ?>">Sign in</a></p><?php endif; ?>
+    <?php if ($course->isPaid()): ?><p class="course-price"><strong><?= $v->e((string) $course->priceLabel()) ?></strong> for the whole course</p><?= $includedList ?><?php else: ?><p class="start-title">Free to take</p><?php endif; ?>
+    <p class="start-action"><a class="button" href="<?= $subscribeHref ?>"><?= $course->isPaid() ? 'Subscribe for ' . $v->e((string) $course->priceLabel()) : 'Subscribe for free' ?></a></p>
+    <p class="start-alt"><?= $signUpOpen
+        ? 'You will create an account' . ($course->isPaid() ? ', pay, then start.' : ', then start.') . ' Already have one? <a href="' . $subscribeSignIn . '">Sign in</a>'
+        : 'This school adds its learners. <a href="' . $subscribeSignIn . '">Sign in to subscribe</a>' ?></p>
   <?php elseif ($v->can('course.learn') && $mustPay): ?>
     <div id="pay">
       <p class="course-price"><strong><?= $v->e((string) $course->priceLabel()) ?></strong> for the whole course</p>
@@ -133,20 +138,20 @@ $chips[] = $v->plural($lessonCount, 'lesson');
           If money left your account, the course opens as soon as Paystack confirms it.
           <a href="/payments/paystack/callback?reference=<?= $v->e(rawurlencode($waiting->reference)) ?>">Check now</a></p>
       <?php endif; ?>
-      <?php if ($payOnline): ?>
-        <form method="post" action="/courses/<?= $v->e($course->slug) ?>/pay">
-          <?= $v->csrfField() ?>
-          <button type="submit" class="button">Pay <?= $v->e((string) $course->priceLabel()) ?> and start</button>
-        </form>
-        <p class="small muted">You pay on Paystack's secure page by card, bank transfer or USSD, then come straight back here.</p>
+      <?php if ($claim !== null && $claim->isPending()): ?>
+        <p class="notice">The school is checking the <?= $v->e($claim->amount()) ?> you told them you paid. The course opens when they confirm it.</p>
+        <p class="start-alt"><a href="<?= $subscribeHref ?>">See your payment note</a></p>
       <?php else: ?>
-        <p>This school does not take payments online yet. Ask the school how to pay. Once they record your payment, the course opens for you here.</p>
+        <p class="start-action"><a class="button" href="<?= $subscribeHref ?>">Subscribe for <?= $v->e((string) $course->priceLabel()) ?></a></p>
+        <p class="small muted"><?= $payOnline
+            ? 'Pay online by card, bank transfer or USSD, or pay the school directly. The course opens as soon as the payment is confirmed.'
+            : 'Pay the school by transfer or at the office, then tell them on the next page. The course opens once they confirm it.' ?></p>
       <?php endif; ?>
     </div>
   <?php elseif ($v->can('course.learn')): ?>
-    <form method="post" action="/courses/<?= $v->e($course->slug) ?>/enrol" class="start-action">
+    <form method="post" action="<?= $subscribeHref ?>" class="start-action">
       <?= $v->csrfField() ?>
-      <button type="submit" class="button">Enrol and start</button>
+      <button type="submit" class="button">Subscribe and start</button>
     </form>
     <p class="small muted"><?= $course->isPaid() ? 'You can open it without paying because you build courses here.' : 'Free. Your progress is saved as you go.' ?></p>
     <?php if ($course->isOpen() && $firstReadable !== null): ?><p class="start-alt">Or just <a href="/courses/<?= $slug ?>/preview/<?= $firstReadable->id ?>">start reading</a> without enrolling.</p><?php endif; ?>

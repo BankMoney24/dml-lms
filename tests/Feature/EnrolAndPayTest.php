@@ -48,17 +48,18 @@ final class EnrolAndPayTest extends AppTestCase
     public function testJoiningForAPaidCourseComesBackToPay(): void
     {
         $page = $this->get(self::HOST, '/courses/paid-course')->body;
-        $this->assertStringContainsString('href="/join?course=paid-course">Create an account and pay', $page);
+        $this->assertStringContainsString('href="/courses/paid-course/subscribe">Subscribe for ₦15,000', $page);
         $this->assertStringContainsString('class="included"', $page, 'what the price includes');
-        $this->assertStringContainsString('href="/login?next=%2Fcourses%2Fpaid-course"', $page);
+        $this->assertStringContainsString('href="/login?next=%2Fcourses%2Fpaid-course%2Fsubscribe"', $page);
+        $this->assertStringContainsString('href="/join?course=paid-course"', $this->get(self::HOST, '/courses/paid-course/subscribe')->body, 'the account step');
 
         $join = $this->send(new Request('GET', '/join', self::HOST, ['course' => 'paid-course']))->body;
         $this->assertStringContainsString('You are joining to take', $join);
         $this->assertStringContainsString('name="course" value="paid-course"', $join);
 
-        $this->assertRedirectTo('/courses/paid-course#pay', $this->join('ada@example.test', ['course' => 'paid-course']));
+        $this->assertRedirectTo('/courses/paid-course/subscribe', $this->join('ada@example.test', ['course' => 'paid-course']));
         $this->assertSame(0, $this->enrolments('ada@example.test'), 'paying comes first');
-        $this->assertStringContainsString('pay below to start', $this->get(self::HOST, '/courses/paid-course')->body);
+        $this->assertStringContainsString('Next, pay for Course school', $this->get(self::HOST, '/courses/paid-course/subscribe')->body);
     }
 
     public function testJoiningForAFreeCourseStartsIt(): void

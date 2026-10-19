@@ -99,8 +99,8 @@ final class PaymentsTest extends AppTestCase
         $this->signIn('learner@school.test');
         $page = $this->get(self::HOST, '/courses/networking')->body;
         $this->assertStringContainsString('₦15,000', $page);
-        $this->assertStringContainsString('does not take payments online yet', $page, 'Paystack is not connected');
-        $this->assertStringNotContainsString('Enrol and start', $page);
+        $this->assertStringContainsString('Pay the school by transfer or at the office', $page, 'Paystack is not connected');
+        $this->assertStringNotContainsString('Subscribe and start', $page);
 
         $this->assertRedirectTo('/courses/networking', $this->post(self::HOST, '/courses/networking/enrol'));
         $this->assertSame(0, $this->enrolments());
@@ -115,7 +115,7 @@ final class PaymentsTest extends AppTestCase
     public function testCourseBuildersCanLookInsideWithoutPaying(): void
     {
         $this->signIn('admin@school.test');
-        $this->assertStringContainsString('Enrol and start', $this->get(self::HOST, '/courses/networking')->body);
+        $this->assertStringContainsString('Subscribe and start', $this->get(self::HOST, '/courses/networking')->body);
         $this->post(self::HOST, '/courses/networking/enrol');
         $this->assertSame(1, (int) $this->db()->fetchValue('SELECT COUNT(*) FROM enrolments'));
     }
@@ -276,7 +276,7 @@ final class PaymentsTest extends AppTestCase
         $this->assertNull($this->db()->fetchValue('SELECT price_minor FROM courses'));
 
         $this->signIn('learner@school.test');
-        $this->assertStringContainsString('Enrol and start', $this->get(self::HOST, '/courses/networking')->body, 'free again');
+        $this->assertStringContainsString('Subscribe and start', $this->get(self::HOST, '/courses/networking')->body, 'free again');
     }
 
     public function testAnAdministratorCanRecordAPaymentByHand(): void

@@ -475,6 +475,7 @@ final class Application
             $c->get(\App\Modules\Paths\PathRepository::class),
             $c->get(Session::class),
             $c->get(\App\Modules\Applications\ApplicationRepository::class),
+            $c->get(\App\Modules\Payments\TransferPayments::class),
         ));
         $c->set(LearnController::class, static fn (Container $c) => new LearnController(
             $c->get(View::class),
@@ -791,6 +792,34 @@ final class Application
             $c->get(PaymentAccountRepository::class),
             $c->get(CourseRepository::class),
             $c->get(Clock::class),
+            $c->get(\App\Modules\Payments\TransferPayments::class),
+        ));
+        // Subscribing and paying the school directly (ADR 0026).
+        $c->set(\App\Modules\Payments\PaymentClaimRepository::class, static fn (Container $c) => new \App\Modules\Payments\PaymentClaimRepository($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(\App\Modules\Payments\TransferPayments::class, static fn (Container $c) => new \App\Modules\Payments\TransferPayments(
+            $c->get(Connection::class),
+            $c->get(\App\Modules\Payments\PaymentClaimRepository::class),
+            $c->get(PaymentService::class),
+            $c->get(CourseRepository::class),
+            $c->get(UserRepository::class),
+            $c->get(MembershipRepository::class),
+            $c->get(LearningService::class),
+            $c->get(RateLimiter::class),
+            $c->get(AuditLog::class),
+            $c->get(Clock::class),
+            $c->get(Notifier::class),
+        ));
+        $c->set(\App\Modules\Subscriptions\Http\SubscribeController::class, static fn (Container $c) => new \App\Modules\Subscriptions\Http\SubscribeController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(CourseRepository::class),
+            $c->get(LessonRepository::class),
+            $c->get(EnrolmentRepository::class),
+            $c->get(LearningService::class),
+            $c->get(PaymentService::class),
+            $c->get(PaymentRepository::class),
+            $c->get(\App\Modules\Payments\TransferPayments::class),
+            $c->get(\App\Modules\Applications\ApplicationRepository::class),
         ));
         $c->set(GroupController::class, static fn (Container $c) => new GroupController(
             $c->get(View::class),

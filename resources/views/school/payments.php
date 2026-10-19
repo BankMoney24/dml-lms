@@ -14,6 +14,8 @@
  * @var int $now
  * @var array<string, string> $errors
  * @var array<string, string> $old
+ * @var list<\App\Modules\Payments\PaymentClaim> $claims learners who say they paid directly, oldest first
+ * @var string $instructions
  */
 $schoolTab = 'payments';
 $o = static fn (string $k, string $d = ''): string => $old[$k] ?? $d;
@@ -76,6 +78,58 @@ $manualErrors = array_intersect_key($errors, ['email' => 1, 'course_id' => 1, 'a
     </dl>
   </section>
 </div>
+
+<section class="pay-claims" id="claims" aria-labelledby="pay-claims-h">
+  <div class="settings-head">
+    <h2 id="pay-claims-h">Payments to confirm<?php if ($claims !== []): ?> <span class="count-pill"><?= count($claims) ?></span><?php endif; ?></h2>
+  </div>
+  <?php if ($claims === []): ?>
+    <p class="muted">Nothing to check. When a learner pays you by transfer or at the office and tells you on the course's subscribe page, it shows here.</p>
+  <?php else: ?>
+    <p class="small">Check each one against your bank statement. Confirming records the payment and enrols the learner; nothing opens until you do.</p>
+    <ul class="claim-list">
+    <?php foreach ($claims as $claim): ?>
+      <li class="claim">
+        <div class="claim-who">
+          <p class="claim-name"><?= $v->e($claim->learnerName) ?> <span class="small muted"><?= $v->e($claim->learnerEmail) ?></span></p>
+          <p class="claim-course"><?= $v->e($claim->courseTitle) ?></p>
+        </div>
+        <dl class="claim-facts">
+          <dt>Amount</dt><dd><strong><?= $v->e($claim->amount()) ?></strong><?php if ($claim->isShort()): ?> <?= $v->badge('Less than the price', 'danger') ?><?php endif; ?></dd>
+          <dt>How</dt><dd><?= $v->e($claim->methodLabel()) ?>, <?= $v->e($v->datetime($claim->paidOn . ' 00:00:00', 'j M Y')) ?></dd>
+          <?php if ($claim->payerReference !== ''): ?><dt>Reference</dt><dd class="ref"><?= $v->e($claim->payerReference) ?></dd><?php endif; ?>
+          <?php if ($claim->note !== ''): ?><dt>Note</dt><dd><?= $v->e($claim->note) ?></dd><?php endif; ?>
+          <dt>Sent</dt><dd><?= $v->datetime($claim->createdAt) ?></dd>
+        </dl>
+        <div class="claim-actions">
+          <form method="post" action="/school/payments/claims/<?= $claim->id ?>/confirm">
+            <?= $v->csrfField() ?>
+            <button type="submit" class="button button-small">Confirm and enrol</button>
+          </form>
+          <details class="claim-reject">
+            <summary>Not found</summary>
+            <form method="post" action="/school/payments/claims/<?= $claim->id ?>/reject" class="form">
+              <?= $v->csrfField() ?>
+              <?= $v->field('reason', 'Tell the learner why', ['id' => 'reason-' . $claim->id, 'maxlength' => 255, 'value' => 'No payment with that reference has arrived in our account.']) ?>
+              <button type="submit" class="button button-small button-danger">Send and close</button>
+            </form>
+          </details>
+        </div>
+      </li>
+    <?php endforeach; ?>
+    </ul>
+  <?php endif; ?>
+
+  <details class="panel"<?= isset($errors['instructions']) ? ' open' : '' ?>>
+    <summary><?= $instructions === '' ? 'Write how learners can pay you directly' : 'How learners pay you directly' ?></summary>
+    <p class="small">Learners see this on the subscribe page of every paid course<?= $account !== null ? ', under the Paystack button' : '' ?>. Write your bank, account name and account number, and what to put as the narration. Never put a Paystack key here.</p>
+    <form method="post" action="/school/payments/instructions" class="form" novalidate>
+      <?= $v->csrfField() ?>
+      <?= $v->field('instructions', 'Payment details', ['type' => 'textarea', 'rows' => 5, 'maxlength' => 2000, 'value' => $instructions, 'error' => $errors['instructions'] ?? null, 'hint' => 'For example: Bank, account name, account number. Use your full name and the course name as the narration.']) ?>
+      <button type="submit" class="button button-small">Save payment details</button>
+    </form>
+  </details>
+</section>
 
 <section class="pay-list" aria-labelledby="pay-list-h">
   <div class="settings-head">

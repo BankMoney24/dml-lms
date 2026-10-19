@@ -22,6 +22,7 @@ use App\Modules\Identity\Http\TwoFactorController;
 use App\Modules\Learning\Http\LearnController;
 use App\Modules\Payments\Http\PaymentAdminController;
 use App\Modules\Payments\Http\PaymentController;
+use App\Modules\Subscriptions\Http\SubscribeController;
 use App\Modules\Notifications\Http\NotificationController;
 use App\Modules\Platform\HealthController;
 use App\Modules\Platform\HomeController;
@@ -99,6 +100,11 @@ return static function (Router $r): void {
     $r->post('/courses/{slug}/enrol', [LearnController::class, 'enrol'], $learn);
     // Paid courses (ADR 0012): access follows a payment Paystack itself confirms.
     $r->post('/courses/{slug}/pay', [PaymentController::class, 'pay'], $learn);
+    // Subscribing (ADR 0026): account, then payment for paid courses, then the first lesson.
+    $r->get('/courses/{slug}/subscribe', [SubscribeController::class, 'show'], ['tenant']);
+    $r->post('/courses/{slug}/subscribe', [SubscribeController::class, 'subscribe'], $learn);
+    $r->post('/courses/{slug}/subscribe/transfer', [SubscribeController::class, 'claim'], $learn);
+    $r->post('/courses/{slug}/subscribe/transfer/withdraw', [SubscribeController::class, 'withdrawClaim'], $learn);
     $r->get('/account/receipts/{reference:code}', [\App\Modules\Payments\Http\ReceiptController::class, 'show'], ['tenant', 'auth']);
     $r->get('/payments/paystack/callback', [PaymentController::class, 'callback'], ['tenant', 'auth']);
     // No session or CSRF: Paystack's HMAC signature, checked with the school's key, is the authentication.
@@ -160,6 +166,7 @@ return static function (Router $r): void {
 
     $signedIn = ['tenant', 'auth'];
     $r->get('/account', [AccountController::class, 'show'], $signedIn);
+    $r->get('/account/subscriptions', [SubscribeController::class, 'mine'], $signedIn);
     $r->post('/account', [AccountController::class, 'updateName'], $signedIn);
     $r->post('/account/password', [AccountController::class, 'updatePassword'], $signedIn);
     $r->get('/account/two-step', [TwoFactorController::class, 'show'], $signedIn);
@@ -261,6 +268,9 @@ return static function (Router $r): void {
     $r->post('/school/payments/connect', [PaymentAdminController::class, 'connect'], $school);
     $r->post('/school/payments/disconnect', [PaymentAdminController::class, 'disconnect'], $school);
     $r->post('/school/payments/manual', [PaymentAdminController::class, 'manual'], $school);
+    $r->post('/school/payments/instructions', [PaymentAdminController::class, 'instructions'], $school);
+    $r->post('/school/payments/claims/{claim:int}/confirm', [PaymentAdminController::class, 'confirmClaim'], $school);
+    $r->post('/school/payments/claims/{claim:int}/reject', [PaymentAdminController::class, 'rejectClaim'], $school);
     $r->get('/logo', [SchoolController::class, 'logo'], ['tenant']);
     $r->get('/school/joining', [JoiningAdminController::class, 'index'], ['tenant', 'auth', 'can:members.manage']);
     $r->post('/school/joining/settings', [JoiningAdminController::class, 'saveSettings'], $school);

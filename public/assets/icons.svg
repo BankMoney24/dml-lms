@@ -1,5 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg">
-<!-- One sprite, drawn on a 24px grid with a 1.8px round stroke. Used as <svg><use href="icons.svg#name"/></svg>. -->
+<!-- One sprite, drawn on a 24px grid with a 1.8px round stroke. Used as <svg><use href="icons.svg#name"/><symbol id="check" viewBox="0 0 24 24"><path d="M4.5 12.5l5 5 10-11"/></symbol>
+<symbol id="receipt" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></symbol>
+</svg>. -->
 <symbol id="home" viewBox="0 0 24 24"><path d="M3.5 10.5 12 3.5l8.5 7V20a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z"/></symbol>
 <symbol id="courses" viewBox="0 0 24 24"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H20v15H5.5A1.5 1.5 0 0 0 4 19.5z"/><path d="M4 19.5A1.5 1.5 0 0 0 5.5 21H20v-3"/><path d="M8 7h8"/></symbol>
 <symbol id="saved" viewBox="0 0 24 24"><path d="M6.5 3h11a1 1 0 0 1 1 1v17L12 16.5 5.5 21V4a1 1 0 0 1 1-1z"/></symbol>
@@ -39,4 +41,6 @@
 <symbol id="sparkle" viewBox="0 0 24 24"><path d="M12 3c.6 4.2 2.4 6 6.6 6.6-4.2.6-6 2.4-6.6 6.6-.6-4.2-2.4-6-6.6-6.6C9.6 9 11.4 7.2 12 3z"/><path d="M19 15.5c.3 1.8 1 2.5 2.8 2.8-1.8.3-2.5 1-2.8 2.8-.3-1.8-1-2.5-2.8-2.8 1.8-.3 2.5-1 2.8-2.8z"/></symbol>
 <symbol id="play" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z"/></symbol>
 <symbol id="user-plus" viewBox="0 0 24 24"><circle cx="9.5" cy="8" r="4"/><path d="M2.5 21a7 7 0 0 1 14 0M19 8v6M16 11h6"/></symbol>
+<symbol id="check" viewBox="0 0 24 24"><path d="M4.5 12.5l5 5 10-11"/></symbol>
+<symbol id="receipt" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></symbol>
 </svg>
