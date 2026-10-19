@@ -28,7 +28,7 @@ final class AttemptService
      * (double click, retry after a dropped connection) returns the original
      * attempt instead of recording a second one.
      *
-     * @param array<string, string> $rawAnswers question id => option id, as submitted
+     * @param array<int|string, string> $rawAnswers question id => option id, as submitted (PHP turns numeric keys into ints)
      * @return int attempt id
      */
     public function submit(Enrolment $enrolment, Lesson $lesson, array $rawAnswers, string $idempotencyKey): int

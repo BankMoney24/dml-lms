@@ -106,7 +106,7 @@ $shell = $tenant !== null && $user !== null;
         <?php if ($v->can('course.learn')): ?><?= $v->sideLink('/account/subscriptions', 'My subscriptions', 'receipt') ?><?php endif; ?>
         <?php if ($v->can('course.learn')): ?><?= $v->sideLink('/saved', 'Saved and notes', 'saved') ?><?php endif; ?>
         <?php if ($v->can('course.learn')): ?><?= $v->sideLink('/achievements', 'Achievements', 'sparkle') ?><?php endif; ?>
-        <?php if ($v->can('course.learn') || $v->can('course.manage')): ?><?= $v->sideLink('/playground', 'Code playground', 'code') ?><?php endif; ?>
+        <?php if ($v->can('course.learn') || $v->can('course.manage')): ?><?= $v->sideLink('/playground', 'Code studio', 'code') ?><?php endif; ?>
         <?php if (($counts['children'] ?? 0) > 0): ?><?= $v->sideLink('/children', ($counts['children'] ?? 0) === 1 ? 'Your child' : 'Your children', 'child') ?><?php endif; ?>
       </ul>
       <?php if ($isStaffish): ?>

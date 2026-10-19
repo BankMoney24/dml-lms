@@ -138,6 +138,46 @@ final class LabController
             ->withHeader('Cache-Control', 'no-store');
     }
 
+    /**
+     * The web page preview for the Code studio (ADR 0027). Served on its own,
+     * framed with sandbox="allow-scripts" (an opaque origin: no cookies, no
+     * storage, no access to the page around it). The learner's page arrives by
+     * postMessage and is written into this document. Its policy allows the
+     * page's own inline scripts and styles and data: images, and nothing that
+     * leaves the browser: no requests, no forms, no plugins.
+     */
+    public function webRunner(Request $request): Response
+    {
+        // phpcs:disable Generic.Files.LineLength
+        $boot = <<<'JS'
+(function () {
+  var started = false;
+  window.addEventListener('message', function (e) {
+    if (e.source !== window.parent || started) { return; }
+    var d = e.data || {};
+    if (typeof d.html !== 'string' || d.html.length > 60000) { return; }
+    started = true;
+    var capture = '<script>(function(){var n=0;function s(k,a){if(n++>200){return;}var t=Array.prototype.map.call(a,function(v){if(typeof v==="string"){return v;}try{return JSON.stringify(v);}catch(x){return String(v);}}).join(" ");parent.postMessage({webLog:true,kind:k,text:String(t).slice(0,1000)},"*");}' +
+      '["log","info","warn","error"].forEach(function(k){console[k]=function(){s(k,arguments);};});' +
+      'window.onerror=function(m,u,l){s("error",[String(m)+(l?" (line "+l+")":"")]);};' +
+      'window.alert=function(m){s("alert",["alert: "+m]);};window.prompt=function(m){s("alert",["prompt: "+m]);return null;};window.confirm=function(m){s("alert",["confirm: "+m]);return false;};})();</scr' + 'ipt>';
+    document.open();
+    document.write(capture + d.html);
+    document.close();
+  });
+  window.parent.postMessage({ webReady: true }, '*');
+})();
+JS;
+        // phpcs:enable Generic.Files.LineLength
+        $html = '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Preview</title></head><body><script>' . $boot . '</script></body></html>';
+
+        return Response::html($html)
+            ->withHeader('Content-Security-Policy', "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; media-src data:; "
+                . "connect-src 'none'; form-action 'none'; base-uri 'none'; frame-src 'none'; worker-src 'none'; frame-ancestors 'self'")
+            ->withHeader('X-Frame-Options', 'SAMEORIGIN')
+            ->withHeader('Cache-Control', 'no-store');
+    }
+
     public function catalogue(Request $request): Response
     {
         return Response::html($this->view->render('labs/catalogue', [

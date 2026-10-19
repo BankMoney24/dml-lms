@@ -49,6 +49,7 @@ final class ConsoleApplication
                 'tenant:primary-domain' => $this->tenantPrimaryDomain($args),
                 'user:create' => $this->userCreate($args),
                 'seed:demo' => $this->seedDemo($args),
+                'sample:seed' => $this->sampleSeed($args),
                 'mail:work' => $this->mailWork(),
                 'lab:expire' => $this->labExpire(),
                 'lab:list' => $this->labList(),
@@ -86,6 +87,10 @@ final class ConsoleApplication
                                                     from STDIN, or generated and printed once.
                                                     Roles: owner, admin, educator, learner, guardian
           seed:demo <tenant-slug>                   Add a demo course (refused in production)
+          sample:seed <slug> [--create="<name>" --host=<host>] [--size=small|medium|large] [--public]
+                                                    Fill a school with sample people and 90 days of activity
+                                                    for testing. In production only into a school it creates
+                                                    (--create). Prints one password for every sample account.
           mail:work                                 Send queued emails that are due (run every minute from cron)
           mail:status                               Counts of queued / sent / failed emails in the last 7 days
           mail:test <email>                         Send a test email straight away, to check MAIL_* settings
@@ -281,6 +286,34 @@ final class ConsoleApplication
             ?? throw new \RuntimeException('No tenant with that slug.');
         (new DemoSeeder($this->container))->run($tenant);
         echo "Demo course added to {$slug}.\n";
+
+        return 0;
+    }
+
+    /** @param list<string> $args */
+    private function sampleSeed(array $args): int
+    {
+        [$positional, $options] = self::options($args);
+        [$slug] = $this->requireArgs($positional, 1, 'sample:seed <slug> [--create="<name>" --host=<host>] [--size=small|medium|large] [--public]');
+        $config = $this->container->get(Config::class);
+        echo "Filling the school with sample data. This takes a minute or two…\n";
+        $result = (new \App\Modules\Platform\SampleSchool($config))->run($slug, array_filter([
+            'create' => $options['create'] ?? null,
+            'host' => $options['host'] ?? null,
+            'size' => $options['size'] ?? null,
+            'seed' => $options['seed'] ?? null,
+            'public' => isset($options['public']) ? true : null,
+        ], static fn ($v): bool => $v !== null));
+        foreach ($result['log'] as $line) {
+            echo '  ' . $line . "\n";
+        }
+        echo "\nDone: {$result['tenant']->name} ({$slug})\n";
+        foreach ($result['counts'] as $label => $n) {
+            printf("  %-18s %d\n", $label, $n);
+        }
+        echo "\nSign in as any sample account with this password (shown only now):\n  " . $result['password'] . "\n";
+        echo "  Owner:   owner@" . \App\Modules\Platform\SampleSchool::DOMAIN . "\n  Admin:   admin@" . \App\Modules\Platform\SampleSchool::DOMAIN . "\n";
+        echo "  Others:  see People in the school; every sample address ends in @" . \App\Modules\Platform\SampleSchool::DOMAIN . "\n";
 
         return 0;
     }

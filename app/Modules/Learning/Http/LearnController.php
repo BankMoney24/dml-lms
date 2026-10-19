@@ -69,6 +69,13 @@ final class LearnController
         $course = $this->publishedCourse($request);
         $lesson = $this->lessonOf($course, $request);
         $user = RequestContext::user($request);
+        if (!$user->can(\App\Modules\Identity\Permission::CourseLearn)) {
+            // Teachers follow lesson links too (from notifications, reports, questions): show them the preview.
+            if ($user->can(\App\Modules\Identity\Permission::CourseManage)) {
+                return Response::redirect('/teach/courses/' . $course->id . '/lessons/' . $lesson->id . '/preview');
+            }
+            throw HttpException::forbidden();
+        }
         if ($this->learning->findEnrolment($course, $user) === null) {
             // Not enrolled: send people where they can see this lesson instead of a dead end (ADR 0021).
             if ($course->lessonIsReadable($lesson)) {

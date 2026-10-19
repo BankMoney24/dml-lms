@@ -27,6 +27,9 @@ final class LabCatalogue
             new Labs\SubnetLab(),
             new Labs\JsGradeLab(),
             new Labs\PhishingLab(),
+            new Labs\PacketCaptureLab(),
+            new Labs\NetworkTraceLab(),
+            new Labs\PyLeapLab(),
         ]);
     }
 

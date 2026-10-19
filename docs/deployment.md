@@ -370,3 +370,17 @@ php bin/console user:create dml you@example.com "Your Name" owner     # prints a
 * Migrations must be backward compatible with the previous release (expand → migrate → contract over separate releases), because rollback only switches code.
 * `.env`, uploads, logs and backups live in `shared/`, never inside a release.
 * Backups must be copied off the server (`REMOTE`) and the backup key kept off the server before real learner data arrives (PRD §13.2). See [backup-restore.md](backup-restore.md).
+
+## A sample school for testing (ADR 0027)
+
+To try every screen with realistic data, create a separate sample school. It never touches the real school.
+
+1. Point a DNS record for the sample address (for example `sample.dmlschooloftechnology.org`) at the server and add it to the web server and certificate, as for the main domain.
+2. Fill it:
+
+```
+sudo -u dmldeploy -H php /var/www/dml-lms/current/bin/console sample:seed sample --create="DML Sample School" --host=sample.dmlschooloftechnology.org --size=medium
+```
+
+The command prints one password for every sample account (owner@sample.test, admin@sample.test, and so on). Write it down; it is not shown again. `--size=small|medium|large` sets 24, 60 or 150 learners. Its robots.txt keeps search engines out unless you add `--public`. When you no longer need it, suspend it from the System page.
+

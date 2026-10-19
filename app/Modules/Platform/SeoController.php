@@ -44,6 +44,9 @@ final class SeoController
         $primary = $tenant instanceof Tenant ? $this->canonical->primaryHost($tenant) : null;
         if ($primary !== null && $request->host !== $primary) {
             $body = "# This address is an alias of {$base}/ ; please crawl that one.\nUser-agent: *\nDisallow: /\n";
+        } elseif ($tenant instanceof Tenant && self::isPrivateSample($this->db, $tenant->id)) {
+            // A sample school (ADR 0027) stays out of search engines unless it was made with --public.
+            $body = "# Sample school for testing.\nUser-agent: *\nDisallow: /\n";
         } else {
             $lines = ['User-agent: *'];
             foreach (self::PRIVATE_PATHS as $path) {
@@ -57,6 +60,17 @@ final class SeoController
         }
 
         return new Response($body, 200, ['Content-Type' => 'text/plain; charset=utf-8', 'Cache-Control' => 'public, max-age=3600']);
+    }
+
+    public static function isPrivateSample(Connection $db, int $tenantId): bool
+    {
+        $meta = $db->fetchValue("SELECT metadata FROM audit_events WHERE tenant_id = ? AND action = 'sample.school_created' ORDER BY id LIMIT 1", [$tenantId]);
+        if ($meta === null) {
+            return false;
+        }
+        $data = json_decode((string) $meta, true);
+
+        return !(is_array($data) && ($data['public'] ?? false) === true);
     }
 
     public function sitemap(Request $request): Response

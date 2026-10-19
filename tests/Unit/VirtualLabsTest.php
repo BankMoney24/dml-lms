@@ -50,7 +50,17 @@ final class VirtualLabsTest extends TestCase
                 'same' => $sec['same'] ? 'yes' : 'no',
             ],
             'js-grades' => ['code' => 'function grade(s){}', 'outputs' => json_encode($sec['expected'], JSON_THROW_ON_ERROR)],
+            'py-leap' => ['code' => 'def is_leap(y): pass', 'outputs' => json_encode($sec['expected'], JSON_THROW_ON_ERROR)],
             'phishing' => self::phishingAnswers((array) $sec['ids']),
+            'packet-capture' => [
+                'gateway_mac' => strtoupper(str_replace(':', '-', (string) $sec['gw_mac'])),
+                'dns_server' => (string) $sec['dns_ip'],
+                'resolved' => ' ' . $sec['server_ip'],
+                'client_port' => (string) $sec['port'],
+                'handshake' => (string) $sec['handshake_no'],
+                'status' => (string) $sec['code'],
+            ],
+            'network-trace' => ['device' => (string) $sec['at'], 'fault' => (string) $sec['problem'], 'next_hop' => (string) $sec['hop'], 'server_network' => (string) $sec['server_net']],
             default => [],
         };
     }
@@ -136,6 +146,51 @@ final class VirtualLabsTest extends TestCase
             $this->assertNotSame($ip, $other);
             $this->assertNotContains($ip, [$ip & $mask, ($ip & $mask) | (~$mask & 0xFFFFFFFF)], 'a host, not the network or broadcast');
         }
+    }
+
+    public function testPacketCapturesAreWellFormed(): void
+    {
+        $lab = LabCatalogue::builtIn()->find('packet-capture') ?? throw new \LogicException();
+        for ($i = 0; $i < 60; $i++) {
+            $p = $lab->params(new Seed('cap' . $i));
+            $packets = $p['public']['packets'];
+            $this->assertCount(16, $packets);
+            foreach ($packets as $k => $pkt) {
+                $this->assertSame($k + 1, $pkt['no']);
+                $this->assertSame($pkt['len'] * 2, strlen($pkt['hex']), 'the length is the real frame size');
+            }
+            $done = $packets[$p['secret']['handshake_no'] - 1];
+            $this->assertSame('TCP', $done['proto']);
+            $this->assertStringContainsString('[ACK]', $done['info']);
+            $this->assertStringContainsString('[SYN, ACK]', $packets[$p['secret']['handshake_no'] - 2]['info']);
+            $this->assertStringContainsString((string) $p['secret']['code'], json_encode($packets, JSON_THROW_ON_ERROR));
+            $gw = str_replace(':', '', (string) $p['secret']['gw_mac']);
+            $this->assertStringStartsWith($gw, substr($packets[1]['hex'], 12, 12), 'the ARP reply comes from the gateway');
+        }
+    }
+
+    public function testNetworkFaultsAreAllUsedAndPointAtRealDevices(): void
+    {
+        $lab = LabCatalogue::builtIn()->find('network-trace') ?? throw new \LogicException();
+        $faults = [];
+        for ($i = 0; $i < 80; $i++) {
+            $p = $lab->params(new Seed('nt' . $i));
+            $faults[$p['secret']['problem']] = true;
+            $owned = [];
+            foreach ($p['public']['interfaces'] as $list) {
+                foreach ($list as $iface) {
+                    $owned[] = $iface[1];
+                }
+            }
+            $this->assertContains($p['secret']['hop'], $owned, 'the fix is a real router address');
+            $this->assertSame($p['public']['nets']['B'], $p['secret']['server_net']);
+            if ($p['secret']['problem'] === 'gateway') {
+                $this->assertNotContains($p['public']['pc']['gateway'], $owned);
+            } else {
+                $this->assertSame($p['secret']['hop'] === $p['public']['interfaces']['R2'][1][1] ? 'R3' : 'R2', $p['secret']['at']);
+            }
+        }
+        $this->assertCount(4, $faults);
     }
 
     public function testStraightLinePointsLieOnTheLine(): void

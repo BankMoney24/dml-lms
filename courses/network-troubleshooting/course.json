@@ -1,0 +1,225 @@
+{
+  "title": "Network Troubleshooting: Packets, Routes and Traces",
+  "summary": "Follow a web visit packet by packet, trace the route across a network, and find the one broken setting that stops a PC reaching a server. Two hands-on labs with fresh numbers every time: a packet capture to read and a simulated network with a command prompt.",
+  "track": "skills",
+  "level": "intermediate",
+  "duration_hours": 8,
+  "outcomes": [
+    "Read a packet capture and pick out ARP, DNS, the TCP three-way handshake and HTTP",
+    "Explain how routers choose a path, and how TTL and tracert reveal it",
+    "Use ipconfig, ping, tracert and routing tables to find and describe a network fault",
+    "Write a clear fault report with the fix"
+  ],
+  "prerequisites": "IPv4 addresses and subnet masks (the Practical Tech Skills course covers them).",
+  "modules": [
+    {
+      "title": "Packets: what a web visit looks like",
+      "lessons": [
+        {
+          "type": "text",
+          "title": "ARP, DNS, TCP and HTTP in one visit",
+          "file": "lessons/01-a-web-visit.md"
+        },
+        {
+          "type": "lab",
+          "title": "Lab: read the packet capture",
+          "lab": "packet-capture",
+          "intro": "Filter the capture, open the packets and find the answers. Every learner gets a different capture."
+        },
+        {
+          "type": "quiz",
+          "title": "Packets quiz",
+          "pass_threshold": 70,
+          "intro": "Four questions on reading a capture.",
+          "questions": [
+            {
+              "prompt": "Which packet tells you the MAC address of the default gateway?",
+              "options": [
+                "The ARP request",
+                "The ARP reply",
+                "The DNS response",
+                "The first TCP SYN"
+              ],
+              "correct": 1,
+              "explanation": "The ARP reply says \"192.168.x.1 is at <MAC>\". The request only asks the question."
+            },
+            {
+              "prompt": "DNS lookups normally go to which port?",
+              "options": [
+                "TCP 80",
+                "UDP 53",
+                "TCP 443",
+                "UDP 67"
+              ],
+              "correct": 1,
+              "explanation": "DNS queries use UDP port 53 (TCP 53 for large answers)."
+            },
+            {
+              "prompt": "In the TCP three-way handshake, which packet completes it?",
+              "options": [
+                "SYN from the client",
+                "SYN, ACK from the server",
+                "ACK from the client",
+                "FIN, ACK from the client"
+              ],
+              "correct": 2,
+              "explanation": "SYN, then SYN-ACK, then the client's ACK."
+            },
+            {
+              "prompt": "A server answers \"HTTP/1.1 301 Moved Permanently\". Where should the browser go next?",
+              "options": [
+                "Nowhere: the page is gone",
+                "To the address in the Location header",
+                "Back to the DNS server",
+                "To port 301"
+              ],
+              "correct": 1,
+              "explanation": "301 means the resource moved; the new address is in the Location header."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Routes: tracing a packet across the network",
+      "lessons": [
+        {
+          "type": "text",
+          "title": "Routing tables, TTL and tracert",
+          "file": "lessons/02-tracing-the-route.md"
+        },
+        {
+          "type": "lab",
+          "title": "Lab: find the broken link",
+          "lab": "network-trace",
+          "intro": "Use the command prompt on PC1. Ping, trace, then read the routing tables there and back."
+        },
+        {
+          "type": "quiz",
+          "title": "Routing quiz",
+          "pass_threshold": 70,
+          "intro": "Four questions on routes and traces.",
+          "questions": [
+            {
+              "prompt": "A router has routes for 10.0.0.0/8, 10.4.0.0/16 and 0.0.0.0/0. Which does it use for 10.4.7.9?",
+              "options": [
+                "10.0.0.0/8",
+                "10.4.0.0/16",
+                "0.0.0.0/0",
+                "It picks one at random"
+              ],
+              "correct": 1,
+              "explanation": "The longest matching prefix wins: /16 is more specific than /8 and /0."
+            },
+            {
+              "prompt": "tracert shows r2, r4, r2, r4, r2… What is the most likely fault?",
+              "options": [
+                "The server is switched off",
+                "A routing loop: a route points the wrong way",
+                "DNS is broken",
+                "The PC has no IP address"
+              ],
+              "correct": 1,
+              "explanation": "Repeating hops mean the packet goes round until its TTL runs out."
+            },
+            {
+              "prompt": "What does a router do when a packet's TTL reaches zero?",
+              "options": [
+                "Sends it on anyway",
+                "Drops it and sends back Time exceeded",
+                "Doubles the TTL",
+                "Sends it back to the sender unchanged"
+              ],
+              "correct": 1,
+              "explanation": "That reply is exactly what tracert uses to name each hop."
+            },
+            {
+              "prompt": "Ping to a server times out, but tracert shows the first two routers and then only * * *. What should you check?",
+              "options": [
+                "The PC's keyboard",
+                "The routes back to your own network on the routers further along",
+                "The server's screen resolution",
+                "Nothing: the network is fine"
+              ],
+              "correct": 1,
+              "explanation": "Requests may arrive, but replies need a route back to your network."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "A troubleshooting method",
+      "lessons": [
+        {
+          "type": "text",
+          "title": "Bottom up, one test at a time",
+          "file": "lessons/03-a-method.md"
+        },
+        {
+          "type": "quiz",
+          "title": "Final check",
+          "pass_threshold": 70,
+          "intro": "Five questions across the course.",
+          "questions": [
+            {
+              "prompt": "ipconfig shows 169.254.12.40. What does that tell you?",
+              "options": [
+                "The PC is on the internet",
+                "DHCP did not give the PC an address",
+                "The DNS server is 169.254.12.40",
+                "The gateway is fine"
+              ],
+              "correct": 1,
+              "explanation": "169.254.x.x is the self-assigned address a PC uses when DHCP fails."
+            },
+            {
+              "prompt": "You can ping 203.0.113.23 but not open results.example.net. What is the likeliest cause?",
+              "options": [
+                "A routing loop",
+                "DNS: the name is not resolving",
+                "The cable is unplugged",
+                "The gateway is wrong"
+              ],
+              "correct": 1,
+              "explanation": "Addresses work, names do not: check DNS with nslookup."
+            },
+            {
+              "prompt": "A PC's default gateway must be…",
+              "options": [
+                "Any router on the network",
+                "A router address on the PC's own network",
+                "The DNS server",
+                "The server it wants to reach"
+              ],
+              "correct": 1,
+              "explanation": "The PC can only hand packets to a router it can reach directly on its own network."
+            },
+            {
+              "prompt": "Which command shows the MAC addresses your PC has learned?",
+              "options": [
+                "arp -a",
+                "tracert",
+                "nslookup",
+                "ipconfig /release"
+              ],
+              "correct": 0,
+              "explanation": "arp -a lists the IP-to-MAC entries the PC has found."
+            },
+            {
+              "prompt": "Which is the best fault report?",
+              "options": [
+                "The internet is down",
+                "Nothing works, please fix",
+                "Tracert stops at R2 (Destination net unreachable); R2 has no route to 192.168.42.0/24; add one via R3",
+                "The server is slow"
+              ],
+              "correct": 2,
+              "explanation": "It says what was tested, what happened, where, and the fix."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

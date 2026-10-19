@@ -137,7 +137,8 @@ final class Discussions
                 'qa.accepted',
                 'Your answer helped',
                 'It was marked as the answer to a question on ' . $course->title . '.',
-                '/courses/' . $course->slug . '/lessons/' . $question->lessonId . '#q' . $question->id,
+                // Teachers do not take the course, so their link goes to the questions inbox.
+                $answer->byStaff ? '/teach/questions#q' . $question->id : '/courses/' . $course->slug . '/lessons/' . $question->lessonId . '#q' . $question->id,
             );
         }
     }

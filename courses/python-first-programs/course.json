@@ -1,0 +1,248 @@
+{
+  "title": "Python: First Programs",
+  "summary": "Write real Python from the first lesson: input and output, decisions, loops, lists and functions. Every lesson runs in the Code studio in your browser, with a marked leap-year lab and practice challenges.",
+  "track": "skills",
+  "level": "beginner",
+  "duration_hours": 10,
+  "outcomes": [
+    "Write Python programs that read input, calculate and print results",
+    "Make decisions with if, elif, else, and combine conditions with and, or and not",
+    "Repeat work with for and while loops over lists and ranges",
+    "Write and test functions that return values"
+  ],
+  "prerequisites": "None. You need a browser; nothing to install.",
+  "modules": [
+    {
+      "title": "First programs",
+      "lessons": [
+        {
+          "type": "text",
+          "title": "print, variables and input",
+          "file": "lessons/01-first-programs.md"
+        },
+        {
+          "type": "quiz",
+          "title": "First programs quiz",
+          "pass_threshold": 70,
+          "intro": "Four questions.",
+          "questions": [
+            {
+              "prompt": "What does input() give back?",
+              "options": [
+                "A number",
+                "Text (a string)",
+                "True or False",
+                "Nothing"
+              ],
+              "correct": 1,
+              "explanation": "Always text. Convert with int() or float() before doing maths."
+            },
+            {
+              "prompt": "What is 7 // 2 in Python?",
+              "options": [
+                "3.5",
+                "3",
+                "4",
+                "1"
+              ],
+              "correct": 1,
+              "explanation": "// is whole-number division."
+            },
+            {
+              "prompt": "What is 17 % 5?",
+              "options": [
+                "3",
+                "2",
+                "3.4",
+                "12"
+              ],
+              "correct": 1,
+              "explanation": "17 = 3 × 5 + 2: the remainder is 2."
+            },
+            {
+              "prompt": "Which line prints \"Ada is 16\" when name = \"Ada\" and age = 16?",
+              "options": [
+                "print(\"{name} is {age}\")",
+                "print(f\"{name} is {age}\")",
+                "print(name + \" is \" + age)",
+                "print(f(name, age))"
+              ],
+              "correct": 1,
+              "explanation": "The f before the quote makes it an f-string. The third option fails: you cannot add text and a number."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Decisions",
+      "lessons": [
+        {
+          "type": "text",
+          "title": "if, elif, else, and, or, not",
+          "file": "lessons/02-decisions.md"
+        },
+        {
+          "type": "lab",
+          "title": "Lab: leap years",
+          "lab": "py-leap",
+          "intro": "Write is_leap(year), run the examples, then check it on fresh years. It runs only in your browser."
+        },
+        {
+          "type": "quiz",
+          "title": "Decisions quiz",
+          "pass_threshold": 70,
+          "intro": "Three questions.",
+          "questions": [
+            {
+              "prompt": "score = 70. Which grade does this code print?\nif score >= 60: print(\"B\")\nelif score >= 70: print(\"A\")",
+              "options": [
+                "A",
+                "B",
+                "Both",
+                "Nothing"
+              ],
+              "correct": 1,
+              "explanation": "The first true condition wins: 70 >= 60, so B. Put the highest band first."
+            },
+            {
+              "prompt": "Which tests for an even number?",
+              "options": [
+                "n / 2 == 0",
+                "n % 2 == 0",
+                "n // 2 == 1",
+                "n == 2"
+              ],
+              "correct": 1,
+              "explanation": "An even number leaves remainder 0 when divided by 2."
+            },
+            {
+              "prompt": "Is 1900 a leap year?",
+              "options": [
+                "Yes: it divides by 4",
+                "No: it divides by 100 but not by 400",
+                "Yes: it divides by 100",
+                "Only in some countries"
+              ],
+              "correct": 1,
+              "explanation": "Century years must also divide by 400. 2000 is a leap year; 1900 is not."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Loops and lists",
+      "lessons": [
+        {
+          "type": "text",
+          "title": "for, while, lists and dictionaries",
+          "file": "lessons/03-loops-and-lists.md"
+        },
+        {
+          "type": "quiz",
+          "title": "Loops quiz",
+          "pass_threshold": 70,
+          "intro": "Three questions.",
+          "questions": [
+            {
+              "prompt": "Which numbers does range(1, 5) give?",
+              "options": [
+                "1, 2, 3, 4, 5",
+                "1, 2, 3, 4",
+                "0, 1, 2, 3, 4",
+                "2, 3, 4, 5"
+              ],
+              "correct": 1,
+              "explanation": "range stops before its second number."
+            },
+            {
+              "prompt": "scores = [72, 58, 91]. What is scores[1]?",
+              "options": [
+                "72",
+                "58",
+                "91",
+                "An error"
+              ],
+              "correct": 1,
+              "explanation": "Counting starts at 0, so [1] is the second item."
+            },
+            {
+              "prompt": "A while loop never stops. What is the likeliest cause?",
+              "options": [
+                "The list is empty",
+                "Nothing inside the loop changes the condition",
+                "print() was used",
+                "The file is too long"
+              ],
+              "correct": 1,
+              "explanation": "Something in the loop must eventually make the condition false."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Functions",
+      "lessons": [
+        {
+          "type": "text",
+          "title": "def, parameters and return",
+          "file": "lessons/04-functions.md"
+        },
+        {
+          "type": "quiz",
+          "title": "Final check",
+          "pass_threshold": 70,
+          "intro": "Four questions across the course.",
+          "questions": [
+            {
+              "prompt": "What does a function return if it has no return line?",
+              "options": [
+                "0",
+                "An empty string",
+                "None",
+                "An error"
+              ],
+              "correct": 2,
+              "explanation": "Python functions give back None by default."
+            },
+            {
+              "prompt": "Why do tests check what a function returns rather than what it prints?",
+              "options": [
+                "Printing is slower",
+                "A returned value can be stored and compared; printed text only goes to the screen",
+                "print is not allowed in functions",
+                "There is no reason"
+              ],
+              "correct": 1,
+              "explanation": "Returned values can be used by other code, including tests."
+            },
+            {
+              "prompt": "def area(w, h): return w * h. What is area(3, 4)?",
+              "options": [
+                "7",
+                "12",
+                "34",
+                "None"
+              ],
+              "correct": 1,
+              "explanation": "3 × 4 = 12."
+            },
+            {
+              "prompt": "Which is a valid variable name in Python?",
+              "options": [
+                "exam score",
+                "2nd_score",
+                "exam_score",
+                "exam-score"
+              ],
+              "correct": 2,
+              "explanation": "Letters, digits and underscores, not starting with a digit, no spaces or dashes."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

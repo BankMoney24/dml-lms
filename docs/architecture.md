@@ -37,13 +37,14 @@ Health endpoints (`/health`, `/health/ready`) skip session, tenant and auth.
 | Search | school-wide search across courses, lessons, classes, people and pages (ADR 0018) | Courses, Groups, Identity |
 | Site | site_pages, the school's public pages and website settings (ADR 0019) | Tenancy, Audit |
 | Joining | sign-up modes and join codes, email confirmation, learner_profiles and the getting-started wizard, suggestions, join_requests (teach / guardian) (ADR 0020) | Identity, Tenancy, Wizards, Notifications, Audit |
-| Playground | code_snippets and the JavaScript playground on the sandboxed runner (ADR 0020) | Identity, VirtualLabs (runner) |
+| Playground | The Code studio: code_snippets (with language), code_challenge_solves, JavaScript and Python on the sandboxed runner and web pages on /labs/web-runner (ADR 0020, 0027) | Identity, VirtualLabs (runners) |
 | Discussions | lesson_questions, lesson_answers, the teachers' question inbox (ADR 0022) | Courses, Learning, Groups, Notifications, Audit |
 | Reports | school-wide figures and CSV downloads (ADR 0022) | Tenancy, Courses, Learning, Payments, Audit |
 | Paths | learning_paths, their ordered courses and followers (ADR 0023) | Courses, Learning, Audit |
 | Achievements | achievements worked out from learning records (ADR 0023) | Learning, Assessments, VirtualLabs, Discussions, Playground, Paths, Notifications |
 | Applications | course_applications, the waiting list and offering places (ADR 0025) | Courses, Learning, Tenancy (members), Identity, Notifications |
 | Subscriptions | The subscribe page and My subscriptions (ADR 0026); payment_claims and payment_instructions live in Payments (TransferPayments) | Courses, Learning, Payments, Applications |
+| Platform (sample data) | SampleSchool and SampleClock: `sample:seed` drives the real services through 90 days in one transaction (ADR 0027) | All learning modules |
 | Platform/Seo | page metadata, share images, robots and sitemap on the canonical address (ADR 0019) | Tenancy, Courses, Site |
 | Groups | learner_groups (classes, cohorts), members, courses set for a group, progress grid (ADR 0013) | Courses, Learning, Identity, Audit |
 | Payments | course prices, payment_accounts (sealed Paystack keys), payments, payment_events, checkout, verify and webhook handling (ADR 0012) | Courses, Learning, Identity, Audit |

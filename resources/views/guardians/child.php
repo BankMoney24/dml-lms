@@ -116,7 +116,7 @@ $nothing = !$link->canProgress && !$link->canResults && !$link->canNotices;
   <h2 id="certs-h">Certificates</h2>
   <ul class="cert-list">
     <?php foreach ($certificates as $cert): ?>
-    <li><a href="/certificates/<?= $v->e($cert->displayCode()) ?>"><?= $v->e($cert->courseTitle) ?></a><span class="small muted">Issued <?= $v->datetime($cert->issuedAt, 'j M Y') ?></span></li>
+    <li><a href="/verify?code=<?= $v->e(rawurlencode($cert->displayCode())) ?>"><?= $v->e($cert->courseTitle) ?></a><span class="small muted">Issued <?= $v->datetime($cert->issuedAt, 'j M Y') ?></span></li>
     <?php endforeach; ?>
   </ul>
 </section>

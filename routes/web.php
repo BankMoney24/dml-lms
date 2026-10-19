@@ -109,7 +109,8 @@ return static function (Router $r): void {
     $r->get('/payments/paystack/callback', [PaymentController::class, 'callback'], ['tenant', 'auth']);
     // No session or CSRF: Paystack's HMAC signature, checked with the school's key, is the authentication.
     $r->post('/webhooks/paystack', [PaymentController::class, 'webhook'], [Kernel::BARE, 'host-tenant', 'tenant']);
-    $r->get('/courses/{slug}/lessons/{lesson:int}', [LearnController::class, 'lesson'], $learn);
+    // Not $learn: teachers following a lesson link are sent to the preview (the controller checks).
+    $r->get('/courses/{slug}/lessons/{lesson:int}', [LearnController::class, 'lesson'], ['tenant', 'auth']);
     $r->post('/courses/{slug}/lessons/{lesson:int}/complete', [LearnController::class, 'complete'], $learn);
     $r->post('/courses/{slug}/lessons/{lesson:int}/attempts', [AttemptController::class, 'submit'], $learn);
     $r->get('/courses/{slug}/lessons/{lesson:int}/attempts/{attempt:int}', [AttemptController::class, 'result'], $learn);
@@ -122,6 +123,7 @@ return static function (Router $r): void {
     // Virtual labs: the gateway checks on every request that the session is this learner's.
     $r->post('/courses/{slug}/lessons/{lesson:int}/lab', [LabController::class, 'start'], $learn);
     $r->get('/labs/runner', [LabController::class, 'runner'], [Kernel::BARE]);
+    $r->get('/labs/web-runner', [LabController::class, 'webRunner'], [Kernel::BARE]);
     $r->get('/labs/{session:int}', [LabController::class, 'show'], ['tenant', 'auth']);
     $r->post('/labs/{session:int}/submit', [LabController::class, 'submit'], ['tenant', 'auth']);
     $r->post('/labs/{session:int}/end', [LabController::class, 'end'], ['tenant', 'auth']);
@@ -216,6 +218,10 @@ return static function (Router $r): void {
     $r->get('/playground', [PlaygroundController::class, 'index'], $signedIn);
     $r->post('/playground', [PlaygroundController::class, 'save'], $signedIn);
     $r->post('/playground/{snippet:int}/delete', [PlaygroundController::class, 'delete'], $signedIn);
+    // Practice challenges (ADR 0027): the tests run in the learner's browser.
+    $r->get('/playground/challenges', [PlaygroundController::class, 'challenges'], $signedIn);
+    $r->get('/playground/challenges/{key}', [PlaygroundController::class, 'challenge'], $signedIn);
+    $r->post('/playground/challenges/{key}', [PlaygroundController::class, 'solved'], $signedIn);
 
     $people = ['tenant', 'auth', 'can:members.manage'];
     $r->get('/people', [PeopleController::class, 'index'], $people);
