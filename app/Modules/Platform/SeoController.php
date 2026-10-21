@@ -101,7 +101,7 @@ final class SeoController
                 $readable = $this->db->fetchAll(
                     "SELECT l.id, l.updated_at, c.slug FROM lessons l
                      JOIN courses c ON c.tenant_id = l.tenant_id AND c.id = l.course_id AND c.status = 'published' AND {$visible}
-                     WHERE l.tenant_id = ? AND l.type IN ('text', 'video') AND (l.is_preview = 1 OR ({$open}))
+                     WHERE l.tenant_id = ? AND l.type IN ('text', 'video', 'audio') AND (l.is_preview = 1 OR ({$open}))
                      ORDER BY c.title, l.position LIMIT 5000",
                     [$tenant->id],
                 );

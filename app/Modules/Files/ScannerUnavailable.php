@@ -6,6 +6,6 @@ namespace App\Modules\Files;
 
 use RuntimeException;
 
-final class ScannerUnavailable extends RuntimeException
+class ScannerUnavailable extends RuntimeException
 {
 }

@@ -59,19 +59,23 @@ final class FileService
      * Validates and scans files before anything is stored.
      *
      * @param list<UploadedFile> $uploads
+     * @param bool $media whether video and audio are welcome here (not in help messages)
      * @return list<PreparedUpload>
      * @throws ValidationException with key $field
      */
-    public function prepare(int $tenantId, array $uploads, string $field = 'file'): array
+    public function prepare(int $tenantId, array $uploads, string $field = 'file', bool $media = true): array
     {
         $prepared = [];
         $total = 0;
         foreach ($uploads as $upload) {
+            $extension = UploadPolicy::extensionOf(self::cleanName($upload->clientName));
             if (!$upload->isOk()) {
-                throw ValidationException::single($field, $upload->errorMessage($this->policy->maxMegabytes()));
+                throw ValidationException::single($field, $upload->errorMessage($this->policy->webMegabytes(UploadPolicy::mediaKind($extension) !== null)));
             }
             $name = self::cleanName($upload->clientName);
-            $extension = UploadPolicy::extensionOf($name);
+            if (!$media && UploadPolicy::mediaKind($extension) !== null) {
+                throw ValidationException::single($field, sprintf('“%s”: video and audio cannot be attached here.', $name));
+            }
             $problem = $this->policy->problemWith($upload->tmpPath, $extension);
             if ($problem !== null) {
                 throw ValidationException::single($field, sprintf('“%s”: %s', $name, $problem));
@@ -83,6 +87,12 @@ final class FileService
             } catch (InfectedFile $e) {
                 $this->audit->record($tenantId, null, 'file.rejected_infected', null, null, ['name' => $name, 'signature' => $e->getMessage()]);
                 throw ValidationException::single($field, sprintf('“%s” was refused: the virus scanner flagged it as unsafe.', $name));
+            } catch (ScanTooLarge $e) {
+                $this->logger->error('Upload refused: larger than the virus scanner accepts', ['error' => $e->getMessage(), 'bytes' => $upload->size]);
+                throw ValidationException::single($field, sprintf(
+                    '“%s” is bigger than the virus scanner is set to check. Ask an administrator to raise StreamMaxLength in clamd, or upload a smaller file.',
+                    $name,
+                ));
             } catch (ScannerUnavailable $e) {
                 $this->logger->error('Upload refused: virus scanner unavailable', ['error' => $e->getMessage()]);
                 throw ValidationException::single($field, 'Files cannot be checked for viruses right now, so they cannot be accepted. Please try again later.');
@@ -103,10 +113,17 @@ final class FileService
      * @param list<PreparedUpload> $prepared
      * @return list<StoredFile>
      */
-    public function persist(int $tenantId, int $userId, array $prepared, ?int $lessonId, ?int $submissionId, ?int $supportMessageId = null): array
-    {
-        if (count(array_filter([$lessonId, $submissionId, $supportMessageId], static fn (?int $id): bool => $id !== null)) !== 1) {
-            throw new \LogicException('A file belongs to exactly one lesson, submission or help message.');
+    public function persist(
+        int $tenantId,
+        int $userId,
+        array $prepared,
+        ?int $lessonId,
+        ?int $submissionId,
+        ?int $supportMessageId = null,
+        ?int $classSessionId = null,
+    ): array {
+        if (count(array_filter([$lessonId, $submissionId, $supportMessageId, $classSessionId], static fn (?int $id): bool => $id !== null)) !== 1) {
+            throw new \LogicException('A file belongs to exactly one lesson, submission, help message or class.');
         }
         $stored = [];
         $movedPaths = [];
@@ -122,6 +139,7 @@ final class FileService
                     'lesson_id' => $lessonId,
                     'submission_id' => $submissionId,
                     'support_message_id' => $supportMessageId,
+                    'class_session_id' => $classSessionId,
                     'uploaded_by' => $userId,
                     'original_name' => $p->name,
                     'extension' => $p->extension,
@@ -166,6 +184,7 @@ final class FileService
             throw HttpException::notFound();
         }
         $this->files->delete($course->tenantId, $file->id);
+        $this->lessons->forgetMediaFile($course->tenantId, $file->id);
         $this->deleteBlobs([$file->storageKey]);
         $this->audit->record($course->tenantId, $author->user->id, 'lesson.file_removed', 'lesson', $lesson->id, ['file' => $file->originalName]);
 

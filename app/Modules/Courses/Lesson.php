@@ -11,13 +11,15 @@ final class Lesson
     public const TYPE_TEXT = 'text';
     public const TYPE_QUIZ = 'quiz';
     public const TYPE_VIDEO = 'video';
+    public const TYPE_AUDIO = 'audio';
     public const TYPE_ASSIGNMENT = 'assignment';
     public const TYPE_LAB = 'lab';
 
     /** type => [label, one-line description for authors] */
     public const TYPES = [
         self::TYPE_TEXT => ['Reading', 'Text with headings, lists and code, then mark complete'],
-        self::TYPE_VIDEO => ['Video', 'A YouTube or Vimeo video with notes; loads only when the learner chooses'],
+        self::TYPE_VIDEO => ['Video', 'A video you upload, or a YouTube or Vimeo link, with notes; loads only when the learner presses play'],
+        self::TYPE_AUDIO => ['Audio', 'A recording you upload (a talk, a podcast, a language exercise) with notes; light on data'],
         self::TYPE_QUIZ => ['Quiz', 'Multiple choice, marked on the server, with explanations'],
         self::TYPE_ASSIGNMENT => ['Assignment', 'Learners submit work; a teacher approves it or asks for changes'],
         self::TYPE_LAB => ['Lab', 'A hands-on simulation from the lab catalogue, marked automatically'],
@@ -38,6 +40,7 @@ final class Lesson
         public readonly ?string $mediaUrl = null,
         public readonly ?string $labKey = null,
         public readonly bool $preview = false,
+        public readonly ?int $mediaFileId = null,
     ) {
     }
 
@@ -57,6 +60,7 @@ final class Lesson
             isset($row['media_url']) && $row['media_url'] !== '' ? (string) $row['media_url'] : null,
             isset($row['lab_key']) && $row['lab_key'] !== '' ? (string) $row['lab_key'] : null,
             (bool) ($row['is_preview'] ?? false),
+            isset($row['media_file_id']) ? (int) $row['media_file_id'] : null,
         );
     }
 
@@ -70,6 +74,23 @@ final class Lesson
         return $this->type === self::TYPE_VIDEO;
     }
 
+    public function isAudio(): bool
+    {
+        return $this->type === self::TYPE_AUDIO;
+    }
+
+    /** Video and audio lessons can carry an uploaded media file. */
+    public function takesMedia(): bool
+    {
+        return $this->isVideo() || $this->isAudio();
+    }
+
+    /** Ready for learners: a video with a link or an upload, an audio lesson with its recording. */
+    public function hasMedia(): bool
+    {
+        return $this->mediaFileId !== null || ($this->isVideo() && $this->video() !== null);
+    }
+
     public function isLab(): bool
     {
         return $this->type === self::TYPE_LAB;
@@ -80,13 +101,13 @@ final class Lesson
         return $this->type === self::TYPE_ASSIGNMENT;
     }
 
-    /** Readings and videos are completed by the learner; quizzes, assignments and labs by an outcome. */
+    /** Readings, videos and audio are completed by the learner; quizzes, assignments and labs by an outcome. */
     public function learnerCompletes(): bool
     {
-        return $this->type === self::TYPE_TEXT || $this->type === self::TYPE_VIDEO;
+        return in_array($this->type, [self::TYPE_TEXT, self::TYPE_VIDEO, self::TYPE_AUDIO], true);
     }
 
-    /** Readings and videos can be opened by anyone as a free preview, if the author allows it (CRS-003). */
+    /** Readings, videos and audio can be opened by anyone as a free preview, if the author allows it (CRS-003). */
     public function canBePreview(): bool
     {
         return $this->learnerCompletes();

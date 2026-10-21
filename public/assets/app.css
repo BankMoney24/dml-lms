@@ -582,6 +582,21 @@ input[type=file] { padding: var(--space-2); background: var(--surface); }
 .small-heading { font-size: var(--step-0); margin: var(--space-4) 0 var(--space-2); }
 .upload-warning { color: var(--danger); font-size: var(--step--1); font-weight: 600; margin: 0; }
 
+/* Uploaded video and audio (ADR 0029). Nothing loads until play is pressed. */
+.media-player { margin: 0 0 var(--space-5); max-width: 52rem; }
+.media-player video { display: block; width: 100%; aspect-ratio: 16 / 9; background: #0f1a2b; border-radius: var(--radius-m); }
+.audio-card { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--lamp-soft); color: var(--lamp-ink); border-radius: var(--radius-m); }
+.audio-card audio { flex: 1; min-width: 0; width: 100%; }
+.audio-icon .icon { width: 2rem; height: 2rem; }
+.media-meta { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); justify-content: space-between; margin-top: var(--space-2); color: var(--ink-soft); }
+.media-meta a { display: inline-flex; align-items: center; gap: .35em; }
+.media-meta .icon { width: 1.05em; height: 1.05em; }
+.media-section { margin-bottom: var(--space-6); padding-bottom: var(--space-5); border-bottom: 1px solid var(--line); }
+.upload-progress { margin: 0 0 var(--space-3); max-width: 30rem; }
+.upload-track { height: .6rem; background: var(--line); border-radius: 999px; overflow: hidden; }
+.upload-bar { display: block; height: 100%; width: 0; background: var(--primary); transition: width .2s linear; }
+@media (prefers-reduced-motion: reduce) { .upload-bar { transition: none; } }
+
 /* System page */
 .status-grid { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); align-items: start; }
 .status-card { background: var(--surface); border: 1px solid var(--line); border-left: 6px solid var(--line); border-radius: var(--radius-m); padding: var(--space-4) var(--space-5); min-width: 0; }
@@ -2480,3 +2495,38 @@ kbd { font: 700 0.8125rem/1 var(--font-body); padding: 0.15rem 0.4rem; border: 1
 .live-now-title a { color: #fff; text-decoration: none; }
 .live-now-when { margin: var(--space-1) 0 var(--space-4); }
 .live-now form { margin: 0; }
+
+/* The online classroom (ADR 0029). The stage is dark like a screen; the data
+   choice sits beside the title because it is the first thing a learner on a
+   weak connection needs. */
+.room-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-3) var(--space-5); margin-bottom: var(--space-3); }
+.room-title h1 { margin: 0; font-size: var(--step-2); }
+.room-kicker { margin: 0 0 var(--space-1); color: var(--ink-soft); display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.room-modes { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 8px; padding: 3px; margin: 0; gap: 3px; background: var(--surface); }
+.room-modes label { position: relative; cursor: pointer; }
+.room-modes input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.room-modes span { display: inline-flex; align-items: center; gap: .35rem; padding: .4rem .7rem; border-radius: 6px; font-size: var(--step--1); font-weight: 600; color: var(--ink-soft); white-space: nowrap; }
+.room-modes .icon { width: 1rem; height: 1rem; }
+.room-modes input:checked + span { background: var(--brand-navy); color: #fff; }
+.room-modes input:focus-visible + span { outline: 3px solid var(--focus, var(--lamp)); outline-offset: 1px; }
+.room-status { margin: 0 0 var(--space-3); padding: var(--space-2) var(--space-3); border-radius: 8px; background: var(--lamp-soft); color: var(--lamp-ink); font-size: var(--step--1); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.room-status[hidden] { display: none; }
+.room-status.is-warn { background: var(--warn-soft); color: var(--ink); }
+.room-status.is-error { background: var(--accent-soft); color: var(--danger); }
+.room-layout { display: grid; gap: var(--space-4); }
+.room-stage { position: relative; min-height: 62vh; background: #0f1a2b; border-radius: var(--radius-m); overflow: hidden; }
+.room-stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.room-stage-note { color: #e6edf6; padding: var(--space-5); margin: 0; }
+.room-panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-3); }
+.room-panel .small-heading { margin-top: 0; }
+.room-tips li { margin-bottom: var(--space-2); }
+.room-panel .file-list li { padding: var(--space-2); }
+.room-closed { max-width: 40rem; padding: var(--space-5) 0; }
+@media (min-width: 60rem) {
+  .room-layout { grid-template-columns: minmax(0, 1fr) 18rem; align-items: start; }
+  .room-stage { min-height: 0; height: calc(100vh - 13rem); max-height: 52rem; }
+}
+.lc-materials, .lc-recording { margin-bottom: var(--space-5); }
+.lc-materials h2, .lc-recording h2 { font-size: var(--step-1); }
+.room-tips .linklike { padding: 0; line-height: inherit; vertical-align: baseline; font-size: inherit; }
+.lc-reg-meta { display: block; font-weight: 400; }

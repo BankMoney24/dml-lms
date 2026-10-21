@@ -10,6 +10,8 @@
 /** @var ?array<string, mixed> $lab */
 /** @var ?array{saved: bool, body: string, updated_at: string} $note */
 $note ??= null;
+/** @var ?\App\Modules\Files\StoredFile $mediaFile */
+$mediaFile ??= null;
 /** @var list<\App\Modules\Discussions\Question> $questions */
 $questions ??= [];
 $qaEnabled ??= false;
@@ -34,8 +36,11 @@ $latest = $submissions[0] ?? null;
     </form>
   </header>
 
-  <?php if ($lesson->type === 'text' || $lesson->isVideo()): ?>
-    <?php if ($lesson->isVideo()): $video = $lesson->video(); ?>
+  <?php if ($lesson->learnerCompletes()): ?>
+    <?php if ($mediaFile !== null): $mediaSrc = '/files/' . $mediaFile->id; include __DIR__ . '/../files/_player.php'; ?>
+    <?php elseif ($lesson->takesMedia() && !$lesson->hasMedia()): ?>
+      <p class="notice">The <?= $lesson->isAudio() ? 'recording' : 'video' ?> for this lesson is not ready yet. Check back soon.</p>
+    <?php elseif ($lesson->isVideo()): $video = $lesson->video(); ?>
       <?php if ($video !== null): ?>
       <figure class="video" data-embed="<?= $v->e($video->embedUrl()) ?>" data-title="<?= $v->e($lesson->title) ?>">
         <div class="video-frame">
@@ -55,7 +60,7 @@ $latest = $submissions[0] ?? null;
     <?php else: ?>
       <form method="post" action="<?= $base ?>/lessons/<?= $lesson->id ?>/complete">
         <?= $v->csrfField() ?>
-        <button type="submit" class="button"><?= $lesson->isVideo() ? 'I have watched it: mark complete' : 'Mark as complete' ?></button>
+        <button type="submit" class="button"><?= $lesson->isVideo() ? 'I have watched it: mark complete' : ($lesson->isAudio() ? 'I have listened: mark complete' : 'Mark as complete') ?></button>
       </form>
     <?php endif; ?>
 
@@ -107,8 +112,8 @@ $latest = $submissions[0] ?? null;
           ]) ?>
           <div class="field">
             <label for="attachments">Attach files <span class="optional">(optional, up to 3)</span></label>
-            <p class="hint" id="attachments-hint">Screenshots, a PDF, a zip of your project or a config file; up to <?= (int) $policy->maxMegabytes() ?> MB each.<?= $latest !== null && $latest->isPending() ? ' Files you already sent stay attached.' : '' ?></p>
-            <input type="file" id="attachments" name="attachments[]" multiple accept="<?= $v->e(\App\Modules\Files\UploadPolicy::acceptAttribute()) ?>" aria-describedby="attachments-hint<?= isset($errors['attachments']) ? ' attachments-error' : '' ?>"<?= isset($errors['attachments']) ? ' aria-invalid="true"' : '' ?> data-max-bytes="<?= (int) $policy->maxBytes ?>" data-max-files="3">
+            <p class="hint" id="attachments-hint">Screenshots, a PDF, a zip of your project, a config file, or a short video or voice recording; up to <?= (int) $policy->webMegabytes(false) ?> MB each (<?= (int) $policy->webMegabytes(true) ?> MB for video and audio).<?= $latest !== null && $latest->isPending() ? ' Files you already sent stay attached.' : '' ?></p>
+            <input type="file" id="attachments" name="attachments[]" multiple accept="<?= $v->e(\App\Modules\Files\UploadPolicy::acceptAttribute()) ?>" aria-describedby="attachments-hint<?= isset($errors['attachments']) ? ' attachments-error' : '' ?>"<?= isset($errors['attachments']) ? ' aria-invalid="true"' : '' ?> data-max-bytes="<?= (int) $policy->webLimit(false) ?>" data-media-max-bytes="<?= (int) $policy->webLimit(true) ?>" data-max-files="3">
             <?php if (isset($errors['attachments'])): ?><p class="field-error" id="attachments-error"><?= $v->e($errors['attachments']) ?></p><?php endif; ?>
           </div>
           <button type="submit" class="button"><?= $latest !== null && $latest->isPending() ? 'Update submission' : 'Submit for review' ?></button>

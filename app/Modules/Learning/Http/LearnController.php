@@ -171,7 +171,8 @@ final class LearnController
             'lab' => $lab,
             'submissions' => $submissions,
             'submissionFiles' => $this->files->forSubmissions($course->tenantId, array_map(static fn ($s): int => $s->id, $submissions)),
-            'lessonFiles' => $this->files->forLesson($course->tenantId, $lesson->id),
+            'lessonFiles' => \App\Modules\Courses\Http\LessonEditorController::withoutMedia($this->files->forLesson($course->tenantId, $lesson->id), $lesson),
+            'mediaFile' => self::mediaFileOf($this->files, $lesson),
             'policy' => $this->fileService->policy(),
             'note' => $this->notes?->find($course->tenantId, $user->user->id, $lesson->id),
             'questions' => $this->questions?->forLesson($course->tenantId, $lesson->id) ?? [],
@@ -180,6 +181,14 @@ final class LearnController
             'errors' => $errors,
             'old' => $old,
         ]), $status);
+    }
+
+    /** A video or audio lesson's uploaded media (ADR 0029). */
+    private static function mediaFileOf(FileRepository $files, \App\Modules\Courses\Lesson $lesson): ?\App\Modules\Files\StoredFile
+    {
+        $file = $lesson->mediaFileId === null ? null : $files->find($lesson->tenantId, $lesson->mediaFileId);
+
+        return $file !== null && $file->lessonId === $lesson->id ? $file : null;
     }
 
     public function complete(Request $request): Response

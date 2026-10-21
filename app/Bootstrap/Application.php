@@ -238,6 +238,7 @@ final class Application
             $c->get(FileService::class),
             $c->get(FileRepository::class),
             $c->get(LessonRepository::class),
+            $c->get(\App\Modules\Courses\LessonMedia::class),
         ));
         $c->set(NotificationRepository::class, static fn (Container $c) => new NotificationRepository($c->get(Connection::class), $c->get(Clock::class)));
         $c->set(Notifier::class, static fn (Container $c) => new Notifier($c->get(NotificationRepository::class)));
@@ -343,7 +344,7 @@ final class Application
         $c->set(FileService::class, static fn (Container $c) => new FileService(
             $c->get(FileRepository::class),
             $c->get(LessonRepository::class),
-            new UploadPolicy(max(1, $config->int('UPLOAD_MAX_MB', 10)) * 1048576),
+            new UploadPolicy(max(1, $config->int('UPLOAD_MAX_MB', 10)) * 1048576, max(1, $config->int('MEDIA_MAX_MB', 200)) * 1048576),
             $c->get(VirusScanner::class),
             $c->get(AuditLog::class),
             $c->get(Logger::class),
@@ -478,6 +479,8 @@ final class Application
             $c->get(Session::class),
             $c->get(\App\Modules\Applications\ApplicationRepository::class),
             $c->get(\App\Modules\Payments\TransferPayments::class),
+            $c->get(\App\Modules\Courses\LessonMedia::class),
+            $c->get(FileService::class),
         ));
         $c->set(LearnController::class, static fn (Container $c) => new LearnController(
             $c->get(View::class),
@@ -547,6 +550,7 @@ final class Application
             $c->get(EnrolmentRepository::class),
             $c->get(SubmissionRepository::class),
             $c->get(SupportService::class),
+            $c->get(\App\Modules\LiveClasses\LiveClasses::class),
         ));
         $c->set(CertificateController::class, static fn (Container $c) => new CertificateController(
             $c->get(View::class),
@@ -562,6 +566,14 @@ final class Application
             $c->get(CourseAuthoring::class),
             $c->get(FileService::class),
             $c->get(FileRepository::class),
+            $c->get(\App\Modules\Courses\LessonMedia::class),
+        ));
+        $c->set(\App\Modules\Courses\LessonMedia::class, static fn (Container $c) => new \App\Modules\Courses\LessonMedia(
+            $c->get(FileService::class),
+            $c->get(FileRepository::class),
+            $c->get(LessonRepository::class),
+            $c->get(CourseRepository::class),
+            $c->get(AuditLog::class),
         ));
         $c->set(AccountService::class, static fn (Container $c) => new AccountService(
             $c->get(UserRepository::class),
@@ -848,6 +860,32 @@ final class Application
             $c->get(Clock::class),
             $c->get(GuardianRepository::class),
             $c->get(Notifier::class),
+            $c->get(\App\Modules\LiveClasses\Classroom\ClassroomSettingsRepository::class),
+        ));
+        $c->set(\App\Modules\LiveClasses\Classroom\ClassroomSettingsRepository::class, static fn (Container $c) => new \App\Modules\LiveClasses\Classroom\ClassroomSettingsRepository(
+            $c->get(Connection::class),
+            $c->get(Clock::class),
+            new SecretBox($appKey),
+        ));
+        $c->set(\App\Modules\LiveClasses\Classroom\Classroom::class, static fn (Container $c) => new \App\Modules\LiveClasses\Classroom\Classroom(
+            $c->get(\App\Modules\LiveClasses\Classroom\ClassroomSettingsRepository::class),
+            $c->get(\App\Modules\LiveClasses\ClassSessionRepository::class),
+            $c->get(GroupRepository::class),
+            $c->get(AuditLog::class),
+            $c->get(Clock::class),
+        ));
+        $c->set(\App\Modules\LiveClasses\Http\ClassroomAdminController::class, static fn (Container $c) => new \App\Modules\LiveClasses\Http\ClassroomAdminController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(\App\Modules\LiveClasses\Classroom\Classroom::class),
+        ));
+        $c->set(\App\Modules\LiveClasses\ClassMaterials::class, static fn (Container $c) => new \App\Modules\LiveClasses\ClassMaterials(
+            $c->get(\App\Modules\LiveClasses\LiveClasses::class),
+            $c->get(\App\Modules\LiveClasses\ClassSessionRepository::class),
+            $c->get(GroupRepository::class),
+            $c->get(FileService::class),
+            $c->get(FileRepository::class),
+            $c->get(AuditLog::class),
         ));
         $c->set(\App\Modules\LiveClasses\Http\LiveClassController::class, static fn (Container $c) => new \App\Modules\LiveClasses\Http\LiveClassController(
             $c->get(View::class),
@@ -857,6 +895,9 @@ final class Application
             $c->get(GroupRepository::class),
             $c->get(CourseRepository::class),
             $c->get(Clock::class),
+            $c->get(\App\Modules\LiveClasses\ClassMaterials::class),
+            $c->get(\App\Modules\LiveClasses\Classroom\Classroom::class),
+            $c->get(FileService::class),
         ));
         $c->set(SeoController::class, static fn (Container $c) => new SeoController(
             $c->get(Connection::class),

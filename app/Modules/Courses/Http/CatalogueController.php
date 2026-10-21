@@ -37,6 +37,8 @@ final class CatalogueController
         private readonly ?\App\Core\Session\Session $session = null,
         private readonly ?\App\Modules\Applications\ApplicationRepository $applications = null,
         private readonly ?\App\Modules\Payments\TransferPayments $transfers = null,
+        private readonly ?\App\Modules\Courses\LessonMedia $media = null,
+        private readonly ?\App\Modules\Files\FileService $fileService = null,
     ) {
     }
 
@@ -189,6 +191,31 @@ final class CatalogueController
     }
 
     /**
+     * GET /courses/{slug}/preview/{lesson}/media: the uploaded video or
+     * recording of a lesson anyone may read, for visitors without an account.
+     * Same rules as the preview page; streamed in ranges so it can be seeked.
+     */
+    public function media(Request $request): Response
+    {
+        $tenant = RequestContext::tenant($request);
+        $user = RequestContext::optionalUser($request);
+        $course = $this->courses->findBySlug($tenant->id, $request->routeParam('slug'));
+        if ($course === null || !$course->isPublished() || !self::visible($tenant, $course, $user !== null) || $this->media === null || $this->fileService === null) {
+            throw HttpException::notFound();
+        }
+        $lesson = $this->lessons->findInCourse($tenant->id, $course->id, $request->routeInt('lesson'));
+        $file = $lesson === null || !$course->lessonIsReadable($lesson) ? null : $this->media->fileFor($lesson);
+        if ($file === null) {
+            throw HttpException::notFound();
+        }
+
+        return Response::file($this->fileService->pathFor($file), $file->mimeType, $file->originalName, $request->query('download') !== '1')
+            ->forRange($request->header('range'))
+            ->withHeader('Content-Security-Policy', "sandbox; default-src 'none'")
+            ->withHeader('X-Robots-Tag', 'noindex');
+    }
+
+    /**
      * A lesson anyone may read without joining: a free preview the author opened
      * (CRS-003), or any reading or video in an open course (ADR 0021). Progress is
      * not recorded here; joining does that.
@@ -231,6 +258,7 @@ final class CatalogueController
         }
 
         return Response::html($this->view->render('learn/preview', [
+            'mediaFile' => $this->media?->fileFor($lesson),
             'pageTitle' => $lesson->title . ($course->isOpen() ? ': ' . $course->title : ': free preview'),
             'course' => $course,
             'lesson' => $lesson,

@@ -96,6 +96,7 @@ return static function (Router $r): void {
     $r->get('/courses/{slug}', [CatalogueController::class, 'show'], ['tenant']);
     // Free preview lessons (CRS-003): open to anyone who may see the course page.
     $r->get('/courses/{slug}/preview/{lesson:int}', [CatalogueController::class, 'preview'], ['tenant']);
+    $r->get('/courses/{slug}/preview/{lesson:int}/media', [CatalogueController::class, 'media'], ['tenant']);
 
     $learn = ['tenant', 'auth', 'can:course.learn'];
     $r->post('/courses/{slug}/enrol', [LearnController::class, 'enrol'], $learn);
@@ -152,6 +153,8 @@ return static function (Router $r): void {
 
     $r->get('/teach/courses/{course:int}/lessons/{lesson:int}', [LessonEditorController::class, 'edit'], $teach);
     $r->post('/teach/courses/{course:int}/lessons/{lesson:int}', [LessonEditorController::class, 'update'], $teach);
+    $r->post('/teach/courses/{course:int}/lessons/{lesson:int}/media', [LessonEditorController::class, 'uploadMedia'], $teach);
+    $r->post('/teach/courses/{course:int}/lessons/{lesson:int}/media/remove', [LessonEditorController::class, 'removeMedia'], $teach);
     $r->post('/teach/courses/{course:int}/lessons/{lesson:int}/move', [LessonEditorController::class, 'move'], $teach);
     $r->post('/teach/courses/{course:int}/lessons/{lesson:int}/delete', [LessonEditorController::class, 'delete'], $teach);
     $r->get('/teach/courses/{course:int}/lessons/{lesson:int}/preview', [LessonEditorController::class, 'preview'], $teach);
@@ -274,11 +277,18 @@ return static function (Router $r): void {
     $r->post('/classes/{session:int}/join', [LiveClassController::class, 'join'], $groups);
     $r->post('/classes/{session:int}/register', [LiveClassController::class, 'register'], $groups);
     $r->post('/classes/{session:int}/cancel', [LiveClassController::class, 'cancel'], $groups);
+    $r->get('/classes/{session:int}/room', [LiveClassController::class, 'room'], $groups);
+    $r->post('/classes/{session:int}/signal', [LiveClassController::class, 'signal'], $groups);
+    $r->post('/classes/{session:int}/materials', [LiveClassController::class, 'addMaterial'], $groups);
+    $r->post('/classes/{session:int}/materials/{file:int}/delete', [LiveClassController::class, 'removeMaterial'], $groups);
     $r->post('/groups/{group:int}/announcements/{announcement:int}/delete', [GroupController::class, 'deleteAnnouncement'], $groups);
 
     $school = ['tenant', 'auth', 'can:school.manage'];
     $r->get('/school', [SchoolController::class, 'index'], $school);
     $r->get('/school/logo-preview', [SchoolController::class, 'logoPreview'], $school);
+    $r->get('/school/classroom', [\App\Modules\LiveClasses\Http\ClassroomAdminController::class, 'index'], $school);
+    $r->post('/school/classroom', [\App\Modules\LiveClasses\Http\ClassroomAdminController::class, 'save'], $school);
+    $r->post('/school/classroom/disconnect', [\App\Modules\LiveClasses\Http\ClassroomAdminController::class, 'disconnect'], $school);
     $r->get('/school/payments', [PaymentAdminController::class, 'index'], $school);
     $r->get('/school/payments.csv', [PaymentAdminController::class, 'export'], $school);
     $r->post('/school/payments/connect', [PaymentAdminController::class, 'connect'], $school);

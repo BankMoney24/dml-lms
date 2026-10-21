@@ -117,9 +117,10 @@ $n = 0;
         <div data-lesson-type="video">
         <?= $v->field('media_url', 'Video link (video lessons only)', [
             'value' => $o('media_url'), 'error' => $errors['media_url'] ?? null, 'optional' => true, 'inputmode' => 'url', 'maxlength' => 500,
-            'hint' => 'A YouTube or Vimeo address.',
+            'hint' => 'A YouTube or Vimeo address. To upload your own video instead, leave this empty: the next page has the upload.',
         ]) ?>
         </div>
+        <p class="small muted" data-lesson-type="audio">You upload the recording on the next page.</p>
         <div data-lesson-type="lab">
         <?= $v->field('lab_key', 'Lab (lab lessons only)', [
             'type' => 'select', 'options' => ['' => 'Choose a lab'] + $labOptions, 'value' => $o('lab_key'), 'error' => $errors['lab_key'] ?? null,
@@ -129,7 +130,7 @@ $n = 0;
         </div>
         <?= $v->field('body', 'Lesson text', [
             'type' => 'textarea', 'rows' => 8, 'value' => $o('body'), 'error' => $errors['body'] ?? null,
-            'hint' => 'Reading: the lesson itself. Video: notes under the video. Quiz: instructions. Assignment: the task and how it is judged. Lab: an optional introduction.',
+            'hint' => 'Reading: the lesson itself. Video or audio: notes or a transcript. Quiz: instructions. Assignment: the task and how it is judged. Lab: an optional introduction.',
         ]) ?>
         <?php include __DIR__ . '/_format_help.php'; ?>
         <details class="advanced" data-lesson-type="quiz"<?= isset($errors['pass_threshold']) || isset($errors['max_attempts']) ? ' open' : '' ?>>

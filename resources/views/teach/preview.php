@@ -13,9 +13,12 @@ $crumb = 'Preview';
 <article class="lesson">
   <p class="lesson-kind"><?= $v->e($lesson->typeLabel()) ?><?php if ($lesson->type === 'text'): ?>, <?= $lesson->readingMinutes() ?> min read<?php endif; ?></p>
   <h1><?= $v->e($lesson->title) ?></h1>
-  <?php if ($lesson->isVideo()): $video = $lesson->video(); ?>
+  <?php $mediaFile ??= null; if ($mediaFile !== null): $mediaSrc = '/files/' . $mediaFile->id; include __DIR__ . '/../files/_player.php'; ?>
+  <?php elseif ($lesson->isAudio()): ?>
+      <p class="notice notice-err">No recording uploaded yet.</p>
+  <?php elseif ($lesson->isVideo()): $video = $lesson->video(); ?>
     <?php if ($video === null): ?>
-      <p class="notice notice-err">No valid video link yet.</p>
+      <p class="notice notice-err">No video yet: upload one or add a link.</p>
     <?php else: ?>
       <figure class="video" data-embed="<?= $v->e($video->embedUrl()) ?>" data-title="<?= $v->e($lesson->title) ?>">
         <div class="video-frame"><div class="video-placeholder">

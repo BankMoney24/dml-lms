@@ -36,7 +36,8 @@ final class SampleSchoolTest extends AppTestCase
             $this->assertSame(0, (int) $this->db()->fetchValue("SELECT COUNT(*) FROM {$table} WHERE tenant_id = ? AND {$column} > ?", [$tid, $soon]), $table . ' has nothing in the future');
         }
         $this->assertGreaterThan(30, (int) $this->db()->fetchValue('SELECT DATEDIFF(MAX(enrolled_at), MIN(enrolled_at)) FROM enrolments WHERE tenant_id = ?', [$tid]), 'activity is spread over weeks');
-        $this->assertSame(3, (int) $this->db()->fetchValue("SELECT COUNT(*) FROM payment_claims WHERE tenant_id = ? AND status = 'pending'", [$tid]), 'payment notes waiting for the school');
+        $pendingNotes = (int) $this->db()->fetchValue("SELECT COUNT(*) FROM payment_claims WHERE tenant_id = ? AND status = 'pending'", [$tid]);
+        $this->assertGreaterThanOrEqual(3, $pendingNotes, 'payment notes waiting for the school (3 set up, plus any made late today)');
 
         // The owner can sign in with the printed password and sees a busy school.
         $this->assertRedirectTo('/', $this->login('sample.test', 'owner@sample.test', $result['password']));

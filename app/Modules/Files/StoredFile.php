@@ -21,6 +21,7 @@ final class StoredFile
         public readonly string $scanStatus,
         public readonly string $createdAt,
         public readonly ?int $supportMessageId = null,
+        public readonly ?int $classSessionId = null,
     ) {
     }
 
@@ -42,7 +43,14 @@ final class StoredFile
             (string) $row['scan_status'],
             (string) $row['created_at'],
             isset($row['support_message_id']) ? (int) $row['support_message_id'] : null,
+            isset($row['class_session_id']) ? (int) $row['class_session_id'] : null,
         );
+    }
+
+    /** 'video', 'audio' or null. */
+    public function mediaKind(): ?string
+    {
+        return UploadPolicy::mediaKind($this->extension);
     }
 
     /** "2.4 MB", "830 KB": shown beside every link so learners know what it costs to download. */
@@ -75,6 +83,8 @@ final class StoredFile
             'xlsx', 'ods' => 'XLS',
             'pptx', 'odp' => 'PPT',
             'service', 'timer' => 'UNIT',
+            'mp4', 'webm' => 'VID',
+            'mp3', 'm4a', 'ogg', 'opus', 'wav' => 'AUD',
             'local', 'cnf', 'cfg', 'ini', 'conf' => 'CONF',
             default => strlen($this->extension) <= 4 ? strtoupper($this->extension) : 'TXT',
         };

@@ -71,7 +71,7 @@ final class SupportService
         if ($this->requests->openCountFor($tenant->id, $user->user->id) >= self::MAX_UNRESOLVED) {
             throw ValidationException::single('subject', sprintf('You already have %d requests waiting. Add to one of those instead, or mark one resolved.', self::MAX_UNRESOLVED));
         }
-        $prepared = $this->files->prepare($tenant->id, $uploads, 'attachments');
+        $prepared = $this->files->prepare($tenant->id, $uploads, 'attachments', false);
 
         $id = $this->db->transaction(function () use ($tenant, $user, $category, $subject, $body, $prepared): int {
             $id = $this->requests->create($tenant->id, $user->user->id, $category, $subject);
@@ -99,7 +99,7 @@ final class SupportService
             throw new ValidationException($errors);
         }
         $asStaff = $this->isStaff($user) && $request->userId !== $user->user->id;
-        $prepared = $this->files->prepare($tenant->id, $uploads, 'attachments');
+        $prepared = $this->files->prepare($tenant->id, $uploads, 'attachments', false);
 
         $this->db->transaction(function () use ($tenant, $user, $request, $body, $prepared, $asStaff): void {
             $this->requests->find($tenant->id, $request->id, true);

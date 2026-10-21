@@ -32,7 +32,41 @@ final class LessonEditorController
         private readonly CourseAuthoring $authoring,
         private readonly FileService $fileService,
         private readonly FileRepository $files,
+        private readonly ?\App\Modules\Courses\LessonMedia $media = null,
     ) {
+    }
+
+    /** POST …/media: the lesson's video or recording (ADR 0029). */
+    public function uploadMedia(Request $request): Response
+    {
+        [$course, $lesson] = $this->load($request);
+        $upload = $request->file('media');
+        try {
+            if ($upload === null) {
+                throw ValidationException::single('media', 'Choose a file first.');
+            }
+            $file = $this->mediaService()->upload($course, RequestContext::user($request), $lesson->id, $upload);
+            $this->session->flash('success', sprintf('“%s” is the lesson’s %s now (%s).', $file->originalName, $lesson->isVideo() ? 'video' : 'recording', $file->humanSize()));
+        } catch (ValidationException $e) {
+            return $this->render($course, $lesson, $e->errors, [], 422);
+        }
+
+        return Response::redirect($this->editUrl($course, $lesson) . '#lesson-media');
+    }
+
+    /** POST …/media/remove */
+    public function removeMedia(Request $request): Response
+    {
+        [$course, $lesson] = $this->load($request);
+        $this->mediaService()->remove($course, RequestContext::user($request), $lesson->id);
+        $this->session->flash('success', $lesson->isVideo() ? 'Video removed.' : 'Recording removed.');
+
+        return Response::redirect($this->editUrl($course, $lesson) . '#lesson-media');
+    }
+
+    private function mediaService(): \App\Modules\Courses\LessonMedia
+    {
+        return $this->media ?? throw new \LogicException('Lesson media is not set up.');
     }
 
     public function uploadFile(Request $request): Response
@@ -190,8 +224,20 @@ final class LessonEditorController
             'lesson' => $lesson,
             'assessment' => $assessment,
             'questions' => $assessment === null ? [] : $this->assessments->questions($course->tenantId, $assessment['id']),
-            'files' => $this->files->forLesson($course->tenantId, $lesson->id),
+            'files' => self::withoutMedia($this->files->forLesson($course->tenantId, $lesson->id), $lesson),
+            'mediaFile' => $this->media?->fileFor($lesson),
         ]));
+    }
+
+    /**
+     * The lesson's own video or recording is shown as the player, not again in the file list.
+     *
+     * @param list<\App\Modules\Files\StoredFile> $files
+     * @return list<\App\Modules\Files\StoredFile>
+     */
+    public static function withoutMedia(array $files, Lesson $lesson): array
+    {
+        return array_values(array_filter($files, static fn ($f): bool => $f->id !== $lesson->mediaFileId));
     }
 
     /** @return array{0: Course, 1: Lesson} */
@@ -225,7 +271,8 @@ final class LessonEditorController
             'assessment' => $assessment,
             'questions' => $assessment === null ? [] : $this->assessments->questions($course->tenantId, $assessment['id']),
             'attempts' => $attempts,
-            'files' => $this->files->forLesson($course->tenantId, $lesson->id),
+            'files' => self::withoutMedia($this->files->forLesson($course->tenantId, $lesson->id), $lesson),
+            'mediaFile' => $this->media?->fileFor($lesson),
             'policy' => $this->fileService->policy(),
             'inUse' => $attempts > 0 || $this->lessons->hasLearnerActivity($course->tenantId, $lesson->id),
             'errors' => $errors,

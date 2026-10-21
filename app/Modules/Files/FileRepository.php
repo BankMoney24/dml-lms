@@ -75,6 +75,40 @@ final class FileRepository
         return $out;
     }
 
+    /** @return list<StoredFile> a class's materials and recordings, oldest first */
+    public function forClassSession(int $tenantId, int $sessionId): array
+    {
+        return array_map(StoredFile::fromRow(...), $this->db->fetchAll(
+            'SELECT * FROM files WHERE tenant_id = ? AND class_session_id = ? ORDER BY id',
+            [$tenantId, $sessionId],
+        ));
+    }
+
+    /**
+     * How many materials each class has, for lists.
+     *
+     * @param list<int> $sessionIds
+     * @return array<int, int>
+     */
+    public function countsForClassSessions(int $tenantId, array $sessionIds): array
+    {
+        if ($sessionIds === []) {
+            return [];
+        }
+        $out = [];
+        foreach (
+            $this->db->fetchAll(
+                'SELECT class_session_id, COUNT(*) AS n FROM files WHERE tenant_id = ? AND class_session_id IN ('
+                . implode(',', array_fill(0, count($sessionIds), '?')) . ') GROUP BY class_session_id',
+                array_merge([$tenantId], $sessionIds),
+            ) as $row
+        ) {
+            $out[(int) $row['class_session_id']] = (int) $row['n'];
+        }
+
+        return $out;
+    }
+
     public function countForSubmission(int $tenantId, int $submissionId): int
     {
         return (int) $this->db->fetchValue('SELECT COUNT(*) FROM files WHERE tenant_id = ? AND submission_id = ?', [$tenantId, $submissionId]);
@@ -86,7 +120,7 @@ final class FileRepository
     }
 
     /**
-     * @param array{lesson_id: ?int, submission_id: ?int, support_message_id?: ?int, uploaded_by: int, original_name: string, extension: string,
+     * @param array{lesson_id: ?int, submission_id: ?int, support_message_id?: ?int, class_session_id?: ?int, uploaded_by: int, original_name: string, extension: string,
      *              mime_type: string, size_bytes: int, sha256: string, storage_key: string, scan_status: string} $f
      */
     public function insert(int $tenantId, array $f): int
@@ -100,11 +134,11 @@ final class FileRepository
         }
 
         return $this->db->insert(
-            'INSERT INTO files (tenant_id, lesson_id, submission_id, support_message_id, uploaded_by, original_name, extension, mime_type, size_bytes,
-                                sha256, storage_key, scan_status, position, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO files (tenant_id, lesson_id, submission_id, support_message_id, class_session_id, uploaded_by, original_name, extension, mime_type,
+                                size_bytes, sha256, storage_key, scan_status, position, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
-                $tenantId, $f['lesson_id'], $f['submission_id'], $f['support_message_id'] ?? null, $f['uploaded_by'], $f['original_name'], $f['extension'],
+                $tenantId, $f['lesson_id'], $f['submission_id'], $f['support_message_id'] ?? null, $f['class_session_id'] ?? null, $f['uploaded_by'], $f['original_name'], $f['extension'],
                 $f['mime_type'], $f['size_bytes'], $f['sha256'], $f['storage_key'], $f['scan_status'], $position, $this->clock->sqlNow(),
             ],
         );

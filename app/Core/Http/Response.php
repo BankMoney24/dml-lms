@@ -6,8 +6,19 @@ namespace App\Core\Http;
 
 final class Response
 {
+    /**
+     * An open-ended range ("bytes=1000-") is answered with at most this much.
+     * Players then ask for the next piece only when they need it, so a learner
+     * who stops watching does not keep downloading, and no PHP worker is tied
+     * up for the whole length of a video.
+     */
+    public const MAX_OPEN_RANGE = 4194304;
+
     /** Streamed from disk instead of $body (downloads). */
     private ?string $filePath = null;
+
+    /** @var array{0: int, 1: int}|null first and last byte to send, for a range request */
+    private ?array $byteRange = null;
 
     /** @param array<string, string> $headers */
     public function __construct(
@@ -45,6 +56,62 @@ final class Response
     public function filePath(): ?string
     {
         return $this->filePath;
+    }
+
+    /**
+     * Answers an HTTP Range request for a file (RFC 9110 §14), so video and
+     * audio can be seeked and resumed without downloading everything: a single
+     * "bytes=a-b", "bytes=a-" or "bytes=-n" gets 206 with that part; a range
+     * that cannot be met gets 416; anything else (several ranges, other units,
+     * nonsense) gets the whole file, which the standard allows. An open-ended
+     * range gets at most MAX_OPEN_RANGE bytes, which the standard also allows.
+     */
+    public function forRange(?string $range): self
+    {
+        if ($this->filePath === null) {
+            return $this;
+        }
+        $clone = $this->withHeader('Accept-Ranges', 'bytes');
+        if ($range === null || preg_match('/^\s*bytes\s*=\s*(\d*)\s*-\s*(\d*)\s*$/i', $range, $m) !== 1 || ($m[1] === '' && $m[2] === '')) {
+            return $clone;
+        }
+        $size = (int) filesize($this->filePath);
+        if ($m[1] === '') {
+            $length = min((int) $m[2], $size);
+            [$first, $last] = [$size - $length, $size - 1];
+            if ($length === 0) {
+                return $clone->unsatisfiable($size);
+            }
+        } else {
+            $first = (int) $m[1];
+            $last = $m[2] === '' ? min($size - 1, $first + self::MAX_OPEN_RANGE - 1) : min((int) $m[2], $size - 1);
+            if ($first >= $size || $first > $last) {
+                return $clone->unsatisfiable($size);
+            }
+        }
+        $partial = new self('', 206, $clone->headers);
+        $partial->filePath = $this->filePath;
+        $partial->byteRange = [$first, $last];
+        $partial->headers['Content-Range'] = sprintf('bytes %d-%d/%d', $first, $last, $size);
+        $partial->headers['Content-Length'] = (string) ($last - $first + 1);
+
+        return $partial;
+    }
+
+    /** @return array{0: int, 1: int}|null */
+    public function byteRange(): ?array
+    {
+        return $this->byteRange;
+    }
+
+    private function unsatisfiable(int $size): self
+    {
+        $headers = $this->headers;
+        unset($headers['Content-Disposition'], $headers['Content-Type']);
+        $headers['Content-Range'] = 'bytes */' . $size;
+        $headers['Content-Length'] = '0';
+
+        return new self('', 416, $headers);
     }
 
     public static function html(string $body, int $status = 200): self
@@ -134,10 +201,48 @@ final class Response
             }
         }
         if ($this->filePath !== null) {
-            readfile($this->filePath);
+            $this->stream($this->filePath);
 
             return;
         }
         echo $this->body;
+    }
+
+    /**
+     * Sends a file (or the asked-for part) in pieces. The session is released
+     * first: a long video must not hold the learner's session lock and stall
+     * every other page they open meanwhile.
+     */
+    private function stream(string $path): void
+    {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+        [$first, $last] = $this->byteRange ?? [0, max(0, (int) filesize($path) - 1)];
+        $handle = fopen($path, 'rb');
+        if ($handle === false) {
+            return;
+        }
+        if (($last - $first) > 8388608) {
+            set_time_limit(0); // slow connections; PHP stops anyway once the browser goes away
+        }
+        fseek($handle, $first);
+        $left = $last - $first + 1;
+        while ($left > 0 && !feof($handle)) {
+            $chunk = fread($handle, min(262144, $left));
+            if ($chunk === false || $chunk === '') {
+                break;
+            }
+            echo $chunk;
+            $left -= strlen($chunk);
+            if (ob_get_level() > 0) {
+                ob_flush();
+            }
+            flush();
+            if (connection_aborted() === 1) {
+                break;
+            }
+        }
+        fclose($handle);
     }
 }

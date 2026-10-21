@@ -29,7 +29,111 @@ final class LiveClassController
         private readonly GroupRepository $groups,
         private readonly CourseRepository $courses,
         private readonly Clock $clock,
+        private readonly ?\App\Modules\LiveClasses\ClassMaterials $materials = null,
+        private readonly ?\App\Modules\LiveClasses\Classroom\Classroom $classroom = null,
+        private readonly ?\App\Modules\Files\FileService $fileService = null,
     ) {
+    }
+
+    /**
+     * GET /classes/{session}/room: the online classroom (ADR 0029). The pass
+     * into the room is made here, after the server-side checks, and is only
+     * ever sent to this one person's page.
+     */
+    public function room(Request $request): Response
+    {
+        $tenant = RequestContext::tenant($request);
+        $user = RequestContext::user($request);
+        $session = $this->live->sessionFor($tenant, $request->routeInt('session'), $user);
+        $group = $this->groups->find($tenant->id, $session->groupId);
+        $teaches = $group !== null && $this->live->mayTeach($tenant, $group, $user);
+        if ($this->classroom === null || !$session->inClassroom()) {
+            return Response::redirect('/classes/' . $session->id);
+        }
+        $access = $this->classroom->access($tenant, $session, $teaches);
+        $pass = $access['ok'] ? $this->classroom->pass($tenant, $session, $user, $teaches) : null;
+        $materials = $this->materials?->list($tenant, $session) ?? [];
+        $response = Response::html($this->view->render('classes/room', [
+            'pageTitle' => $session->title . ': classroom',
+            'session' => $session,
+            'teaches' => $teaches,
+            'access' => $access,
+            'pass' => $pass,
+            'materials' => array_values(array_filter($materials, static fn ($f): bool => $f->id !== $session->recordingFileId)),
+            'now' => $this->clock->now()->getTimestamp(),
+        ]), $access['ok'] ? 200 : 409)->withHeader('Cache-Control', 'private, no-store');
+        if ($pass === null) {
+            return $response;
+        }
+        $origin = 'https://' . $pass['domain'];
+
+        // This page alone may load the Jitsi script and frame, and lets that
+        // frame use the camera, microphone and screen sharing.
+        return $response
+            ->withHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' $origin; style-src 'self'; img-src 'self' data:; font-src 'self'; "
+                . "connect-src 'self'; frame-src $origin; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'")
+            ->withHeader('Permissions-Policy', sprintf(
+                'camera=(self "%1$s"), microphone=(self "%1$s"), display-capture=(self "%1$s"), fullscreen=(self "%1$s"), autoplay=(self "%1$s"), geolocation=(), interest-cohort=()',
+                $origin,
+            ));
+    }
+
+    /** POST /classes/{session}/signal: join, still here, leave (from the classroom page; also sent with sendBeacon). */
+    public function signal(Request $request): Response
+    {
+        $tenant = RequestContext::tenant($request);
+        $user = RequestContext::user($request);
+        $session = $this->live->sessionFor($tenant, $request->routeInt('session'), $user);
+        $group = $this->groups->find($tenant->id, $session->groupId);
+        $teaches = $group !== null && $this->live->mayTeach($tenant, $group, $user);
+        if ($this->classroom === null) {
+            throw \App\Core\Http\HttpException::notFound();
+        }
+        try {
+            $this->classroom->signal($tenant, $session, $user, (string) ($request->input('type', '') ?? ''), $teaches);
+        } catch (ValidationException $e) {
+            return Response::json(['ok' => false, 'error' => implode(' ', $e->errors)], 409);
+        }
+        $mark = $teaches ? null : $this->sessions->markFor($tenant->id, $session->id, $user->user->id);
+
+        return Response::json(['ok' => true, 'status' => $mark['status'] ?? null]);
+    }
+
+    /** POST /classes/{session}/materials */
+    public function addMaterial(Request $request): Response
+    {
+        $tenant = RequestContext::tenant($request);
+        $user = RequestContext::user($request);
+        $session = $this->live->sessionFor($tenant, $request->routeInt('session'), $user);
+        $upload = $request->file('material');
+        $asRecording = $request->input('recording', '') === '1';
+        try {
+            if ($upload === null || $this->materials === null) {
+                throw ValidationException::single('material', 'Choose a file first.');
+            }
+            $file = $this->materials->add($tenant, $session, $user, $upload, $asRecording, $request->clientIp);
+        } catch (ValidationException $e) {
+            return $this->render($request, $e->errors, ['recording' => $asRecording ? '1' : ''], 422);
+        }
+        $message = $asRecording ? '“%s” is the class recording now (%s). Learners in the class can watch it.' : '“%s” added (%s).';
+        $this->session->flash('success', sprintf($message, $file->originalName, $file->humanSize()));
+
+        return Response::redirect('/classes/' . $session->id . '#materials');
+    }
+
+    /** POST /classes/{session}/materials/{file}/delete */
+    public function removeMaterial(Request $request): Response
+    {
+        $tenant = RequestContext::tenant($request);
+        $user = RequestContext::user($request);
+        $session = $this->live->sessionFor($tenant, $request->routeInt('session'), $user);
+        if ($this->materials === null) {
+            throw \App\Core\Http\HttpException::notFound();
+        }
+        $file = $this->materials->remove($tenant, $session, $user, $request->routeInt('file'), $request->clientIp);
+        $this->session->flash('success', sprintf('“%s” removed.', $file->originalName));
+
+        return Response::redirect('/classes/' . $session->id . '#materials');
     }
 
     /** GET /classes */
@@ -169,10 +273,18 @@ final class LiveClassController
         $teaches = $group !== null && $this->live->mayTeach($tenant, $group, $user);
         [$date, $time] = $session->localStart($tenant->timezone);
 
+        $materials = $this->materials?->list($tenant, $session) ?? [];
+        $recording = $this->materials?->recording($tenant, $session);
+
         return Response::html($this->view->render('classes/show', [
             'pageTitle' => $session->title,
             'session' => $session,
             'teaches' => $teaches,
+            'materials' => array_values(array_filter($materials, static fn ($f): bool => $f->id !== $recording?->id)),
+            'recording' => $recording,
+            'classroomReady' => $this->live->classroomReady($tenant),
+            'minutesIn' => $teaches && $this->classroom !== null ? $this->classroom->minutes($tenant, $session) : [],
+            'policy' => $this->fileService?->policy(),
             'learners' => $teaches ? $this->groups->members($tenant->id, $session->groupId, GroupRepository::LEARNER) : [],
             'marks' => $teaches ? $this->sessions->marks($tenant->id, $session->id) : [],
             'myMark' => $teaches ? null : $this->sessions->markFor($tenant->id, $session->id, $user->user->id),

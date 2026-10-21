@@ -112,6 +112,9 @@
 
   // File pickers: say before uploading if a file is too big or there are too many,
   // instead of making someone on slow data wait for the server to refuse it.
+  // Video and audio have their own, larger limit (data-media-max-bytes). A form
+  // with a problem is not sent: a body over the server's limit would arrive empty.
+  var MEDIA = /\.(mp4|webm|mp3|m4a|ogg|opus|wav)$/i;
   Array.prototype.forEach.call(document.querySelectorAll('input[type=file][data-max-bytes]'), function (input) {
     var note = document.createElement('p');
     note.className = 'upload-warning';
@@ -119,13 +122,59 @@
     input.insertAdjacentElement('afterend', note);
     input.addEventListener('change', function () {
       var max = parseInt(input.getAttribute('data-max-bytes') || '0', 10);
+      var mediaMax = parseInt(input.getAttribute('data-media-max-bytes') || '0', 10) || max;
       var maxFiles = parseInt(input.getAttribute('data-max-files') || '0', 10);
       var problems = [];
       if (maxFiles && input.files.length > maxFiles) { problems.push('Choose at most ' + maxFiles + ' files.'); }
       Array.prototype.forEach.call(input.files, function (f) {
-        if (max && f.size > max) { problems.push('“' + f.name + '” is ' + size(f.size) + '; the limit is ' + size(max) + '.'); }
+        var limit = MEDIA.test(f.name) ? mediaMax : max;
+        if (limit && f.size > limit) { problems.push('“' + f.name + '” is ' + size(f.size) + '; the limit is ' + size(limit) + '.'); }
       });
       note.textContent = problems.join(' ');
+    });
+    if (input.form) {
+      input.form.addEventListener('submit', function (e) {
+        if (note.textContent !== '') { e.preventDefault(); e.stopImmediatePropagation(); input.focus(); }
+      });
+    }
+  });
+
+  // Big uploads (video, audio, recordings) show how far they have got: on a
+  // slow connection a 100 MB file can take many minutes and a still page looks
+  // stuck. The form is sent as it would be anyway; the page the server answers
+  // with replaces this one, so messages and errors appear as usual. Without
+  // JavaScript the form simply posts.
+  Array.prototype.forEach.call(document.querySelectorAll('form[data-progress]'), function (form) {
+    form.addEventListener('submit', function (e) {
+      if (e.defaultPrevented || !window.XMLHttpRequest || !window.FormData) { return; }
+      var picked = Array.prototype.some.call(form.querySelectorAll('input[type=file]'), function (i) { return i.files && i.files.length > 0; });
+      if (!picked) { return; }
+      e.preventDefault();
+      var button = form.querySelector('button[type=submit], button:not([type])');
+      var bar = form.querySelector('[data-progress-bar]');
+      var label = form.querySelector('[data-progress-label]');
+      var box = form.querySelector('[data-progress-box]');
+      var xhr = new XMLHttpRequest();
+      if (box) { box.hidden = false; }
+      if (button) { button.disabled = true; }
+      xhr.open('POST', form.action);
+      xhr.upload.addEventListener('progress', function (p) {
+        if (!p.lengthComputable) { return; }
+        var pct = Math.floor(p.loaded / p.total * 100);
+        if (bar) { bar.style.width = pct + '%'; }
+        if (label) { label.textContent = pct < 100 ? 'Uploading… ' + pct + '% of ' + size(p.total) : 'Checking the file…'; }
+      });
+      xhr.addEventListener('load', function () {
+        try { window.history.replaceState(null, '', xhr.responseURL || form.action); } catch (err) { /* keep the address */ }
+        document.open();
+        document.write(xhr.responseText);
+        document.close();
+      });
+      xhr.addEventListener('error', function () {
+        if (button) { button.disabled = false; }
+        if (label) { label.textContent = 'The upload stopped; the connection may have dropped. Choose Upload to try again.'; }
+      });
+      xhr.send(new FormData(form));
     });
   });
 

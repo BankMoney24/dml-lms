@@ -24,7 +24,7 @@ $markTones = ['present' => 'done', 'late' => 'draft', 'absent' => 'danger', 'exc
     <p class="lc-meta small">
       <span><?= $v->datetime($s->startsAt, 'D j M, H:i') ?>–<?= $v->datetime($s->endsAt, 'H:i') ?></span>
       <?php if ($showGroup): ?><span><?= $v->e($s->groupName) ?></span><?php endif; ?>
-      <span><?= $s->inRoom() ? $v->e($s->location) : 'Online' ?><?= $s->mode === 'both' ? ' and online' : '' ?></span>
+      <span><?= $v->e($s->whereLabel()) ?></span>
     </p>
   </div>
   <span class="lc-state">

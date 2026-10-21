@@ -67,6 +67,9 @@ final class ClamdScanner implements VirusScanner
         if (str_ends_with($reply, 'FOUND')) {
             throw new InfectedFile(trim(substr($reply, (int) strpos($reply, ':') + 1, -strlen('FOUND'))));
         }
+        if (str_contains($reply, 'size limit')) {
+            throw new ScanTooLarge('Virus scanner limit: ' . $reply);
+        }
         throw new ScannerUnavailable('Virus scanner error: ' . ($reply === '' ? 'no reply' : $reply));
     }
 }

@@ -20,7 +20,7 @@ use DateTimeImmutable;
 use DateTimeZone;
 
 /**
- * Live classes and attendance (ADR 0028).
+ * Live classes and attendance (ADR 0028), and the online classroom (ADR 0029).
  *  - The group's teachers (and administrators) schedule sessions: once or
  *    weekly, online with a meeting link, in a room, or both. Times are typed
  *    in the school's time zone and stored in UTC.
@@ -46,7 +46,26 @@ final class LiveClasses
         private readonly Clock $clock,
         private readonly ?GuardianRepository $guardians = null,
         private readonly ?Notifier $notifier = null,
+        private readonly ?Classroom\ClassroomSettingsRepository $classroom = null,
     ) {
+    }
+
+    /** Whether the school has its online classroom set up (ADR 0029). */
+    public function classroomReady(Tenant $tenant): bool
+    {
+        return $this->classroom?->find($tenant->id) !== null;
+    }
+
+    /** Whether this person may see a class's materials and recording. */
+    public function maySeeFilesOf(Tenant $tenant, int $sessionId, CurrentUser $user): bool
+    {
+        try {
+            $this->sessionFor($tenant, $sessionId, $user);
+
+            return true;
+        } catch (HttpException) {
+            return false;
+        }
     }
 
     public function mayTeach(Tenant $tenant, LearnerGroup $group, CurrentUser $user): bool
@@ -92,6 +111,7 @@ final class LiveClasses
                 'mode' => $v['mode'],
                 'location' => $v['location'],
                 'join_url' => $v['join_url'],
+                'room_name' => $v['mode'] === 'classroom' ? ClassSession::newRoomName() : null,
                 'created_by' => $actor->user->id,
             ]);
         }
@@ -132,6 +152,7 @@ final class LiveClasses
             'location' => $v['location'],
             'join_url' => $v['join_url'],
             'recording_url' => $recording === '' ? null : $recording,
+            'room_name' => $v['mode'] === 'classroom' ? ClassSession::newRoomName() : null, // kept if the class already has one
         ]);
         $this->audit->record($tenant->id, $actor->user->id, 'class.updated', 'class_session', $session->id, [], $clientIp);
     }
@@ -303,6 +324,9 @@ final class LiveClasses
         if (in_array($mode, ['online', 'both'], true) && !self::isWebAddress($link)) {
             $errors['join_url'] = 'Paste the meeting link (Google Meet, Zoom, Teams or Jitsi), starting with https://.';
         }
+        if ($mode === 'classroom' && !$this->classroomReady($tenant)) {
+            $errors['mode'] = 'The online classroom is not set up for this school yet. An administrator can set it up under School, Classroom; until then use a meeting link.';
+        }
         $courseId = null;
         if (($input['course_id'] ?? '') !== '') {
             $courseId = ctype_digit($input['course_id']) ? (int) $input['course_id'] : 0;
@@ -324,8 +348,8 @@ final class LiveClasses
             'start' => $start,
             'minutes' => $minutes,
             'mode' => $mode,
-            'location' => $mode === 'online' ? '' : $location,
-            'join_url' => $mode === 'room' ? null : $link,
+            'location' => in_array($mode, ['room', 'both'], true) ? $location : '',
+            'join_url' => in_array($mode, ['online', 'both'], true) ? $link : null,
             'course_id' => $courseId,
             'weeks' => $weeks,
         ];

@@ -31,11 +31,12 @@ final class ClassSessionRepository
         $now = $this->clock->sqlNow();
 
         return $this->db->insert(
-            'INSERT INTO class_sessions (tenant_id, group_id, course_id, series_id, title, description, starts_at, ends_at, mode, location, join_url, status, created_by, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO class_sessions (tenant_id, group_id, course_id, series_id, title, description, starts_at, ends_at, mode, location, join_url, room_name,
+                                         status, created_by, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $tenantId, $s['group_id'], $s['course_id'], $s['series_id'], $s['title'], $s['description'], $s['starts_at'], $s['ends_at'],
-                $s['mode'], $s['location'], $s['join_url'], 'scheduled', $s['created_by'], $now, $now,
+                $s['mode'], $s['location'], $s['join_url'], $s['room_name'] ?? null, 'scheduled', $s['created_by'], $now, $now,
             ],
         );
     }
@@ -44,10 +45,70 @@ final class ClassSessionRepository
     public function update(int $tenantId, int $id, array $s): void
     {
         $this->db->execute(
-            'UPDATE class_sessions SET title = ?, description = ?, course_id = ?, starts_at = ?, ends_at = ?, mode = ?, location = ?, join_url = ?, recording_url = ?, updated_at = ?
+            'UPDATE class_sessions SET title = ?, description = ?, course_id = ?, starts_at = ?, ends_at = ?, mode = ?, location = ?, join_url = ?, recording_url = ?,
+                    room_name = COALESCE(room_name, ?), updated_at = ?
              WHERE tenant_id = ? AND id = ?',
-            [$s['title'], $s['description'], $s['course_id'], $s['starts_at'], $s['ends_at'], $s['mode'], $s['location'], $s['join_url'], $s['recording_url'], $this->clock->sqlNow(), $tenantId, $id],
+            [
+                $s['title'], $s['description'], $s['course_id'], $s['starts_at'], $s['ends_at'], $s['mode'], $s['location'], $s['join_url'], $s['recording_url'],
+                $s['room_name'] ?? null, $this->clock->sqlNow(), $tenantId, $id,
+            ],
         );
+    }
+
+    /** The uploaded recording of a class (a file in its materials), or null for none. */
+    public function setRecordingFile(int $tenantId, int $id, ?int $fileId): void
+    {
+        $this->db->execute('UPDATE class_sessions SET recording_file_id = ?, updated_at = ? WHERE tenant_id = ? AND id = ?', [$fileId, $this->clock->sqlNow(), $tenantId, $id]);
+    }
+
+    /**
+     * Records a join, a leave or a once-a-minute "still here" from the classroom
+     * page. A "here" that comes sooner than 40 seconds after the last signal
+     * is dropped, so a page left open in two tabs does not count double.
+     */
+    public function recordEvent(int $tenantId, int $sessionId, int $userId, string $type): bool
+    {
+        $now = $this->clock->now();
+        if ($type === 'here') {
+            $recent = $this->db->fetchValue(
+                'SELECT COUNT(*) FROM class_events WHERE tenant_id = ? AND session_id = ? AND user_id = ? AND type IN (\'join\', \'here\') AND created_at > ?',
+                [$tenantId, $sessionId, $userId, $now->modify('-40 seconds')->format('Y-m-d H:i:s')],
+            );
+            if ((int) $recent > 0) {
+                return false;
+            }
+        }
+        $this->db->insert(
+            'INSERT INTO class_events (tenant_id, session_id, user_id, type, created_at) VALUES (?, ?, ?, ?, ?)',
+            [$tenantId, $sessionId, $userId, $type, $now->format('Y-m-d H:i:s')],
+        );
+
+        return true;
+    }
+
+    /**
+     * About how many minutes each person spent in the classroom: the number of
+     * different minutes in which their page said it was there, between the
+     * room opening and the end of the class.
+     *
+     * @return array<int, int> user id => minutes
+     */
+    public function minutesInClassroom(int $tenantId, ClassSession $session): array
+    {
+        $opens = gmdate('Y-m-d H:i:s', $session->startTs() - ClassSession::JOIN_EARLY_MINUTES * 60);
+        $out = [];
+        foreach (
+            $this->db->fetchAll(
+                "SELECT user_id, COUNT(DISTINCT TIMESTAMPDIFF(MINUTE, ?, created_at)) AS minutes
+                 FROM class_events WHERE tenant_id = ? AND session_id = ? AND type IN ('join', 'here') AND created_at >= ? AND created_at <= ?
+                 GROUP BY user_id",
+                [$opens, $tenantId, $session->id, $opens, $session->endsAt],
+            ) as $row
+        ) {
+            $out[(int) $row['user_id']] = min((int) $row['minutes'], $session->minutes() + ClassSession::JOIN_EARLY_MINUTES);
+        }
+
+        return $out;
     }
 
     public function cancel(int $tenantId, int $id, string $reason): void

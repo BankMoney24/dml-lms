@@ -197,6 +197,14 @@ final class TeachController
         } catch (ValidationException $e) {
             return $this->renderEdit($course, $e->errors, $this->old($request), 422);
         }
+        $type = (string) ($request->input('type', '') ?? '');
+        $needsUpload = $type === 'audio' || ($type === 'video' && trim((string) ($request->input('media_url', '') ?? '')) === '');
+        if ($needsUpload) {
+            // Video or audio without a link: go straight to where the file is uploaded.
+            $this->session->flash('success', $type === 'audio' ? 'Lesson added. Now upload the recording.' : 'Lesson added. Now upload the video, or add a link.');
+
+            return Response::redirect('/teach/courses/' . $course->id . '/lessons/' . $lessonId . '#lesson-media');
+        }
         $this->session->flash('success', 'Lesson added.');
 
         return Response::redirect('/teach/courses/' . $course->id . '#lesson-' . $lessonId);

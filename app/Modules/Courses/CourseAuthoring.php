@@ -390,8 +390,11 @@ final class CourseAuthoring
             $problems[] = 'Add at least one lesson.';
         }
         foreach ($lessons as $lesson) {
-            if ($lesson->isVideo() && $lesson->video() === null) {
-                $problems[] = sprintf('Add a YouTube or Vimeo link to the video lesson “%s”.', $lesson->title);
+            if ($lesson->isVideo() && !$lesson->hasMedia()) {
+                $problems[] = sprintf('Upload a video or add a YouTube or Vimeo link to the video lesson “%s”.', $lesson->title);
+            }
+            if ($lesson->isAudio() && !$lesson->hasMedia()) {
+                $problems[] = sprintf('Upload the recording for the audio lesson “%s”.', $lesson->title);
             }
             if ($lesson->isLab() && $this->labs->find($lesson->labKey) === null) {
                 $problems[] = sprintf('The lab lesson “%s” uses a lab this version does not have. Delete it or choose another lab.', $lesson->title);
@@ -514,11 +517,12 @@ final class CourseAuthoring
         }
         $mediaUrl = null;
         if ($type === Lesson::TYPE_VIDEO) {
+            // The link is optional: the video can be uploaded instead (ADR 0029).
             $raw = trim($input['media_url'] ?? '');
             $video = $raw === '' || mb_strlen($raw) > 500 ? null : VideoLink::parse($raw);
-            if ($video === null) {
+            if ($raw !== '' && $video === null) {
                 $errors['media_url'] = 'Paste a YouTube or Vimeo link, for example https://www.youtube.com/watch?v=… or https://vimeo.com/123456789.';
-            } else {
+            } elseif ($video !== null) {
                 $mediaUrl = $video->canonical();
             }
         }

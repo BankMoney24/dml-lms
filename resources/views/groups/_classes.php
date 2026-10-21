@@ -80,7 +80,14 @@ $att = $lc['attendance'];
         <?= $v->field('class_time', 'Starts', ['type' => 'time', 'value' => $co('time', '16:00'), 'error' => $classErrors['time'] ?? null, 'hint' => $school->timezone . ' time']) ?>
         <?= $v->field('class_minutes', 'Minutes', ['type' => 'select', 'options' => ['30' => '30', '45' => '45', '60' => '1 hour', '90' => '1½ hours', '120' => '2 hours', '180' => '3 hours'], 'value' => $co('minutes', '60'), 'error' => $classErrors['minutes'] ?? null]) ?>
       </div>
-      <?= $v->field('class_mode', 'Where', ['type' => 'select', 'options' => \App\Modules\LiveClasses\ClassSession::MODES, 'value' => $co('mode', 'online'), 'error' => $classErrors['mode'] ?? null]) ?>
+      <?php $modes = \App\Modules\LiveClasses\ClassSession::MODES;
+      if (!($lc['classroomReady'] ?? false)) {
+          unset($modes['classroom']);
+      } ?>
+      <?= $v->field('class_mode', 'Where', [
+          'type' => 'select', 'options' => $modes, 'value' => $co('mode', ($lc['classroomReady'] ?? false) ? 'classroom' : 'online'), 'error' => $classErrors['mode'] ?? null,
+          'hint' => ($lc['classroomReady'] ?? false) ? 'The online classroom runs inside this site: no meeting link needed, and learners can join with audio only to save data.' : null,
+      ]) ?>
       <div class="field-row">
         <?= $v->field('class_join_url', 'Meeting link (online)', ['type' => 'url', 'value' => $co('join_url'), 'maxlength' => 500, 'error' => $classErrors['join_url'] ?? null, 'hint' => 'Google Meet, Zoom, Teams or Jitsi.']) ?>
         <?= $v->field('class_location', 'Room (in person)', ['value' => $co('location'), 'maxlength' => 200, 'error' => $classErrors['location'] ?? null, 'hint' => 'For example: Lab 2, first floor.']) ?>

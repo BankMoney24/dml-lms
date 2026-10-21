@@ -159,6 +159,21 @@ final class LessonRepository
         );
     }
 
+    /** Points a video or audio lesson at its uploaded media file (null: none). */
+    public function setMediaFile(int $tenantId, int $lessonId, ?int $fileId): void
+    {
+        $this->db->execute(
+            'UPDATE lessons SET media_file_id = ?, updated_at = ? WHERE tenant_id = ? AND id = ?',
+            [$fileId, $this->clock->sqlNow(), $tenantId, $lessonId],
+        );
+    }
+
+    /** Clears the pointer when that file is removed some other way. */
+    public function forgetMediaFile(int $tenantId, int $fileId): void
+    {
+        $this->db->execute('UPDATE lessons SET media_file_id = NULL WHERE tenant_id = ? AND media_file_id = ?', [$tenantId, $fileId]);
+    }
+
     public function findById(int $tenantId, int $lessonId): ?Lesson
     {
         $row = $this->db->fetchOne('SELECT * FROM lessons WHERE tenant_id = ? AND id = ?', [$tenantId, $lessonId]);

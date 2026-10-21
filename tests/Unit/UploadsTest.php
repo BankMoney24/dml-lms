@@ -125,7 +125,7 @@ final class UploadsTest extends TestCase
             $this->assertSame('Eicar-Test-Signature', $e->getMessage());
         }
 
-        $this->expectException(ScannerUnavailable::class);
+        $this->expectException(\App\Modules\Files\ScanTooLarge::class); // still fails closed: a ScannerUnavailable
         $this->scanWith("INSTREAM size limit exceeded. ERROR\0");
     }
 

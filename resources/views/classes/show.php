@@ -14,13 +14,28 @@
  * @var int $now
  * @var array<string, string> $errors
  * @var array<string, string> $old
+ * @var list<\App\Modules\Files\StoredFile> $materials
+ * @var ?\App\Modules\Files\StoredFile $recording
+ * @var bool $classroomReady
+ * @var array<int, int> $minutesIn user id => minutes in the online classroom
+ * @var ?\App\Modules\Files\UploadPolicy $policy
  */
+$materials ??= [];
+$recording ??= null;
+$classroomReady ??= false;
+$minutesIn ??= [];
+$policy ??= null;
 $s = $session;
 $phase = $s->phase($now);
 $statuses = \App\Modules\LiveClasses\ClassSessionRepository::STATUSES;
 $school = $v->shared('tenant');
 $o = static fn (string $k): string => $old[$k] ?? '';
-$editErrors = array_diff_key($errors, ['reason' => 1]);
+$editErrors = array_diff_key($errors, ['reason' => 1, 'material' => 1]);
+$modes = \App\Modules\LiveClasses\ClassSession::MODES;
+if (!$classroomReady && $s->mode !== 'classroom') {
+    unset($modes['classroom']);
+}
+$teacherEarly = $teaches && $phase === 'before' && $now >= $s->startTs() - \App\Modules\LiveClasses\Classroom\Classroom::TEACHER_EARLY_MINUTES * 60;
 ?>
 <?= $v->breadcrumbs(['Live classes' => '/classes', $s->title => null]) ?>
 <header class="page-head lc-head">
@@ -40,6 +55,18 @@ $editErrors = array_diff_key($errors, ['reason' => 1]);
       <?php else: ?>
         <?php if ($phase === 'live'): ?><p class="lc-status"><span class="lc-live">Live now</span></p><?php elseif ($phase === 'open'): ?><p class="lc-status"><span class="lc-live lc-soon">Starting soon</span></p><?php endif; ?>
         <?php if ($s->inRoom()): ?><p class="lc-where"><?= $v->icon('school') ?><span><strong>Room:</strong> <?= $v->e($s->location) ?></span></p><?php endif; ?>
+        <?php if ($s->inClassroom()): ?>
+          <?php if (in_array($phase, ['open', 'live'], true) || $teacherEarly): ?>
+            <div class="lc-join">
+              <a class="button lc-join-button" href="/classes/<?= $s->id ?>/room"><?= $v->icon('live') ?><?= $teaches ? 'Open the classroom' : 'Enter the classroom' ?></a>
+              <span class="small muted"><?= $teaches ? 'You run the room: mute, share your screen, let people speak.' : 'Works in your phone’s browser. You can choose audio only to save data.' ?></span>
+            </div>
+          <?php elseif ($phase === 'before'): ?>
+            <p class="lc-where"><?= $v->icon('live') ?><span>In the online classroom on this site. It opens here 15 minutes before the start<?= $teaches ? ' (30 minutes for teachers)' : '' ?>.</span></p>
+          <?php else: ?>
+            <p class="lc-where"><?= $v->icon('live') ?><span>This class in the online classroom has ended.</span></p>
+          <?php endif; ?>
+        <?php endif; ?>
         <?php if ($s->isOnline()): ?>
           <?php if (in_array($phase, ['open', 'live'], true)): ?>
             <div class="lc-join" data-join>
@@ -60,10 +87,52 @@ $editErrors = array_diff_key($errors, ['reason' => 1]);
       <?php endif; ?>
     </section>
 
+    <?php if ($recording !== null): ?>
+    <section class="lc-recording" aria-labelledby="rec-h">
+      <h2 id="rec-h">Recording</h2>
+      <?php $mediaFile = $recording; $mediaSrc = '/files/' . $recording->id; include __DIR__ . '/../files/_player.php'; ?>
+    </section>
+    <?php endif; ?>
+
     <?php if ($s->description !== ''): ?>
     <section class="lc-notes" aria-labelledby="notes-h">
       <h2 id="notes-h">Before the class</h2>
       <div class="prose"><?= $v->markdown($s->description) ?></div>
+    </section>
+    <?php endif; ?>
+
+    <?php if ($materials !== [] || ($teaches && $policy !== null)): ?>
+    <section class="lc-materials" id="materials" aria-labelledby="mat-h">
+      <h2 id="mat-h">Class materials</h2>
+      <?php if ($materials !== []): ?>
+        <?php if (!$teaches): ?><p class="small muted">Download these before the class if you can, on Wi-Fi or a better connection.</p><?php endif; ?>
+        <?php $fileList = $materials; $removeUrl = $teaches ? static fn ($f): string => '/classes/' . $s->id . '/materials/' . $f->id . '/delete' : null; include __DIR__ . '/../files/_list.php'; ?>
+      <?php elseif ($teaches): ?>
+        <p class="muted small">Share slides, notes or a worksheet before the class so learners can download them on a better connection. After the class, upload the recording here.</p>
+      <?php endif; ?>
+      <?php if ($teaches && $policy !== null): ?>
+      <form method="post" action="/classes/<?= $s->id ?>/materials" enctype="multipart/form-data" class="form upload-form" novalidate data-progress>
+        <?= $v->csrfField() ?>
+        <div class="field">
+          <label for="material">Add a file</label>
+          <p class="hint" id="material-hint">Slides, PDFs, documents and images up to <?= (int) $policy->webMegabytes(false) ?> MB; video and audio up to <?= (int) $policy->webMegabytes(true) ?> MB.</p>
+          <input type="file" id="material" name="material" accept="<?= $v->e(\App\Modules\Files\UploadPolicy::acceptAttribute()) ?>" aria-describedby="material-hint<?= isset($errors['material']) ? ' material-error' : '' ?>"<?= isset($errors['material']) ? ' aria-invalid="true"' : '' ?> data-max-bytes="<?= (int) $policy->webLimit(false) ?>" data-media-max-bytes="<?= (int) $policy->webLimit(true) ?>">
+          <?php if (isset($errors['material'])): ?><p class="field-error" id="material-error"><?= $v->e($errors['material']) ?></p><?php endif; ?>
+        </div>
+        <label class="choice choice-tight"><input type="checkbox" name="recording" value="1"<?= $o('recording') === '1' ? ' checked' : '' ?>><span><strong>This is the recording of the class.</strong> Shown as a player at the top of this page<?= $recording !== null ? ', replacing the current recording' : '' ?>.</span></label>
+        <div class="upload-progress" data-progress-box hidden>
+          <div class="upload-track"><span class="upload-bar" data-progress-bar></span></div>
+          <p class="small" data-progress-label aria-live="polite">Starting the upload…</p>
+        </div>
+        <button type="submit" class="button button-small"><?= $v->icon('upload') ?>Upload</button>
+      </form>
+      <?php if ($recording !== null): ?>
+      <form method="post" action="/classes/<?= $s->id ?>/materials/<?= $recording->id ?>/delete" class="inline">
+        <?= $v->csrfField() ?>
+        <button type="submit" class="linklike small">Remove the recording</button>
+      </form>
+      <?php endif; ?>
+      <?php endif; ?>
     </section>
     <?php endif; ?>
 
@@ -82,7 +151,14 @@ $editErrors = array_diff_key($errors, ['reason' => 1]);
           <?php foreach ($learners as $l): $m = $marks[$l['user_id']] ?? null; $current = $m['status'] ?? ''; ?>
             <li class="lc-reg-row">
               <fieldset>
-                <legend><?= $v->e($l['name']) ?><?php if ($m !== null && $m['self_checked_in'] && $m['marked_by'] === null): ?> <span class="small muted">joined online</span><?php endif; ?></legend>
+                <?php $meta = [];
+                if ($m !== null && $m['self_checked_in'] && $m['marked_by'] === null) {
+                    $meta[] = 'joined online';
+                }
+                if (isset($minutesIn[$l['user_id']])) {
+                    $meta[] = 'about ' . (int) $minutesIn[$l['user_id']] . ' min in the classroom';
+                } ?>
+                <legend><?= $v->e($l['name']) ?><?php if ($meta !== []): ?> <span class="lc-reg-meta small muted"><?= $v->e(ucfirst(implode(', ', $meta))) ?></span><?php endif; ?></legend>
                 <div class="lc-seg" role="presentation">
                   <?php foreach ($statuses as $key => $label): ?>
                     <label class="lc-seg-<?= $key ?>"><input type="radio" name="status[<?= $l['user_id'] ?>]" value="<?= $key ?>"<?= $current === $key ? ' checked' : '' ?>><span><?= $v->e($label) ?></span></label>
@@ -118,10 +194,10 @@ $editErrors = array_diff_key($errors, ['reason' => 1]);
             <?= $v->field('time', 'Starts', ['type' => 'time', 'value' => $o('time'), 'error' => $editErrors['time'] ?? null]) ?>
           </div>
           <?= $v->field('minutes', 'Minutes', ['type' => 'number', 'value' => $o('minutes'), 'error' => $editErrors['minutes'] ?? null]) ?>
-          <?= $v->field('mode', 'Where', ['type' => 'select', 'options' => \App\Modules\LiveClasses\ClassSession::MODES, 'value' => $o('mode'), 'error' => $editErrors['mode'] ?? null]) ?>
+          <?= $v->field('mode', 'Where', ['type' => 'select', 'options' => $modes, 'value' => $o('mode'), 'error' => $editErrors['mode'] ?? null]) ?>
           <?= $v->field('location', 'Room', ['value' => $o('location'), 'maxlength' => 200, 'error' => $editErrors['location'] ?? null]) ?>
           <?= $v->field('join_url', 'Meeting link', ['type' => 'url', 'value' => $o('join_url'), 'maxlength' => 500, 'error' => $editErrors['join_url'] ?? null]) ?>
-          <?= $v->field('recording_url', 'Recording link (after the class)', ['type' => 'url', 'value' => $o('recording_url'), 'maxlength' => 500, 'error' => $editErrors['recording_url'] ?? null]) ?>
+          <?= $v->field('recording_url', 'Recording link (if it is elsewhere)', ['type' => 'url', 'value' => $o('recording_url'), 'maxlength' => 500, 'error' => $editErrors['recording_url'] ?? null]) ?>
           <?php $courseOptions = ['' => 'No course'];
           foreach ($courses as $c) {
               $courseOptions[(string) $c->id] = $c->title;

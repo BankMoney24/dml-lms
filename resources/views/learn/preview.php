@@ -20,7 +20,9 @@
  * @var bool $canLearn
  * @var bool $mustPay
  * @var bool $payOnline
+ * @var ?\App\Modules\Files\StoredFile $mediaFile
  */
+$mediaFile ??= null;
 $base = '/courses/' . $v->e($course->slug);
 $certificates = (bool) ($v->shared('tenant')?->certificatesEnabled ?? false);
 ?>
@@ -33,7 +35,8 @@ $certificates = (bool) ($v->shared('tenant')?->certificatesEnabled ?? false);
     <h1><?= $v->e($lesson->title) ?></h1>
   </header>
 
-  <?php if ($lesson->isVideo() && ($video = $lesson->video()) !== null): ?>
+  <?php if ($mediaFile !== null): $mediaSrc = '/courses/' . $course->slug . '/preview/' . $lesson->id . '/media'; include __DIR__ . '/../files/_player.php'; ?>
+  <?php elseif ($lesson->isVideo() && ($video = $lesson->video()) !== null): ?>
   <figure class="video" data-embed="<?= $v->e($video->embedUrl()) ?>" data-title="<?= $v->e($lesson->title) ?>">
     <div class="video-frame">
       <div class="video-placeholder">

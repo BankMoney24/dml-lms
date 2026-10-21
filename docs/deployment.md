@@ -90,14 +90,28 @@ Everything else (what is in a backup, restoring, losing the whole server) is in 
 
 Lesson files and assignment files are stored in `/var/www/dml-lms/shared/storage/uploads/` (outside the web root, readable only through the app after an access check). The nightly backup includes them.
 
-Limits, in `shared/.env`: `UPLOAD_MAX_MB` (per file, default 10) and `UPLOAD_TENANT_QUOTA_MB` (per school, default 5120). The PHP pool and Apache site allow up to 3 files of 20 MB per request; raise both if you raise `UPLOAD_MAX_MB` above 13. After updating from a release before uploads existed, install the new pool and site files once:
+Limits, in `shared/.env`:
+
+* `UPLOAD_MAX_MB`: per file, default 10.
+* `MEDIA_MAX_MB`: per video or audio file (lesson media, class recordings), default 200 (ADR 0029).
+* `UPLOAD_TENANT_QUOTA_MB`: per school, default 5120.
+
+The PHP pool allows uploads of up to 210 MB (`upload_max_filesize` 210M, `post_max_size` 215M), with 30 minutes for slow connections. The Apache site caps request bodies at 220 MB. If you raise `MEDIA_MAX_MB`, raise these too; the app always tells people the lower of its own limit and PHP's.
+
+Install the pool file, and set the Apache cap, after updating to release 29 (and after any first install):
 
 ```bash
 install -m 644 /var/www/dml-lms/current/deploy/php-fpm/dml-lms-almalinux.conf /etc/php-fpm.d/dml-lms.conf
-# optional: cap request bodies at 50 MB in the Apache site (the default cap is 1 GB)
-grep -q LimitRequestBody /etc/httpd/conf.d/dml-lms.conf || sed -i '/ErrorLog \/var\/log\/httpd\/dml-lms-error.log/i\    LimitRequestBody 52428800' /etc/httpd/conf.d/dml-lms.conf
+# cap request bodies at 220 MB in the Apache site (replaces an older 50 MB cap)
+if grep -q LimitRequestBody /etc/httpd/conf.d/dml-lms.conf; then
+  sed -i 's/^\(\s*\)LimitRequestBody .*/\1LimitRequestBody 230686720/' /etc/httpd/conf.d/dml-lms.conf
+else
+  sed -i '/ErrorLog \/var\/log\/httpd\/dml-lms-error.log/i\    LimitRequestBody 230686720' /etc/httpd/conf.d/dml-lms.conf
+fi
 php-fpm -t && apachectl configtest && systemctl reload php-fpm httpd
 ```
+
+Video is played in 4 MB pieces (HTTP range requests), so a class watching recordings does not tie up PHP workers. A full download of a large recording does hold one worker until it finishes.
 
 **Virus scanning (recommended):** install ClamAV and point the app at it.
 
@@ -113,6 +127,14 @@ systemctl reload php-fpm
 ```
 
 With scanning on, uploads are refused while clamd is down (fail closed). clamd needs about 1 GB of memory.
+
+For video and audio, clamd must accept files as large as `MEDIA_MAX_MB`. Otherwise those uploads are refused with a message saying the file is bigger than the scanner checks:
+
+```bash
+sed -i 's/^#\?StreamMaxLength .*/StreamMaxLength 210M/; s/^#\?MaxFileSize .*/MaxFileSize 210M/; s/^#\?MaxScanSize .*/MaxScanSize 420M/' /etc/clamd.d/scan.conf
+grep -q '^StreamMaxLength' /etc/clamd.d/scan.conf || echo 'StreamMaxLength 210M' >> /etc/clamd.d/scan.conf
+systemctl restart clamd@scan
+```
 
 ### Courses that ship with the platform
 
@@ -157,6 +179,32 @@ Each school address serves `/robots.txt` and `/sitemap.xml` (public pages only, 
 ### Classes and cohorts
 
 Nothing to install. Choose what your school calls them (class, cohort, group, stream or set) under **School → Settings → Type and academic year**, then create them from the new menu item. Learners in a class are enrolled in the courses set for it.
+
+### Online classroom (Jitsi Meet, ADR 0029)
+
+Live classes can run inside the site, on the school's own Jitsi Meet server. **Not yet tested against a real Jitsi server:** rehearse with two phones before the first real class.
+
+1. **A server for Jitsi.** The plan's starting point for one class of about 30 is 4 vCPU, 8 GB RAM and a 1 Gbps port. Measure, and grow only if needed. Keep it off the database server if you can.
+   * Jitsi's quick install supports Debian and Ubuntu. On AlmaLinux (like this server), use the official Docker set-up instead.
+2. **DNS.** Point `live.dmlschooloftechnology.org` at that server with an A record. Do this yourself in your DNS panel.
+3. **Install Jitsi Meet** from the official guide (Debian/Ubuntu quick install, or Docker) with a Let's Encrypt certificate.
+   * Open TCP 80/443 and UDP 10000 to the world.
+   * Never expose Prosody's or the videobridge's admin ports.
+4. **Token sign-in.** Choose an app id (for example `dml-lms`) and make a secret with `openssl rand -hex 32`.
+   * On Debian/Ubuntu: `apt install jitsi-meet-tokens` and give it the app id and secret.
+   * With Docker: set `ENABLE_AUTH=1`, `AUTH_TYPE=jwt`, `JWT_APP_ID` and `JWT_APP_SECRET` in `.env`.
+   * Prosody's VirtualHost for the domain must have `authentication = "token"`, the `app_id`, the `app_secret` and `allow_empty_token = false`, so no room opens without a pass from this site.
+5. **Teachers as moderators.** Enable token-based affiliation, for example the community `token_affiliation` Prosody module. Passes from the site carry `context.user.affiliation` = `owner` for teachers and `member` for learners. Without it, Jitsi picks moderators itself (usually whoever joins first).
+6. **TURN (recommended).** Learners behind strict mobile networks may need a relay.
+   * Install coturn on TCP 443 (or 5349) on the Jitsi server and point Jitsi's TURN settings at it.
+   * Relayed traffic uses the server's bandwidth.
+7. **Connect it.** As an administrator, open **School → Classroom** and paste the server name, app id and secret. The secret is stored encrypted and never shown again; to change it, paste a new one.
+8. **Rehearse.** Plan a class with "Online classroom on this site" a few minutes ahead, then:
+   * open it as the teacher (from 30 minutes before) and as a learner on a phone (from 15 minutes before);
+   * try Audio only and Data saver, screen sharing, and switching the phone's network off and on;
+   * check the register shows "joined online" and minutes in the classroom.
+
+Recording is not included (Jibri needs a lot more CPU and its own server). Teachers upload recordings to the class page after the class.
 
 ### Payments (Paystack)
 

@@ -90,8 +90,12 @@ $hasMain = $continue !== null || $children !== [] || $myGroups !== [] || $myPath
 <section class="live-now" aria-labelledby="live-now-h">
   <p class="live-now-kicker"><span class="lc-live"><?= $liveNow->phase($nowTs) === 'live' ? 'Live now' : 'Starting soon' ?></span> <?= $v->e($liveNow->groupName) ?></p>
   <h2 id="live-now-h" class="live-now-title"><a href="/classes/<?= $liveNow->id ?>"><?= $v->e($liveNow->title) ?></a></h2>
-  <p class="live-now-when"><?= $v->datetime($liveNow->startsAt, 'H:i') ?>–<?= $v->datetime($liveNow->endsAt, 'H:i') ?><?= $liveNow->inRoom() ? ', ' . $v->e($liveNow->location) : '' ?></p>
-  <?php if ($liveNow->isOnline()): ?>
+  <p class="live-now-when"><?= $v->datetime($liveNow->startsAt, 'H:i') ?>–<?= $v->datetime($liveNow->endsAt, 'H:i') ?><?= $liveNow->inRoom() ? ', ' . $v->e($liveNow->location) : '' ?><?= $liveNow->inClassroom() ? ', online classroom' : '' ?></p>
+  <?php if ($liveNow->inClassroom()): ?>
+  <div class="lc-join">
+    <a class="button lc-join-button" href="/classes/<?= $liveNow->id ?>/room"><?= $v->icon('live') ?>Enter the classroom</a>
+  </div>
+  <?php elseif ($liveNow->isOnline()): ?>
   <div class="lc-join" data-join>
     <a class="button lc-join-button" href="<?= $v->e((string) $liveNow->joinUrl) ?>" target="_blank" rel="noopener noreferrer"><?= $v->icon('play') ?>Join the class</a>
     <form method="post" action="/classes/<?= $liveNow->id ?>/join" data-checkin hidden><?= $v->csrfField() ?></form>

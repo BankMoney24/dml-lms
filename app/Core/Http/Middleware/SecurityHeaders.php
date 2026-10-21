@@ -43,8 +43,8 @@ final class SecurityHeaders implements Middleware
         }
 
         foreach ($headers as $name => $value) {
-            if (in_array($name, ['Content-Security-Policy', 'X-Frame-Options'], true) && $response->header($name) !== null) {
-                continue; // a policy set by the controller for that response wins (downloads, the lab code runner)
+            if (in_array($name, ['Content-Security-Policy', 'X-Frame-Options', 'Permissions-Policy'], true) && $response->header($name) !== null) {
+                continue; // a policy set by the controller for that response wins (downloads, the lab code runner, the classroom)
             }
             $response = $response->withHeader($name, $value);
         }

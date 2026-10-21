@@ -12,7 +12,8 @@ use finfo;
  * extension is refused, so "notes.pdf" that is really a program never gets in.
  *
  * How each kind is served back:
- *   - PDFs and photos open in the browser;
+ *   - PDFs, photos, video and audio open in the browser (media streams in
+ *     byte ranges, so a learner can seek without downloading it all);
  *   - text and code are shown as plain text, never run (text/plain, nosniff,
  *     CSP sandbox), so a learner's .html or .php is displayed, not executed;
  *   - everything else is a download.
@@ -62,15 +63,101 @@ final class UploadPolicy
         'html' => ['HTML', [self::TEXT], 'text/plain', true],
         'service' => ['systemd unit', [self::TEXT], 'text/plain', true],
         'timer' => ['systemd unit', [self::TEXT], 'text/plain', true],
+        // Video and audio (ADR 0029). Only formats every current phone browser
+        // plays; .mov and other camera formats should be exported as MP4.
+        'mp4' => ['Video', ['video/mp4', 'video/x-m4v', 'video/quicktime'], 'video/mp4', true],
+        'webm' => ['Video', ['video/webm', 'audio/webm'], 'video/webm', true],
+        'mp3' => ['Audio', ['audio/mpeg', 'audio/mp3', 'audio/x-mp3'], 'audio/mpeg', true],
+        'm4a' => ['Audio', ['audio/x-m4a', 'audio/mp4', 'video/mp4'], 'audio/mp4', true],
+        'ogg' => ['Audio', ['audio/ogg', 'application/ogg', 'video/ogg'], 'audio/ogg', true],
+        'opus' => ['Audio', ['audio/ogg', 'application/ogg'], 'audio/ogg', true],
+        'wav' => ['Audio', ['audio/x-wav', 'audio/wav', 'audio/vnd.wave'], 'audio/wav', true],
     ];
 
-    public function __construct(public readonly int $maxBytes)
+    private const VIDEO = ['mp4', 'webm'];
+    private const AUDIO = ['mp3', 'm4a', 'ogg', 'opus', 'wav'];
+
+    public readonly int $mediaMaxBytes;
+
+    /** @param int|null $mediaMaxBytes limit for video and audio; other files use $maxBytes */
+    public function __construct(public readonly int $maxBytes, ?int $mediaMaxBytes = null)
     {
+        $this->mediaMaxBytes = max($maxBytes, $mediaMaxBytes ?? $maxBytes);
     }
 
     public function maxMegabytes(): int
     {
         return (int) floor($this->maxBytes / 1048576);
+    }
+
+    public function mediaMaxMegabytes(): int
+    {
+        return (int) floor($this->mediaMaxBytes / 1048576);
+    }
+
+    /**
+     * The most a browser upload can really be: our limit, or PHP's
+     * upload_max_filesize / post_max_size if those are lower. Used for the
+     * limits people are told and the checks made before uploading.
+     */
+    public function webLimit(bool $media): int
+    {
+        $limit = $media ? $this->mediaMaxBytes : $this->maxBytes;
+        foreach (['upload_max_filesize', 'post_max_size'] as $setting) {
+            $bytes = self::iniBytes((string) ini_get($setting));
+            if ($bytes > 0) {
+                $limit = min($limit, $setting === 'post_max_size' ? max(1, $bytes - 65536) : $bytes);
+            }
+        }
+
+        return $limit;
+    }
+
+    public function webMegabytes(bool $media): int
+    {
+        return max(1, (int) floor($this->webLimit($media) / 1048576));
+    }
+
+    /** "200M" => 209715200; "0" or nonsense => 0 (no limit). */
+    public static function iniBytes(string $value): int
+    {
+        if (preg_match('/^\s*(\d+)\s*([kmg]?)\s*$/i', $value, $m) !== 1) {
+            return 0;
+        }
+
+        return (int) $m[1] * match (strtolower($m[2])) {
+            'g' => 1073741824,
+            'm' => 1048576,
+            'k' => 1024,
+            default => 1,
+        };
+    }
+
+    public function limitFor(string $extension): int
+    {
+        return self::mediaKind($extension) === null ? $this->maxBytes : $this->mediaMaxBytes;
+    }
+
+    /** 'video', 'audio' or null for any other kind of file. */
+    public static function mediaKind(string $extension): ?string
+    {
+        return match (true) {
+            in_array($extension, self::VIDEO, true) => 'video',
+            in_array($extension, self::AUDIO, true) => 'audio',
+            default => null,
+        };
+    }
+
+    /** For a picker that only takes media: ".mp4,.webm" for video, all media otherwise. */
+    public static function mediaAcceptAttribute(?string $kind = null): string
+    {
+        $list = match ($kind) {
+            'video' => self::VIDEO,
+            'audio' => self::AUDIO,
+            default => [...self::VIDEO, ...self::AUDIO],
+        };
+
+        return implode(',', array_map(static fn (string $e): string => '.' . $e, $list));
     }
 
     public static function extensionOf(string $name): string
@@ -88,16 +175,21 @@ final class UploadPolicy
         return self::KINDS[$extension][0] ?? strtoupper($extension);
     }
 
-    /** For the file picker's accept attribute. */
-    public static function acceptAttribute(): string
+    /** For the file picker's accept attribute; $media false leaves out video and audio. */
+    public static function acceptAttribute(bool $media = true): string
     {
-        return implode(',', array_map(static fn (string $e): string => '.' . $e, array_keys(self::KINDS)));
+        $extensions = array_keys(self::KINDS);
+        if (!$media) {
+            $extensions = array_values(array_filter($extensions, static fn (string $e): bool => self::mediaKind($e) === null));
+        }
+
+        return implode(',', array_map(static fn (string $e): string => '.' . $e, $extensions));
     }
 
     /** "PDF, images, Office and OpenDocument files, zip, and text or code files". */
     public static function summary(): string
     {
-        return 'PDF, images, Word/Excel/PowerPoint and OpenDocument files, zip archives, and text or code files';
+        return 'PDF, images, Word/Excel/PowerPoint and OpenDocument files, zip archives, text or code files, video (MP4, WebM) and audio (MP3, M4A, OGG, WAV)';
     }
 
     /**
@@ -112,8 +204,10 @@ final class UploadPolicy
         if ($size === false || $size === 0) {
             return 'The file is empty.';
         }
-        if ($size > $this->maxBytes) {
-            return sprintf('The file is too big. Files can be up to %d MB.', $this->maxMegabytes());
+        if ($size > $this->limitFor($extension)) {
+            return self::mediaKind($extension) === null
+                ? sprintf('The file is too big. Files can be up to %d MB.', $this->maxMegabytes())
+                : sprintf('The file is too big. Video and audio can be up to %d MB; try a lower quality or a shorter clip.', $this->mediaMaxMegabytes());
         }
         $detected = (new finfo(FILEINFO_MIME_TYPE))->file($path);
         $accepted = self::KINDS[$extension][1];

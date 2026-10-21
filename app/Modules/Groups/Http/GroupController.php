@@ -371,6 +371,7 @@ final class GroupController
                 'mayTeach' => $this->service->mayTeach($tenant, $group, $user),
                 'now' => $this->clock->now()->getTimestamp(),
                 'courses' => $this->courses->listPublished($tenant->id, 100),
+                'classroomReady' => $this->live?->classroomReady($tenant) ?? false,
             ],
             'errors' => $errors,
             'old' => $old,

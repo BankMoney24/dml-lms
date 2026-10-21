@@ -34,6 +34,7 @@ final class FileController
         private readonly EnrolmentRepository $enrolments,
         private readonly SubmissionRepository $submissions,
         private readonly ?\App\Modules\Support\SupportService $support = null,
+        private readonly ?\App\Modules\LiveClasses\LiveClasses $live = null,
     ) {
     }
 
@@ -42,12 +43,13 @@ final class FileController
         $tenant = RequestContext::tenant($request);
         $user = RequestContext::user($request);
         $file = $this->files->find($tenant->id, $request->routeInt('file'));
-        if ($file === null || !$this->mayRead($file, $user)) {
+        if ($file === null || !$this->mayRead($tenant, $file, $user)) {
             throw HttpException::notFound();
         }
 
         $inline = UploadPolicy::opensInBrowser($file->extension) && $request->query('download') !== '1';
-        $response = Response::file($this->service->pathFor($file), $file->mimeType, $file->originalName, $inline);
+        $response = Response::file($this->service->pathFor($file), $file->mimeType, $file->originalName, $inline)
+            ->forRange($request->header('range'));
         if ($file->extension !== 'pdf') {
             // Shown as an isolated document: no scripts, no access to this site, even if a browser misreads it.
             $response = $response->withHeader('Content-Security-Policy', "sandbox; default-src 'none'; img-src 'self'; style-src 'unsafe-inline'");
@@ -56,8 +58,12 @@ final class FileController
         return $response->withHeader('X-Robots-Tag', 'noindex');
     }
 
-    private function mayRead(StoredFile $file, CurrentUser $user): bool
+    private function mayRead(\App\Modules\Tenancy\Tenant $tenant, StoredFile $file, CurrentUser $user): bool
     {
+        if ($file->classSessionId !== null) {
+            // Class materials and recordings: the class's teachers and learners (ADR 0029).
+            return $this->live?->maySeeFilesOf($tenant, $file->classSessionId, $user) ?? false;
+        }
         if ($file->lessonId !== null) {
             $lesson = $this->lessons->findById($file->tenantId, $file->lessonId);
             $course = $lesson === null ? null : $this->courses->findById($file->tenantId, $lesson->courseId);

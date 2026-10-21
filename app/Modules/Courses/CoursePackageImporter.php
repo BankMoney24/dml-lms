@@ -34,6 +34,7 @@ use Throwable;
  * }
  *
  * "attachments" (any lesson type) become lesson files, checked like uploads.
+ * "media" (video and audio lessons) is the lesson's own video or recording.
  */
 final class CoursePackageImporter
 {
@@ -46,6 +47,7 @@ final class CoursePackageImporter
         private readonly FileService $files,
         private readonly FileRepository $fileRecords,
         private readonly LessonRepository $lessons,
+        private readonly ?LessonMedia $media = null,
     ) {
     }
 
@@ -173,6 +175,13 @@ final class CoursePackageImporter
             'max_attempts' => isset($lesson['max_attempts']) ? (string) $lesson['max_attempts'] : '',
             'lab_key' => self::str($lesson, 'lab', $at, ''),
         ]));
+
+        $media = $this->media;
+        if (isset($lesson['media']) && $media !== null) {
+            $path = $this->resolve($directory, self::str($lesson, 'media', $at), $at);
+            $stored = $this->step($at . ' (' . basename($path) . ')', static fn () => $media->upload($course, $author, $lessonId, UploadedFile::fromLocalPath($path)));
+            $this->storedKeys[] = $stored->storageKey;
+        }
 
         $attachments = self::strings($lesson, 'attachments', $at);
         foreach ($attachments as $relative) {

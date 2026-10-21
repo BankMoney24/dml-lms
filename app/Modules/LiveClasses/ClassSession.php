@@ -7,10 +7,19 @@ namespace App\Modules\LiveClasses;
 use DateTimeImmutable;
 use DateTimeZone;
 
-/** A lesson taught live to one class or cohort, online, in a room, or both (ADR 0028). */
+/**
+ * A lesson taught live to one class or cohort: online with a meeting link, in
+ * a room, both (ADR 0028), or in the school's own online classroom on this
+ * site (ADR 0029).
+ */
 final class ClassSession
 {
-    public const MODES = ['online' => 'Online', 'room' => 'In a room', 'both' => 'Room and online'];
+    public const MODES = [
+        'classroom' => 'Online classroom on this site',
+        'online' => 'Online, with a meeting link',
+        'room' => 'In a room',
+        'both' => 'Room and online link',
+    ];
     public const JOIN_EARLY_MINUTES = 15;
     public const LATE_AFTER_MINUTES = 10;
 
@@ -33,7 +42,15 @@ final class ClassSession
         public readonly string $groupName = '',
         public readonly string $courseTitle = '',
         public readonly string $courseSlug = '',
+        public readonly ?string $roomName = null,
+        public readonly ?int $recordingFileId = null,
     ) {
+    }
+
+    /** An unguessable room for one class: knowing one room says nothing about another. */
+    public static function newRoomName(): string
+    {
+        return 'dml-' . bin2hex(random_bytes(12));
     }
 
     /** @param array<string, mixed> $row */
@@ -58,6 +75,8 @@ final class ClassSession
             (string) ($row['group_name'] ?? ''),
             (string) ($row['course_title'] ?? ''),
             (string) ($row['course_slug'] ?? ''),
+            isset($row['room_name']) ? (string) $row['room_name'] : null,
+            isset($row['recording_file_id']) ? (int) $row['recording_file_id'] : null,
         );
     }
 
@@ -73,7 +92,35 @@ final class ClassSession
 
     public function inRoom(): bool
     {
-        return $this->mode !== 'online';
+        return $this->mode === 'room' || $this->mode === 'both';
+    }
+
+    /** Taught in the school's online classroom (Jitsi, embedded in the class page). */
+    public function inClassroom(): bool
+    {
+        return $this->mode === 'classroom' && $this->roomName !== null;
+    }
+
+    /** "Online classroom", "Lab 2", "Lab 2 and online", "Online". */
+    public function whereLabel(): string
+    {
+        return match ($this->mode) {
+            'classroom' => 'Online classroom',
+            'room' => $this->location,
+            'both' => $this->location . ' and online',
+            default => 'Online',
+        };
+    }
+
+    /** Seconds since the Unix epoch at the start and end. */
+    public function startTs(): int
+    {
+        return $this->ts($this->startsAt);
+    }
+
+    public function endTs(): int
+    {
+        return $this->ts($this->endsAt);
     }
 
     public function minutes(): int
