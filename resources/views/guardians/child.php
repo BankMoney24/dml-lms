@@ -51,6 +51,26 @@ $nothing = !$link->canProgress && !$link->canResults && !$link->canNotices;
   </section>
 <?php endforeach; ?>
 
+<?php if (($attendance ?? null) !== null && ($attendance['held'] > 0 || ($upcomingClasses ?? []) !== [])): ?>
+<section class="section" aria-labelledby="attend-h">
+  <h2 id="attend-h">Live classes and attendance</h2>
+  <?php if ($attendance['held'] > 0): ?>
+  <div class="lc-attend">
+    <p class="lc-rate"><strong><?= $attendance['rate'] === null ? '–' : $attendance['rate'] . '%' ?></strong><span class="small muted">attendance, from <?= $v->e($v->plural($attendance['held'] - $attendance['unmarked'], 'marked class', 'marked classes')) ?></span></p>
+    <dl class="lc-counts small">
+      <dt>Present</dt><dd><?= $attendance['present'] ?></dd><dt>Late</dt><dd><?= $attendance['late'] ?></dd><dt>Absent</dt><dd><?= $attendance['absent'] ?></dd><dt>Excused</dt><dd><?= $attendance['excused'] ?></dd>
+    </dl>
+  </div>
+  <h3 class="small-heading">Recent classes</h3>
+  <ul class="lc-list lc-list-plain"><?php foreach ($attendance['recent'] as $r): $s = $r['session']; $mark = $r['status'] ?? 'unmarked'; $rowNow = $nowTs ?? time(); $linkTitle = false; ?><?php include __DIR__ . '/../classes/_row.php'; ?><?php endforeach; ?></ul>
+  <?php endif; ?>
+  <?php if (($upcomingClasses ?? []) !== []): ?>
+  <h3 class="small-heading">Coming up</h3>
+  <ul class="lc-list lc-list-plain"><?php foreach ($upcomingClasses as $s): $mark = null; $rowNow = $nowTs ?? time(); $linkTitle = false; ?><?php include __DIR__ . '/../classes/_row.php'; ?><?php endforeach; ?></ul>
+  <?php endif; ?>
+</section>
+<?php endif; ?>
+
 <?php if ($link->canProgress): ?>
 <section class="section" aria-labelledby="courses-h">
   <h2 id="courses-h">Courses</h2>

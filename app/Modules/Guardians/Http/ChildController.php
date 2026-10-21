@@ -25,6 +25,7 @@ final class ChildController
         private readonly ChildReport $report,
         private readonly GroupRepository $groups,
         private readonly CertificateService $certificates,
+        private readonly ?\App\Modules\LiveClasses\ClassSessionRepository $classes = null,
     ) {
     }
 
@@ -58,6 +59,14 @@ final class ChildController
             'results' => $link->canResults ? $this->report->results($tenant->id, $link->learnerId) : null,
             'certificates' => $link->canResults || $link->canProgress ? $this->certificates->forUser($tenant->id, $link->learnerId) : [],
             'groups' => $groups,
+            // Attendance is part of progress (ADR 0028).
+            'attendance' => $link->canProgress && $this->classes !== null
+                ? $this->classes->learnerSummary($tenant->id, $link->learnerId, $this->classes->now()->format('Y-m-d H:i:s'), 10)
+                : null,
+            'upcomingClasses' => $link->canProgress && $this->classes !== null
+                ? $this->classes->forLearner($tenant->id, $link->learnerId, $this->classes->now()->format('Y-m-d H:i:s'), $this->classes->now()->modify('+14 days')->format('Y-m-d H:i:s'), 5)
+                : [],
+            'nowTs' => $this->classes?->now()->getTimestamp() ?? time(),
             'today' => (new \DateTimeImmutable('now', new \DateTimeZone($tenant->timezone)))->format('Y-m-d'),
         ]));
     }

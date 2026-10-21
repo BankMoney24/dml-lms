@@ -16,8 +16,12 @@ use App\Modules\Tenancy\Tenant;
  */
 final class CalendarFeed
 {
-    public function __construct(private readonly Connection $db, private readonly Clock $clock, private readonly Deadlines $deadlines)
-    {
+    public function __construct(
+        private readonly Connection $db,
+        private readonly Clock $clock,
+        private readonly Deadlines $deadlines,
+        private readonly ?\App\Modules\LiveClasses\ClassSessionRepository $classes = null,
+    ) {
     }
 
     /** Makes a new secret (the old link stops working) and returns it, once. */
@@ -74,7 +78,7 @@ final class CalendarFeed
             'PRODID:-//DML Technologies//Learning Platform//EN',
             'CALSCALE:GREGORIAN',
             'METHOD:PUBLISH',
-            'X-WR-CALNAME:' . self::text($tenant->name . ' due dates'),
+            'X-WR-CALNAME:' . self::text($tenant->name . ' classes and due dates'),
             'X-WR-TIMEZONE:' . self::text($tenant->timezone),
             'REFRESH-INTERVAL;VALUE=DURATION:PT6H',
             'X-PUBLISHED-TTL:PT6H',
@@ -96,6 +100,36 @@ final class CalendarFeed
                 'TRANSP:TRANSPARENT',
                 'END:VEVENT',
             );
+        }
+        // Live classes (ADR 0028): the ones this person attends and the ones they teach.
+        if ($this->classes !== null) {
+            $now = $this->clock->now();
+            $from = $now->modify('-30 days')->format('Y-m-d H:i:s');
+            $to = $now->modify('+120 days')->format('Y-m-d H:i:s');
+            $seen = [];
+            $teacher = $this->db->fetchValue("SELECT 1 FROM learner_group_members WHERE tenant_id = ? AND user_id = ? AND role = 'teacher' LIMIT 1", [$tenant->id, $userId]) !== null;
+            $sessions = [...$this->classes->forLearner($tenant->id, $userId, $from, $to, 200), ...($teacher ? $this->classes->forTeacher($tenant->id, $userId, $from, $to, 200) : [])];
+            foreach ($sessions as $c) {
+                if (isset($seen[$c->id])) {
+                    continue;
+                }
+                $seen[$c->id] = true;
+                $url = $baseUrl . '/classes/' . $c->id;
+                array_push(
+                    $lines,
+                    'BEGIN:VEVENT',
+                    'UID:' . self::text('class-' . $tenant->id . '-' . $c->id . '@' . $host),
+                    'DTSTAMP:' . $stamp,
+                    'DTSTART:' . (new \DateTimeImmutable($c->startsAt . ' UTC'))->format('Ymd\THis\Z'),
+                    'DTEND:' . (new \DateTimeImmutable($c->endsAt . ' UTC'))->format('Ymd\THis\Z'),
+                    'SUMMARY:' . self::text(($c->isCancelled() ? 'Cancelled: ' : '') . $c->title . ' (' . $c->groupName . ')'),
+                    'LOCATION:' . self::text($c->inRoom() ? $c->location . ($c->mode === 'both' ? ', and online' : '') : 'Online'),
+                    'DESCRIPTION:' . self::text(($c->isOnline() ? 'Join from the class page: ' : 'Details: ') . $url),
+                    'URL:' . self::text($url),
+                    'STATUS:' . ($c->isCancelled() ? 'CANCELLED' : 'CONFIRMED'),
+                    'END:VEVENT',
+                );
+            }
         }
         $lines[] = 'END:VCALENDAR';
 

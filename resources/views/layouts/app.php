@@ -104,6 +104,7 @@ $shell = $tenant !== null && $user !== null;
         <?= $v->sideLink('/', 'Home', 'home') ?>
         <?= $v->sideLink('/courses', 'Courses', 'courses') ?>
         <?php if ($v->can('course.learn')): ?><?= $v->sideLink('/account/subscriptions', 'My subscriptions', 'receipt') ?><?php endif; ?>
+        <?php if (($counts['in_group'] ?? 0) > 0 || ($counts['teaches_group'] ?? 0) > 0 || $v->can('groups.manage')): ?><?= $v->sideLink('/classes', 'Live classes', 'calendar', [], (int) ($counts['registers'] ?? 0)) ?><?php endif; ?>
         <?php if ($v->can('course.learn')): ?><?= $v->sideLink('/saved', 'Saved and notes', 'saved') ?><?php endif; ?>
         <?php if ($v->can('course.learn')): ?><?= $v->sideLink('/achievements', 'Achievements', 'sparkle') ?><?php endif; ?>
         <?php if ($v->can('course.learn') || $v->can('course.manage')): ?><?= $v->sideLink('/playground', 'Code studio', 'code') ?><?php endif; ?>

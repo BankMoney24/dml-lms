@@ -45,6 +45,7 @@ final class HomeController
         private readonly ?\App\Modules\Paths\PathRepository $pathRepo = null,
         private readonly ?\App\Modules\Paths\PathService $paths = null,
         private readonly ?\App\Modules\Achievements\Achievements $achievements = null,
+        private readonly ?\App\Modules\LiveClasses\ClassSessionRepository $classes = null,
     ) {
     }
 
@@ -190,7 +191,21 @@ final class HomeController
             $earned = $this->achievements->earned($tenant->id, $user->user->id);
         }
 
+        // Live classes (ADR 0028): the learner's next ones; for teachers, today's and registers to take.
+        $nowUtc = $this->classes?->now() ?? new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+        $nextClasses = $learns && $this->classes !== null
+            ? $this->classes->forLearner($tenant->id, $user->user->id, $nowUtc->format('Y-m-d H:i:s'), $nowUtc->modify('+14 days')->format('Y-m-d H:i:s'), 3)
+            : [];
+        if ($teaching !== null && $this->classes !== null) {
+            $teacherId = $user->can(Permission::GroupsManage) ? null : $user->user->id;
+            $dayEnd = $nowUtc->setTimezone(new \DateTimeZone($tenant->timezone))->setTime(23, 59, 59)->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s');
+            $teaching['classesToday'] = $this->classes->forTeacher($tenant->id, $teacherId, $nowUtc->format('Y-m-d H:i:s'), $dayEnd, 5);
+            $teaching['registers'] = count($this->classes->registersToTake($tenant->id, $teacherId, $nowUtc->format('Y-m-d H:i:s'), $nowUtc->modify('-30 days')->format('Y-m-d H:i:s')));
+        }
+
         return Response::html($this->view->render('dashboard/index', [
+            'nextClasses' => $nextClasses,
+            'nowTs' => $nowUtc->getTimestamp(),
             'activity' => $activity,
             'myPaths' => $myPaths,
             'earned' => $earned,

@@ -218,6 +218,7 @@ final class SampleSchool
             $this->learn($learner, $courses, $groups, $admin, $teachers, mt_rand(20, 100) / 100);
         }
         $this->recentNotes($learners, $courses);
+        $this->attendance($groups);
         $this->guardians($admin, $learners);
         $this->requests();
         $this->support($learners, $admin);
@@ -248,6 +249,8 @@ final class SampleSchool
                 'applications' => $count('SELECT COUNT(*) FROM course_applications WHERE tenant_id = ?'),
                 'questions' => $count('SELECT COUNT(*) FROM lesson_questions WHERE tenant_id = ?'),
                 'groups' => $count('SELECT COUNT(*) FROM learner_groups WHERE tenant_id = ?'),
+                'live classes' => $count('SELECT COUNT(*) FROM class_sessions WHERE tenant_id = ?'),
+                'attendance marks' => $count('SELECT COUNT(*) FROM class_attendance WHERE tenant_id = ?'),
                 'help requests' => $count('SELECT COUNT(*) FROM support_requests WHERE tenant_id = ?'),
                 'notifications' => $count('SELECT COUNT(*) FROM notifications WHERE tenant_id = ?'),
             ],
@@ -383,9 +386,71 @@ final class SampleSchool
                 $assigned[] = $course->id;
             }
             $out[] = ['id' => $id, 'courses' => $assigned, 'teacher' => $teachers[$i % count($teachers)]];
+            $this->timetable($group, $teachers[$i % count($teachers)], $i, $assigned[0] ?? null);
         }
 
         return $out;
+    }
+
+    /** A weekly live class for the group, from the first week of term to two weeks from now (ADR 0028). */
+    private function timetable(\App\Modules\Groups\LearnerGroup $group, CurrentUser $teacher, int $i, ?int $courseId): void
+    {
+        $zone = new DateTimeZone($this->tenant->timezone);
+        $first = $this->clock->now()->setTimezone($zone)->modify('+' . (3 + $i) . ' days');
+        $mode = ['online', 'room', 'both', 'online'][$i % 4];
+        $this->c->get(\App\Modules\LiveClasses\LiveClasses::class)->schedule($this->tenant, $group, $teacher, [
+            'title' => ['Weekly class: questions and practice', 'Practical session', 'Code-along', 'Troubleshooting clinic'][$i % 4],
+            'date' => $first->format('Y-m-d'),
+            'time' => ['18:00', '14:00', '10:00', '17:30'][$i % 4],
+            'minutes' => ['60', '90', '120', '60'][$i % 4],
+            'mode' => $mode,
+            'location' => $mode === 'online' ? '' : ['', 'Science lab, block B', 'Computer room 2', ''][$i % 4],
+            'join_url' => $mode === 'room' ? '' : 'https://meet.example.org/sample-' . strtolower(bin2hex(random_bytes(3))),
+            'course_id' => $courseId === null ? '' : (string) $courseId,
+            'weeks' => (string) \App\Modules\LiveClasses\LiveClasses::MAX_WEEKS,
+            'description' => "Bring your questions from this week's lessons.\n\nSample class: the meeting link goes nowhere.",
+        ], $this->ip());
+    }
+
+    /**
+     * Teachers take the register after each class held so far; the latest
+     * class of every other group is left for the teacher, so registers to take
+     * can be tried.
+     *
+     * @param list<array{id: int, courses: list<int>, teacher: CurrentUser}> $groups
+     */
+    private function attendance(array $groups): void
+    {
+        $repo = $this->c->get(\App\Modules\LiveClasses\ClassSessionRepository::class);
+        $live = $this->c->get(\App\Modules\LiveClasses\LiveClasses::class);
+        $now = $this->today();
+        foreach ($groups as $gi => $g) {
+            $held = array_reverse($repo->pastForGroup($this->tenant->id, $g['id'], $now->format('Y-m-d H:i:s'), 50));
+            if ($gi % 2 === 0) {
+                array_pop($held);
+            }
+            $members = $this->db->fetchAll("SELECT user_id, added_at FROM learner_group_members WHERE tenant_id = ? AND group_id = ? AND role = 'learner'", [$this->tenant->id, $g['id']]);
+            foreach ($held as $k => $session) {
+                if ($k === 2 && $gi === 1) {
+                    $this->clock->at(new DateTimeImmutable($session->startsAt . ' UTC'));
+                    $live->cancel($this->tenant, $session, $g['teacher'], 'The teacher is at a training day. We will cover this next week.', $this->ip());
+                    continue;
+                }
+                $statuses = [];
+                foreach ($members as $m) {
+                    if ((string) $m['added_at'] > $session->startsAt) {
+                        continue;
+                    }
+                    $roll = mt_rand(1, 100);
+                    $statuses[(string) $m['user_id']] = $roll <= 76 ? 'present' : ($roll <= 86 ? 'late' : ($roll <= 96 ? 'absent' : 'excused'));
+                }
+                if ($statuses === []) {
+                    continue;
+                }
+                $this->clock->at((new DateTimeImmutable($session->endsAt . ' UTC'))->modify('+' . mt_rand(5, 90) . ' minutes'));
+                $live->register($this->tenant, $session, $g['teacher'], $statuses, [], $this->ip());
+            }
+        }
     }
 
     /**

@@ -329,6 +329,7 @@ final class Application
             $c->get(Connection::class),
             $c->get(Clock::class),
             $c->get(\App\Modules\Study\Deadlines::class),
+            $c->get(\App\Modules\LiveClasses\ClassSessionRepository::class),
         ));
         $c->set(SupportRepository::class, static fn (Container $c) => new SupportRepository($c->get(Connection::class), $c->get(Clock::class)));
         $c->set(SupportService::class, static fn (Container $c) => new SupportService(
@@ -456,6 +457,7 @@ final class Application
             $c->get(\App\Modules\Paths\PathRepository::class),
             $c->get(\App\Modules\Paths\PathService::class),
             $c->get(\App\Modules\Achievements\Achievements::class),
+            $c->get(\App\Modules\LiveClasses\ClassSessionRepository::class),
         ));
         $c->set(LoginController::class, static fn (Container $c) => new LoginController(
             $c->get(View::class),
@@ -829,6 +831,32 @@ final class Application
             new GroupProgress($c->get(Connection::class)),
             $c->get(CourseRepository::class),
             $c->get(Clock::class),
+            $c->get(\App\Modules\LiveClasses\LiveClasses::class),
+            $c->get(\App\Modules\LiveClasses\ClassSessionRepository::class),
+        ));
+        // Live classes and attendance (ADR 0028).
+        $c->set(
+            \App\Modules\LiveClasses\ClassSessionRepository::class,
+            static fn (Container $c) => new \App\Modules\LiveClasses\ClassSessionRepository($c->get(Connection::class), $c->get(Clock::class)),
+        );
+        $c->set(\App\Modules\LiveClasses\LiveClasses::class, static fn (Container $c) => new \App\Modules\LiveClasses\LiveClasses(
+            $c->get(\App\Modules\LiveClasses\ClassSessionRepository::class),
+            $c->get(GroupRepository::class),
+            $c->get(GroupService::class),
+            $c->get(CourseRepository::class),
+            $c->get(AuditLog::class),
+            $c->get(Clock::class),
+            $c->get(GuardianRepository::class),
+            $c->get(Notifier::class),
+        ));
+        $c->set(\App\Modules\LiveClasses\Http\LiveClassController::class, static fn (Container $c) => new \App\Modules\LiveClasses\Http\LiveClassController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(\App\Modules\LiveClasses\LiveClasses::class),
+            $c->get(\App\Modules\LiveClasses\ClassSessionRepository::class),
+            $c->get(GroupRepository::class),
+            $c->get(CourseRepository::class),
+            $c->get(Clock::class),
         ));
         $c->set(SeoController::class, static fn (Container $c) => new SeoController(
             $c->get(Connection::class),
@@ -881,6 +909,7 @@ final class Application
             new ChildReport($c->get(Connection::class)),
             $c->get(GroupRepository::class),
             $c->get(CertificateService::class),
+            $c->get(\App\Modules\LiveClasses\ClassSessionRepository::class),
         ));
         $c->set(\App\Modules\Search\Http\SearchController::class, static fn (Container $c) => new \App\Modules\Search\Http\SearchController(
             $c->get(View::class),

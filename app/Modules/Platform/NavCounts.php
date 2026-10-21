@@ -18,7 +18,7 @@ final class NavCounts
     {
     }
 
-    /** @return array{reviews: int, support: int, children: int, requests: int, questions: int, applications: int, claims: int} */
+    /** @return array{reviews: int, support: int, children: int, requests: int, questions: int, applications: int, claims: int, in_group: int, teaches_group: int, registers: int} */
     public function for(CurrentUser $current, int $tenantId): array
     {
         $userId = $current->user->id;
@@ -36,6 +36,16 @@ final class NavCounts
             'claims' => $current->can(Permission::SchoolManage)
                 ? (int) $this->db->fetchValue("SELECT COUNT(*) FROM payment_claims WHERE tenant_id = ? AND status = 'pending'", [$tenantId])
                 : 0,
+            // Live classes (ADR 0028): who sees the link, and registers left to take in the last 30 days.
+            'in_group' => (int) $this->db->fetchValue("SELECT COUNT(*) FROM learner_group_members WHERE tenant_id = ? AND user_id = ? AND role = 'learner'", [$tenantId, $userId]),
+            'teaches_group' => (int) $this->db->fetchValue("SELECT COUNT(*) FROM learner_group_members WHERE tenant_id = ? AND user_id = ? AND role = 'teacher'", [$tenantId, $userId]),
+            'registers' => (int) $this->db->fetchValue(
+                "SELECT COUNT(*) FROM class_sessions s
+                 JOIN learner_group_members t ON t.tenant_id = s.tenant_id AND t.group_id = s.group_id AND t.user_id = ? AND t.role = 'teacher'
+                 WHERE s.tenant_id = ? AND s.status = 'scheduled' AND s.ends_at < UTC_TIMESTAMP() AND s.ends_at >= UTC_TIMESTAMP() - INTERVAL 30 DAY
+                   AND NOT EXISTS (SELECT 1 FROM class_attendance a WHERE a.tenant_id = s.tenant_id AND a.session_id = s.id AND a.marked_by IS NOT NULL)",
+                [$userId, $tenantId],
+            ),
             'questions' => $current->can(Permission::CourseManage)
                 ? (int) $this->db->fetchValue("SELECT COUNT(*) FROM lesson_questions WHERE tenant_id = ? AND status = 'open' AND staff_answered = 0 AND accepted_answer_id IS NULL", [$tenantId])
                 : 0,

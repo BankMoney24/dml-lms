@@ -19,7 +19,7 @@ final class SampleSchoolTest extends AppTestCase
         $tid = $result['tenant']->id;
         $kinds = [
             'enrolments', 'lessons completed', 'quiz attempts', 'lab sessions', 'certificates', 'payments',
-            'payment notes', 'applications', 'questions', 'groups', 'help requests', 'notifications',
+            'payment notes', 'applications', 'questions', 'groups', 'help requests', 'notifications', 'live classes', 'attendance marks',
         ];
         foreach ($kinds as $what) {
             $this->assertGreaterThan(0, $result['counts'][$what], $what);

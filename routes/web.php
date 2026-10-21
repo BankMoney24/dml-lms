@@ -23,6 +23,7 @@ use App\Modules\Learning\Http\LearnController;
 use App\Modules\Payments\Http\PaymentAdminController;
 use App\Modules\Payments\Http\PaymentController;
 use App\Modules\Subscriptions\Http\SubscribeController;
+use App\Modules\LiveClasses\Http\LiveClassController;
 use App\Modules\Notifications\Http\NotificationController;
 use App\Modules\Platform\HealthController;
 use App\Modules\Platform\HomeController;
@@ -264,6 +265,15 @@ return static function (Router $r): void {
     $r->post('/groups/{group:int}/courses', [GroupController::class, 'assignCourse'], $groups);
     $r->post('/groups/{group:int}/courses/{course:int}/remove', [GroupController::class, 'unassignCourse'], $groups);
     $r->post('/groups/{group:int}/announcements', [GroupController::class, 'announce'], $groups);
+    // Live classes and attendance (ADR 0028). The service checks who teaches or learns in the group.
+    $r->post('/groups/{group:int}/classes', [GroupController::class, 'scheduleClass'], $groups);
+    $r->get('/groups/{group:int}/attendance.csv', [GroupController::class, 'attendance'], $groups);
+    $r->get('/classes', [LiveClassController::class, 'index'], $groups);
+    $r->get('/classes/{session:int}', [LiveClassController::class, 'show'], $groups);
+    $r->post('/classes/{session:int}', [LiveClassController::class, 'update'], $groups);
+    $r->post('/classes/{session:int}/join', [LiveClassController::class, 'join'], $groups);
+    $r->post('/classes/{session:int}/register', [LiveClassController::class, 'register'], $groups);
+    $r->post('/classes/{session:int}/cancel', [LiveClassController::class, 'cancel'], $groups);
     $r->post('/groups/{group:int}/announcements/{announcement:int}/delete', [GroupController::class, 'deleteAnnouncement'], $groups);
 
     $school = ['tenant', 'auth', 'can:school.manage'];

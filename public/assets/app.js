@@ -374,6 +374,35 @@
     });
   });
 
+  // Live classes (ADR 0028): attendance bars get their width from data (no inline styles under the CSP),
+  // and the register can mark everyone not yet marked as present in one go.
+  Array.prototype.forEach.call(document.querySelectorAll('[data-width]'), function (bar) {
+    var w = Math.max(0, Math.min(100, parseInt(bar.getAttribute('data-width'), 10) || 0));
+    bar.style.width = w + '%';
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-join]'), function (box) {
+    var link = box.querySelector('a');
+    var form = box.querySelector('[data-checkin]');
+    if (!link || !form) { return; }
+    link.addEventListener('click', function () {
+      try {
+        fetch(form.action, { method: 'POST', body: new FormData(form), credentials: 'same-origin', keepalive: true, headers: { Accept: 'application/json' } });
+      } catch (e) { /* the register can still be taken by the teacher */ }
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-register]'), function (form) {
+    var all = form.querySelector('[data-all-present]');
+    if (!all) { return; }
+    all.hidden = false;
+    all.addEventListener('click', function () {
+      Array.prototype.forEach.call(form.querySelectorAll('fieldset'), function (fs) {
+        if (fs.querySelector('input[type="radio"]:checked')) { return; }
+        var present = fs.querySelector('input[type="radio"][value="present"]');
+        if (present) { present.checked = true; }
+      });
+    });
+  });
+
   // The Code studio has its own script (studio.js), loaded only on its pages.
 
   // Show / hide password on sign-up.

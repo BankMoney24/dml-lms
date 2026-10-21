@@ -31,6 +31,8 @@ final class GroupController
         private readonly GroupProgress $progress,
         private readonly CourseRepository $courses,
         private readonly Clock $clock,
+        private readonly ?\App\Modules\LiveClasses\LiveClasses $live = null,
+        private readonly ?\App\Modules\LiveClasses\ClassSessionRepository $classes = null,
     ) {
     }
 
@@ -230,6 +232,71 @@ final class GroupController
         return $this->back($group);
     }
 
+    /** POST /groups/{group}/classes: plan a live class, once or weekly (ADR 0028). */
+    public function scheduleClass(Request $request): Response
+    {
+        [$tenant, $group] = $this->group($request);
+        // The form's fields are prefixed so they never clash with the group page's other forms.
+        $input = [];
+        foreach (['title', 'date', 'time', 'minutes', 'mode', 'location', 'join_url', 'course_id', 'weeks', 'description'] as $key) {
+            $input[$key] = (string) ($request->input('class_' . $key, '') ?? '');
+        }
+        if ($this->live === null) {
+            throw new \LogicException('Live classes are not wired.');
+        }
+        try {
+            $ids = $this->live->schedule($tenant, $group, RequestContext::user($request), $input, $request->clientIp);
+        } catch (ValidationException $e) {
+            $errors = [];
+            foreach ($e->errors as $k => $m) {
+                $errors[$k === 'form' ? 'form' : 'class_' . $k] = $m;
+            }
+            $old = ['class_open' => '1'];
+            foreach ($input as $k => $value) {
+                $old['class_' . $k] = $value;
+            }
+
+            return $this->render($request, $errors, $old, 422);
+        }
+        $this->session->flash('success', count($ids) === 1
+            ? 'Class planned. Learners can see it and have been told.'
+            : sprintf('%d weekly classes planned. Learners can see them and have been told.', count($ids)));
+
+        return Response::redirect('/groups/' . $group->id . '#classes');
+    }
+
+    /** Attendance as a spreadsheet: one row per learner. */
+    public function attendance(Request $request): Response
+    {
+        [$tenant, $group] = $this->group($request);
+        if ($this->classes === null) {
+            throw HttpException::notFound();
+        }
+        $summary = $this->classes->groupSummary($tenant->id, $group->id, $this->clock->sqlNow());
+        $out = fopen('php://temp', 'r+');
+        if ($out === false) {
+            throw new \RuntimeException('Could not build the export.');
+        }
+        fputcsv($out, ['Learner', 'Email', 'Classes held', 'Present', 'Late', 'Absent', 'Excused', 'Not marked', 'Attendance %'], ',', '"', '');
+        foreach ($this->groups->members($tenant->id, $group->id, GroupRepository::LEARNER) as $l) {
+            $r = $summary['rows'][$l['user_id']] ?? ['held' => 0, 'present' => 0, 'late' => 0, 'absent' => 0, 'excused' => 0, 'unmarked' => 0, 'rate' => null];
+            fputcsv($out, array_map(PaymentAdminController::cell(...), [
+                $l['name'], $l['email'], (string) $r['held'], (string) $r['present'], (string) $r['late'], (string) $r['absent'], (string) $r['excused'], (string) $r['unmarked'],
+                $r['rate'] === null ? '' : (string) $r['rate'],
+            ]), ',', '"', '');
+        }
+        rewind($out);
+        $csv = (string) stream_get_contents($out);
+        fclose($out);
+        $file = trim((string) preg_replace('/[^A-Za-z0-9]+/', '-', $group->name), '-');
+
+        return new Response($csv, 200, [
+            'Content-Type' => 'text/csv; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename="' . ($file === '' ? 'class' : $file) . '-attendance.csv"',
+            'Cache-Control' => 'private, no-store',
+        ]);
+    }
+
     /** Progress as a spreadsheet, one row per learner and a column per course. */
     public function export(Request $request): Response
     {
@@ -297,6 +364,14 @@ final class GroupController
             'managesAll' => $all,
             'announcements' => $this->groups->announcements($tenant->id, $group->id),
             'today' => $this->clock->now()->setTimezone(new \DateTimeZone($tenant->timezone))->format('Y-m-d'),
+            'liveClasses' => $this->classes === null ? null : [
+                'upcoming' => $this->classes->forGroup($tenant->id, $group->id, $this->clock->sqlNow(), $this->clock->now()->modify('+90 days')->format('Y-m-d H:i:s'), 8),
+                'past' => $this->classes->pastForGroup($tenant->id, $group->id, $this->clock->sqlNow(), 6),
+                'attendance' => $this->classes->groupSummary($tenant->id, $group->id, $this->clock->sqlNow()),
+                'mayTeach' => $this->service->mayTeach($tenant, $group, $user),
+                'now' => $this->clock->now()->getTimestamp(),
+                'courses' => $this->courses->listPublished($tenant->id, 100),
+            ],
             'errors' => $errors,
             'old' => $old,
         ]), $status);

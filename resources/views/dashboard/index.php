@@ -24,14 +24,24 @@ $justOnboarded ??= false;
 $confirmEmail ??= null;
 $comingUp ??= [];
 $recentNotes ??= [];
+/** @var list<\App\Modules\LiveClasses\ClassSession> $nextClasses */
+$nextClasses ??= [];
+$nowTs ??= time();
+$liveNow = null;
+foreach ($nextClasses as $nc) {
+    if (in_array($nc->phase($nowTs), ['open', 'live'], true)) {
+        $liveNow = $nc;
+        break;
+    }
+}
 $zone = new DateTimeZone($v->shared('tenant')?->timezone ?? 'UTC');
 $now = new DateTimeImmutable('now', $zone);
 $hour = (int) $now->format('G');
 $greeting = $hour < 12 ? 'Good morning' : ($hour < 17 ? 'Good afternoon' : 'Good evening');
 $myPaths ??= [];
 $earned ??= [];
-$hasSide = $activity !== null || $comingUp !== [] || $recentNotes !== [] || $earned !== [];
-$hasMain = $continue !== null || $children !== [] || $myGroups !== [] || $myPaths !== [];
+$hasSide = $activity !== null || $comingUp !== [] || $recentNotes !== [] || $earned !== [] || $nextClasses !== [];
+$hasMain = $continue !== null || $children !== [] || $myGroups !== [] || $myPaths !== [] || $liveNow !== null;
 ?>
 <header class="home-head">
   <p class="home-date"><?= $v->e($now->format('l j F')) ?></p>
@@ -76,6 +86,20 @@ $hasMain = $continue !== null || $children !== [] || $myGroups !== [] || $myPath
 <div class="home-grid<?= $hasSide ? '' : ' is-single' ?><?= $hasMain ? '' : ' is-side-only' ?>">
   <?php if ($hasMain): ?>
   <div class="home-main">
+<?php if ($liveNow !== null): ?>
+<section class="live-now" aria-labelledby="live-now-h">
+  <p class="live-now-kicker"><span class="lc-live"><?= $liveNow->phase($nowTs) === 'live' ? 'Live now' : 'Starting soon' ?></span> <?= $v->e($liveNow->groupName) ?></p>
+  <h2 id="live-now-h" class="live-now-title"><a href="/classes/<?= $liveNow->id ?>"><?= $v->e($liveNow->title) ?></a></h2>
+  <p class="live-now-when"><?= $v->datetime($liveNow->startsAt, 'H:i') ?>–<?= $v->datetime($liveNow->endsAt, 'H:i') ?><?= $liveNow->inRoom() ? ', ' . $v->e($liveNow->location) : '' ?></p>
+  <?php if ($liveNow->isOnline()): ?>
+  <div class="lc-join" data-join>
+    <a class="button lc-join-button" href="<?= $v->e((string) $liveNow->joinUrl) ?>" target="_blank" rel="noopener noreferrer"><?= $v->icon('play') ?>Join the class</a>
+    <form method="post" action="/classes/<?= $liveNow->id ?>/join" data-checkin hidden><?= $v->csrfField() ?></form>
+  </div>
+  <?php endif; ?>
+</section>
+<?php endif; ?>
+
 <?php if ($continue !== null): $card = $continue['card']; $c = $card['course']; $pct = $card['lessons'] === 0 ? 0 : intdiv($card['done'] * 100, $card['lessons']); ?>
 <section class="continue" aria-labelledby="continue-h">
   <p class="continue-kicker" id="continue-h">Continue where you stopped</p>
@@ -207,6 +231,13 @@ $hasMain = $continue !== null || $children !== [] || $myGroups !== [] || $myPath
     </section>
     <?php endif; ?>
 
+    <?php if ($nextClasses !== []): ?>
+    <section class="panel" aria-labelledby="classes-h">
+      <h2 id="classes-h">Live classes</h2>
+      <ul class="lc-list lc-list-compact"><?php foreach ($nextClasses as $s): $rowNow = $nowTs; $showGroup = false; $mark = null; ?><?php include __DIR__ . '/../classes/_row.php'; ?><?php endforeach; ?></ul>
+      <p class="small"><a href="/classes">All your classes</a></p>
+    </section>
+    <?php endif; ?>
     <?php if ($comingUp !== []): ?>
     <section class="panel" aria-labelledby="due-h">
       <h2 id="due-h">Coming up</h2>
@@ -260,6 +291,12 @@ $hasMain = $continue !== null || $children !== [] || $myGroups !== [] || $myPath
         <?php endif; ?>
         <?php if ($teaching['drafts'] > 0): ?>
           <li><a href="/teach"><?= $v->icon('teach') ?><?= $v->e($v->plural($teaching['drafts'], 'draft course')) ?> to finish and publish</a></li>
+        <?php endif; ?>
+        <?php foreach ($teaching['classesToday'] ?? [] as $tc): ?>
+          <li<?= in_array($tc->phase($nowTs), ['open', 'live'], true) ? ' class="todo-urgent"' : '' ?>><a href="/classes/<?= $tc->id ?>"><?= $v->icon('calendar') ?><?= $v->e($tc->title) ?>, <?= $v->datetime($tc->startsAt, 'H:i') ?> (<?= $v->e($tc->groupName) ?>)</a></li>
+        <?php endforeach; ?>
+        <?php if (($teaching['registers'] ?? 0) > 0): ?>
+          <li class="todo-urgent"><a href="/classes"><?= $v->icon('people') ?><?= $v->e($v->plural($teaching['registers'], 'class register', 'class registers')) ?> to take</a></li>
         <?php endif; ?>
         <li><a href="/teach/courses/new"><?= $v->icon('courses') ?>Start a new course</a></li>
         <?php if ($v->can('members.manage')): ?><li><a href="/people"><?= $v->icon('people') ?>Add people</a></li><?php endif; ?>
