@@ -139,6 +139,20 @@
     }
   });
 
+  // New meeting: the day and time only matter for "Later", and the button says what will happen.
+  Array.prototype.forEach.call(document.querySelectorAll('[data-meet-form]'), function (form) {
+    var later = form.querySelector('[data-when-later]');
+    var button = form.querySelector('[data-when-label-now]');
+    function sync() {
+      var picked = form.querySelector('[data-when]:checked');
+      var isLater = picked && picked.value === 'later';
+      if (later) { later.hidden = !isLater; }
+      if (button) { button.textContent = button.getAttribute(isLater ? 'data-when-label-later' : 'data-when-label-now'); }
+    }
+    Array.prototype.forEach.call(form.querySelectorAll('[data-when]'), function (r) { r.addEventListener('change', sync); });
+    sync();
+  });
+
   // Big uploads (video, audio, recordings) show how far they have got: on a
   // slow connection a 100 MB file can take many minutes and a still page looks
   // stuck. The form is sent as it would be anyway; the page the server answers

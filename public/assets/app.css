@@ -2496,37 +2496,129 @@ kbd { font: 700 0.8125rem/1 var(--font-body); padding: 0.15rem 0.4rem; border: 1
 .live-now-when { margin: var(--space-1) 0 var(--space-4); }
 .live-now form { margin: 0; }
 
-/* The online classroom (ADR 0029). The stage is dark like a screen; the data
-   choice sits beside the title because it is the first thing a learner on a
-   weak connection needs. */
-.room-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-3) var(--space-5); margin-bottom: var(--space-3); }
-.room-title h1 { margin: 0; font-size: var(--step-2); }
-.room-kicker { margin: 0 0 var(--space-1); color: var(--ink-soft); display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
-.room-modes { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 8px; padding: 3px; margin: 0; gap: 3px; background: var(--surface); }
+/* The online classroom (ADR 0029, 0030), phone first. The video takes the
+   screen; the data choice sits right under the title because it is the first
+   thing a learner on a weak connection needs; materials and help fold away
+   under the video. */
+.room { margin-top: calc(-1 * var(--space-3)); }
+.room-head { display: grid; gap: var(--space-2); margin-bottom: var(--space-2); }
+.room-back { display: inline-flex; align-items: center; gap: .25rem; font-size: var(--step--1); color: var(--ink-soft); text-decoration: none; width: fit-content; }
+.room-back:hover { color: var(--primary); }
+.room-back-icon { width: 1rem; height: 1rem; transform: rotate(90deg); }
+.room-title h1 { margin: 0; font-size: var(--step-1); line-height: 1.2; overflow-wrap: anywhere; }
+.room-kicker { margin: 0 0 .15rem; color: var(--ink-soft); display: flex; flex-wrap: wrap; gap: 0 var(--space-2); align-items: center; }
+.room-modes { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line-strong); border-radius: 10px; padding: 3px; margin: 0; gap: 3px; background: var(--surface); }
 .room-modes label { position: relative; cursor: pointer; }
 .room-modes input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
-.room-modes span { display: inline-flex; align-items: center; gap: .35rem; padding: .4rem .7rem; border-radius: 6px; font-size: var(--step--1); font-weight: 600; color: var(--ink-soft); white-space: nowrap; }
-.room-modes .icon { width: 1rem; height: 1rem; }
+.room-modes span { display: flex; justify-content: center; align-items: center; gap: .35rem; min-height: 2.6rem; padding: .3rem .5rem; border-radius: 8px; font-size: var(--step--1); color: var(--ink-soft); white-space: nowrap; }
+.room-modes b { font-weight: 650; }
+.room-modes .lbl-long { display: none; }
+.room-modes .icon { width: 1.05rem; height: 1.05rem; flex: none; }
 .room-modes input:checked + span { background: var(--brand-navy); color: #fff; }
 .room-modes input:focus-visible + span { outline: 3px solid var(--focus, var(--lamp)); outline-offset: 1px; }
-.room-status { margin: 0 0 var(--space-3); padding: var(--space-2) var(--space-3); border-radius: 8px; background: var(--lamp-soft); color: var(--lamp-ink); font-size: var(--step--1); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.room-status { margin: 0 0 var(--space-2); padding: var(--space-2) var(--space-3); border-radius: 8px; background: var(--lamp-soft); color: var(--lamp-ink); font-size: var(--step--1); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .room-status[hidden] { display: none; }
 .room-status.is-warn { background: var(--warn-soft); color: var(--ink); }
 .room-status.is-error { background: var(--accent-soft); color: var(--danger); }
-.room-layout { display: grid; gap: var(--space-4); }
-.room-stage { position: relative; min-height: 62vh; background: #0f1a2b; border-radius: var(--radius-m); overflow: hidden; }
+.room-layout { display: grid; gap: var(--space-3); }
+/* On a phone the stage fills what is left of the screen under the title. */
+.room-stage { position: relative; height: calc(100vh - 15rem); height: calc(100svh - 15rem); min-height: 20rem; background: #0f1a2b; border-radius: var(--radius-m); overflow: hidden; }
 .room-stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .room-stage-note { color: #e6edf6; padding: var(--space-5); margin: 0; }
-.room-panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-3); }
-.room-panel .small-heading { margin-top: 0; }
+.room-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); margin-bottom: var(--space-3); }
+.room-clock { margin: 0; font-weight: 650; font-variant-numeric: tabular-nums; }
+.room-clock.is-low { color: var(--accent); }
+.room-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: flex-start; }
+.room-end { position: relative; }
+.room-end summary { list-style: none; cursor: pointer; }
+.room-end summary::-webkit-details-marker { display: none; }
+.room-end form { position: absolute; right: 0; top: calc(100% + .4rem); z-index: 5; width: min(16rem, 80vw); padding: var(--space-3); background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius-m); box-shadow: 0 8px 24px rgb(0 0 0 / .14); }
+.room-end form p { margin: 0 0 var(--space-2); }
+.room-note { margin: 0 0 var(--space-3); padding: var(--space-2) var(--space-3); border-left: 3px solid var(--lamp); background: var(--lamp-soft); color: var(--lamp-ink); border-radius: 0 8px 8px 0; }
+.room-panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); margin-bottom: var(--space-3); }
+.room-panel summary { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4); font-weight: 650; cursor: pointer; }
+.room-panel summary .icon { width: 1.05rem; height: 1.05rem; color: var(--ink-soft); }
+.room-panel[open] summary { border-bottom: 1px solid var(--line); }
+.room-panel > :not(summary) { margin: var(--space-3) var(--space-4); }
 .room-tips li { margin-bottom: var(--space-2); }
 .room-panel .file-list li { padding: var(--space-2); }
+.room-tips .linklike { padding: 0; line-height: inherit; vertical-align: baseline; font-size: inherit; }
 .room-closed { max-width: 40rem; padding: var(--space-5) 0; }
+@media (min-width: 40rem) {
+  .room-head { grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
+  .room-back { grid-column: 1 / -1; }
+  .room-modes { display: inline-grid; }
+  .room-modes .lbl-long { display: inline; }
+  .room-modes .lbl-short { display: none; }
+  .room-title h1 { font-size: var(--step-2); }
+}
 @media (min-width: 60rem) {
+  .room { margin-top: 0; }
   .room-layout { grid-template-columns: minmax(0, 1fr) 18rem; align-items: start; }
-  .room-stage { min-height: 0; height: calc(100vh - 13rem); max-height: 52rem; }
+  .room-stage { min-height: 0; height: calc(100vh - 12rem); max-height: 52rem; }
+}
+
+/* Start a class now, meetings (ADR 0030). */
+.opts { display: flex; flex-wrap: wrap; gap: var(--space-2); border: 0; padding: 0; margin: 0 0 var(--space-3); }
+.opts legend:not(.visually-hidden) { font-weight: 650; font-size: var(--step--1); margin-bottom: var(--space-1); width: 100%; }
+.opt { position: relative; }
+.opt input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.opt span { display: inline-flex; align-items: center; min-height: 2.6rem; padding: .3rem 1rem; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--surface); font-size: var(--step--1); font-weight: 650; }
+.opt input:checked + span { background: var(--brand-navy); border-color: var(--brand-navy); color: #fff; }
+.opt input:focus-visible + span { outline: 3px solid var(--focus, var(--lamp)); outline-offset: 2px; }
+.quick-class { display: grid; gap: var(--space-3); padding: var(--space-4); margin: 0 0 var(--space-6); background: var(--brand-navy); color: #dfe4ee; border-radius: var(--radius-l); max-width: 60rem; }
+.quick-class h2 { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-1); color: #fff; font-size: var(--step-1); }
+.quick-class h2 .icon { width: 1.3rem; height: 1.3rem; color: var(--accent-on-dark); }
+.quick-class .small { color: var(--brand-navy-soft, #b9c2d3); margin: 0; }
+.quick-class-form { display: grid; gap: var(--space-3); }
+.quick-class-form .field { margin: 0; }
+.quick-class-form label, .quick-class-form legend { color: #fff; }
+.quick-class-form .optional { color: var(--brand-navy-soft, #b9c2d3); }
+.quick-class-form input[type=text], .quick-class-form input:not([type]), .quick-class-form select { width: 100%; }
+.quick-class .opt span { background: transparent; color: #dfe4ee; border-color: rgb(255 255 255 / .35); }
+.quick-class .opt input:checked + span { background: #fff; color: var(--brand-navy); border-color: #fff; }
+.quick-class .opts { margin: 0; }
+.quick-go { justify-self: start; background: var(--accent); border-color: var(--accent); color: #fff; min-height: 2.9rem; padding-inline: 1.4rem; }
+.quick-go .icon { width: 1rem; height: 1rem; fill: currentColor; }
+.quick-for { margin: 0; }
+@media (min-width: 48rem) {
+  .quick-class { grid-template-columns: minmax(0, 16rem) minmax(0, 1fr); padding: var(--space-5); }
+  .quick-class-form { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; }
+  .quick-go { grid-column: 1 / -1; }
+}
+.quick-inline { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin: var(--space-3) 0; }
+.quick-inline select { width: auto; }
+.lc-enter { white-space: nowrap; background: var(--accent); border-color: var(--accent); color: #fff; }
+.lc-enter .icon { width: .95rem; height: .95rem; }
+.lc-date-meeting { background: var(--primary); }
+.lc-run { display: flex; flex-wrap: wrap; gap: var(--space-4); }
+.lc-card-live .lc-run .linklike, .lc-card-open .lc-run .linklike { color: #fff; }
+.meet-form { max-width: 44rem; }
+.meet-step { padding: var(--space-4) 0; border-top: 1px solid var(--line); }
+.meet-step:first-of-type { border-top: 0; padding-top: 0; }
+.meet-step-title { display: flex; align-items: center; gap: var(--space-2); font-size: var(--step-1); margin: 0 0 var(--space-3); }
+.meet-step-n { display: inline-grid; place-items: center; width: 1.7rem; height: 1.7rem; border-radius: 50%; background: var(--brand-navy); color: #fff; font-size: var(--step--1); }
+.meet-submit { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-4); }
+.audience-list { display: grid; gap: var(--space-2); }
+.audience-list li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-m); background: var(--surface); }
+.audience-name { flex: 1 1 100%; font-weight: 650; }
+.mini-check { display: inline-flex; align-items: center; gap: .35rem; font-size: var(--step--1); min-height: 2.2rem; cursor: pointer; }
+.mini-check input { width: 1.1rem; height: 1.1rem; }
+.audience-groups { border: 0; padding: 0; margin: 0 0 var(--space-3); }
+@media (min-width: 40rem) { .audience-name { flex: 1 1 auto; } }
+.meet-people { display: grid; gap: 0; margin-bottom: var(--space-4); }
+.meet-people li { display: flex; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--line); }
+.meet-came { color: var(--ok, #1d7a46); font-weight: 650; }
+/* On a phone, the button to get into a live class or meeting stays in reach. */
+@media (max-width: 47.99rem) {
+  .lc-card .join-bar { position: sticky; bottom: var(--space-3); z-index: 3; padding: var(--space-2); margin-inline: calc(-1 * var(--space-2)); border-radius: var(--radius-m); background: var(--brand-navy); box-shadow: 0 6px 20px rgb(0 0 0 / .25); }
+  .lc-card .join-bar .lc-join-button { flex: 1 1 100%; justify-content: center; min-height: 3rem; }
+  .lc-row { grid-template-columns: auto minmax(0, 1fr); }
+  .lc-row .lc-state { grid-column: 1 / -1; justify-self: stretch; }
+  .lc-row .lc-state:empty { display: none; }
+  .lc-row .lc-enter { width: 100%; justify-content: center; min-height: 2.8rem; }
 }
 .lc-materials, .lc-recording { margin-bottom: var(--space-5); }
 .lc-materials h2, .lc-recording h2 { font-size: var(--step-1); }
-.room-tips .linklike { padding: 0; line-height: inherit; vertical-align: baseline; font-size: inherit; }
+
 .lc-reg-meta { display: block; font-weight: 400; }

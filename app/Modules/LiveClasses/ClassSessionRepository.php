@@ -31,12 +31,12 @@ final class ClassSessionRepository
         $now = $this->clock->sqlNow();
 
         return $this->db->insert(
-            'INSERT INTO class_sessions (tenant_id, group_id, course_id, series_id, title, description, starts_at, ends_at, mode, location, join_url, room_name,
+            'INSERT INTO class_sessions (tenant_id, group_id, course_id, series_id, title, description, starts_at, ends_at, mode, style, location, join_url, room_name,
                                          status, created_by, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $tenantId, $s['group_id'], $s['course_id'], $s['series_id'], $s['title'], $s['description'], $s['starts_at'], $s['ends_at'],
-                $s['mode'], $s['location'], $s['join_url'], $s['room_name'] ?? null, 'scheduled', $s['created_by'], $now, $now,
+                $s['mode'], $s['style'] ?? 'discussion', $s['location'], $s['join_url'], $s['room_name'] ?? null, 'scheduled', $s['created_by'], $now, $now,
             ],
         );
     }
@@ -45,14 +45,20 @@ final class ClassSessionRepository
     public function update(int $tenantId, int $id, array $s): void
     {
         $this->db->execute(
-            'UPDATE class_sessions SET title = ?, description = ?, course_id = ?, starts_at = ?, ends_at = ?, mode = ?, location = ?, join_url = ?, recording_url = ?,
-                    room_name = COALESCE(room_name, ?), updated_at = ?
+            'UPDATE class_sessions SET title = ?, description = ?, course_id = ?, starts_at = ?, ends_at = ?, mode = ?, style = ?, location = ?, join_url = ?,
+                    recording_url = ?, room_name = COALESCE(room_name, ?), updated_at = ?
              WHERE tenant_id = ? AND id = ?',
             [
-                $s['title'], $s['description'], $s['course_id'], $s['starts_at'], $s['ends_at'], $s['mode'], $s['location'], $s['join_url'], $s['recording_url'],
-                $s['room_name'] ?? null, $this->clock->sqlNow(), $tenantId, $id,
+                $s['title'], $s['description'], $s['course_id'], $s['starts_at'], $s['ends_at'], $s['mode'], $s['style'] ?? 'discussion', $s['location'], $s['join_url'],
+                $s['recording_url'], $s['room_name'] ?? null, $this->clock->sqlNow(), $tenantId, $id,
             ],
         );
+    }
+
+    /** Moves the end of a class (finishing early, or adding time while it runs). */
+    public function setEnd(int $tenantId, int $id, string $endsAtUtc): void
+    {
+        $this->db->execute('UPDATE class_sessions SET ends_at = ?, updated_at = ? WHERE tenant_id = ? AND id = ?', [$endsAtUtc, $this->clock->sqlNow(), $tenantId, $id]);
     }
 
     /** The uploaded recording of a class (a file in its materials), or null for none. */

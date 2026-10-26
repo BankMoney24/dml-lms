@@ -69,6 +69,19 @@ $att = $lc['attendance'];
     </div>
   </div>
 
+  <?php if ($lc['mayTeach'] && !$archived && ($lc['classroomReady'] ?? false)): ?>
+  <form method="post" action="/classes/now" class="quick-inline">
+    <?= $v->csrfField() ?>
+    <input type="hidden" name="group_id" value="<?= (int) $group->id ?>">
+    <input type="hidden" name="back" value="group">
+    <input type="hidden" name="style" value="lecture">
+    <label class="visually-hidden" for="quick-minutes">How long</label>
+    <select id="quick-minutes" name="minutes"><option value="30">30 min</option><option value="60" selected>1 hour</option><option value="90">1½ hours</option><option value="120">2 hours</option></select>
+    <button type="submit" class="button button-small"><?= $v->icon('live') ?>Start a class now</button>
+    <span class="small muted">Learners are told it is live.</span>
+  </form>
+  <?php endif; ?>
+
   <?php if ($lc['mayTeach'] && !$archived): ?>
   <details class="panel lc-plan"<?= $co('open') === '1' ? ' open' : '' ?>>
     <summary>Plan a live class</summary>
@@ -87,6 +100,9 @@ $att = $lc['attendance'];
       <?= $v->field('class_mode', 'Where', [
           'type' => 'select', 'options' => $modes, 'value' => $co('mode', ($lc['classroomReady'] ?? false) ? 'classroom' : 'online'), 'error' => $classErrors['mode'] ?? null,
           'hint' => ($lc['classroomReady'] ?? false) ? 'The online classroom runs inside this site: no meeting link needed, and learners can join with audio only to save data.' : null,
+      ]) ?>
+      <?= $v->field('class_style', 'In the online classroom', [
+          'type' => 'select', 'options' => \App\Modules\LiveClasses\ClassSession::STYLES, 'value' => $co('style', 'lecture'),
       ]) ?>
       <div class="field-row">
         <?= $v->field('class_join_url', 'Meeting link (online)', ['type' => 'url', 'value' => $co('join_url'), 'maxlength' => 500, 'error' => $classErrors['join_url'] ?? null, 'hint' => 'Google Meet, Zoom, Teams or Jitsi.']) ?>

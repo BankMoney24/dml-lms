@@ -61,6 +61,8 @@ final class ConsoleApplication
                 'certificate:revoke' => $this->certificateRevoke($args),
                 'user:platform-admin' => $this->platformAdmin($args),
                 'school:brand' => $this->schoolBrand($args),
+                'classroom:connect' => $this->classroomConnect($args),
+                'classroom:check' => $this->classroomCheck($args),
                 default => $this->help(),
             };
         } catch (Throwable $e) {
@@ -104,6 +106,11 @@ final class ConsoleApplication
           lab:list                                  The labs in this release (use the key in course packages)
           lab:expire                                Close lab sessions whose time ran out (cron, every 10 minutes)
           user:platform-admin <email> [--revoke]    Let a user see the System page (they must use two-step sign-in)
+          classroom:connect <tenant-slug> --domain=<host> [--app-id=dml-lms] [--secret-file=<path>] [--low-data=1|0]
+                                                    Connect the online classroom (Jitsi). The secret is read
+                                                    from --secret-file or from standard input, never typed on
+                                                    the command line, and is stored encrypted.
+          classroom:check <tenant-slug>             Show the classroom server (never the secret) and check it answers
           school:brand <tenant-slug> [--logo=<png>] [--theme=<key>] [--tagline="<text>"]
                                                     Set a school's logo, colour theme and tagline in one go.
                                                     The DML logo ships in public/assets/brand/dml-mark.png
@@ -316,6 +323,63 @@ final class ConsoleApplication
         echo "  Others:  see People in the school; every sample address ends in @" . \App\Modules\Platform\SampleSchool::DOMAIN . "\n";
 
         return 0;
+    }
+
+    /** @param list<string> $args */
+    private function classroomConnect(array $args): int
+    {
+        [$positional, $options] = self::options($args);
+        [$slug] = $this->requireArgs($positional, 1, 'classroom:connect <tenant-slug> --domain=<host> [--app-id=dml-lms] [--secret-file=<path>] [--low-data=1|0]');
+        $tenant = $this->container->get(TenantRepository::class)->findBySlug($slug) ?? throw new \RuntimeException('No tenant with that slug.');
+        if (isset($options['secret'])) {
+            throw new \RuntimeException('Do not put the secret on the command line (it stays in shell history). Use --secret-file or pipe it in.');
+        }
+        $file = $options['secret-file'] ?? null;
+        if ($file !== null) {
+            $secret = is_readable($file) ? (string) file_get_contents($file) : throw new \RuntimeException('Cannot read the secret file.');
+        } else {
+            $secret = (string) fgets(STDIN);
+        }
+        $secret = trim($secret);
+        if ($secret === '') {
+            throw new \RuntimeException('No secret given. Pipe it in, for example: cat /root/jitsi-jwt-secret.txt | ... classroom:connect ' . $slug . ' --domain=...');
+        }
+        $classroom = $this->container->get(\App\Modules\LiveClasses\Classroom\Classroom::class);
+        try {
+            $classroom->configure($tenant, null, [
+                'domain' => (string) ($options['domain'] ?? ''),
+                'app_id' => (string) ($options['app-id'] ?? 'dml-lms'),
+                'secret' => $secret,
+                'low_data' => ($options['low-data'] ?? '1') !== '0',
+            ], '127.0.0.1');
+        } catch (\App\Core\Validation\ValidationException $e) {
+            throw new \RuntimeException(implode(' ', $e->errors));
+        }
+        $settings = $classroom->settingsFor($tenant);
+        echo sprintf("Classroom connected for %s: %s (app id %s). The secret is stored encrypted.\n", $tenant->name, $settings?->domain, $settings?->appId);
+        $check = $classroom->check($tenant);
+        echo ($check['ok'] ? 'Check: ' : 'Check failed: ') . $check['detail'] . "\n";
+
+        return 0;
+    }
+
+    /** @param list<string> $args */
+    private function classroomCheck(array $args): int
+    {
+        [$slug] = $this->requireArgs($args, 1, 'classroom:check <tenant-slug>');
+        $tenant = $this->container->get(TenantRepository::class)->findBySlug($slug) ?? throw new \RuntimeException('No tenant with that slug.');
+        $classroom = $this->container->get(\App\Modules\LiveClasses\Classroom\Classroom::class);
+        $settings = $classroom->settingsFor($tenant);
+        if ($settings === null) {
+            echo "The online classroom is not connected for {$tenant->name}.\n";
+
+            return 1;
+        }
+        echo sprintf("Server:  %s\nApp id:  %s\nLearners start in data saver: %s\nSecret:  stored encrypted (not shown)\n", $settings->domain, $settings->appId, $settings->lowData ? 'yes' : 'no');
+        $check = $classroom->check($tenant);
+        echo ($check['ok'] ? 'Check:   ' : 'Check failed: ') . $check['detail'] . "\n";
+
+        return $check['ok'] ? 0 : 1;
     }
 
     private function coursePackages(): int

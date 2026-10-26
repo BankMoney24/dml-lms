@@ -277,7 +277,21 @@ return static function (Router $r): void {
     $r->post('/classes/{session:int}/join', [LiveClassController::class, 'join'], $groups);
     $r->post('/classes/{session:int}/register', [LiveClassController::class, 'register'], $groups);
     $r->post('/classes/{session:int}/cancel', [LiveClassController::class, 'cancel'], $groups);
+    $r->post('/classes/now', [LiveClassController::class, 'startNow'], $groups);
     $r->get('/classes/{session:int}/room', [LiveClassController::class, 'room'], $groups);
+    $r->post('/classes/{session:int}/extend', [LiveClassController::class, 'extend'], $groups);
+    $r->post('/classes/{session:int}/end', [LiveClassController::class, 'finish'], $groups);
+    // Virtual meetings (ADR 0030)
+    $r->get('/meetings', [\App\Modules\Meetings\Http\MeetingController::class, 'index'], $groups);
+    $r->get('/meetings/new', [\App\Modules\Meetings\Http\MeetingController::class, 'create'], $groups);
+    $r->post('/meetings', [\App\Modules\Meetings\Http\MeetingController::class, 'store'], $groups);
+    $r->get('/meetings/{meeting:int}', [\App\Modules\Meetings\Http\MeetingController::class, 'show'], $groups);
+    $r->post('/meetings/{meeting:int}/invite', [\App\Modules\Meetings\Http\MeetingController::class, 'invite'], $groups);
+    $r->post('/meetings/{meeting:int}/cancel', [\App\Modules\Meetings\Http\MeetingController::class, 'cancel'], $groups);
+    $r->post('/meetings/{meeting:int}/extend', [\App\Modules\Meetings\Http\MeetingController::class, 'extend'], $groups);
+    $r->post('/meetings/{meeting:int}/end', [\App\Modules\Meetings\Http\MeetingController::class, 'finish'], $groups);
+    $r->get('/meetings/{meeting:int}/room', [\App\Modules\Meetings\Http\MeetingController::class, 'room'], $groups);
+    $r->post('/meetings/{meeting:int}/signal', [\App\Modules\Meetings\Http\MeetingController::class, 'signal'], $groups);
     $r->post('/classes/{session:int}/signal', [LiveClassController::class, 'signal'], $groups);
     $r->post('/classes/{session:int}/materials', [LiveClassController::class, 'addMaterial'], $groups);
     $r->post('/classes/{session:int}/materials/{file:int}/delete', [LiveClassController::class, 'removeMaterial'], $groups);
@@ -288,6 +302,7 @@ return static function (Router $r): void {
     $r->get('/school/logo-preview', [SchoolController::class, 'logoPreview'], $school);
     $r->get('/school/classroom', [\App\Modules\LiveClasses\Http\ClassroomAdminController::class, 'index'], $school);
     $r->post('/school/classroom', [\App\Modules\LiveClasses\Http\ClassroomAdminController::class, 'save'], $school);
+    $r->post('/school/classroom/check', [\App\Modules\LiveClasses\Http\ClassroomAdminController::class, 'check'], $school);
     $r->post('/school/classroom/disconnect', [\App\Modules\LiveClasses\Http\ClassroomAdminController::class, 'disconnect'], $school);
     $r->get('/school/payments', [PaymentAdminController::class, 'index'], $school);
     $r->get('/school/payments.csv', [PaymentAdminController::class, 'export'], $school);

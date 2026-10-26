@@ -20,6 +20,11 @@ final class ClassSession
         'room' => 'In a room',
         'both' => 'Room and online link',
     ];
+    /** How the online classroom runs (ADR 0030). */
+    public const STYLES = [
+        'lecture' => 'Lecture: learners watch and listen, and raise a hand to speak',
+        'discussion' => 'Discussion: anyone can unmute and turn on a camera',
+    ];
     public const JOIN_EARLY_MINUTES = 15;
     public const LATE_AFTER_MINUTES = 10;
 
@@ -44,6 +49,7 @@ final class ClassSession
         public readonly string $courseSlug = '',
         public readonly ?string $roomName = null,
         public readonly ?int $recordingFileId = null,
+        public readonly string $style = 'discussion',
     ) {
     }
 
@@ -77,6 +83,7 @@ final class ClassSession
             (string) ($row['course_slug'] ?? ''),
             isset($row['room_name']) ? (string) $row['room_name'] : null,
             isset($row['recording_file_id']) ? (int) $row['recording_file_id'] : null,
+            (string) ($row['style'] ?? 'discussion'),
         );
     }
 
@@ -96,6 +103,11 @@ final class ClassSession
     }
 
     /** Taught in the school's online classroom (Jitsi, embedded in the class page). */
+    public function isLecture(): bool
+    {
+        return $this->style === 'lecture';
+    }
+
     public function inClassroom(): bool
     {
         return $this->mode === 'classroom' && $this->roomName !== null;

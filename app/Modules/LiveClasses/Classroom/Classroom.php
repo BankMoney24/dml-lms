@@ -51,7 +51,7 @@ final class Classroom
      *
      * @param array{domain: string, app_id: string, secret: string, low_data: bool} $input
      */
-    public function configure(Tenant $tenant, CurrentUser $admin, array $input, string $clientIp): void
+    public function configure(Tenant $tenant, ?CurrentUser $admin, array $input, string $clientIp): void
     {
         $existing = $this->settings->find($tenant->id);
         $domain = strtolower(trim($input['domain']));
@@ -73,8 +73,8 @@ final class Classroom
         if ($errors !== []) {
             throw new ValidationException($errors);
         }
-        $this->settings->save($tenant->id, $domain, $appId, $secret === '' ? null : $secret, $input['low_data'], $admin->user->id);
-        $this->audit->record($tenant->id, $admin->user->id, $existing === null ? 'classroom.connected' : 'classroom.updated', null, null, [
+        $this->settings->save($tenant->id, $domain, $appId, $secret === '' ? null : $secret, $input['low_data'], $admin?->user->id);
+        $this->audit->record($tenant->id, $admin?->user->id, $existing === null ? 'classroom.connected' : 'classroom.updated', null, null, [
             'domain' => $domain,
             'secret_changed' => $secret !== '',
         ], $clientIp);
@@ -121,27 +121,84 @@ final class Classroom
     public function pass(Tenant $tenant, ClassSession $session, CurrentUser $user, bool $teaches): array
     {
         $access = $this->access($tenant, $session, $teaches);
-        $settings = $this->settings->find($tenant->id);
-        $secret = $this->settings->secret($tenant->id);
-        if (!$access['ok'] || $settings === null || $secret === null || $session->roomName === null) {
+        if (!$access['ok'] || $session->roomName === null) {
             throw ValidationException::single('room', 'The classroom is not open for you now.');
         }
+
+        return $this->issue($tenant, $session->roomName, $user, $teaches, $session->endTs() + self::PASS_GRACE_MINUTES * 60);
+    }
+
+    /**
+     * Signs a pass into one room for one person. Callers check first that the
+     * person belongs there and that it is on (classes above, meetings in
+     * App\Modules\Meetings).
+     *
+     * @return array{domain: string, room: string, token: string, expires: int, moderator: bool, lowData: bool}
+     */
+    public function issue(Tenant $tenant, string $room, CurrentUser $user, bool $moderator, int $expires): array
+    {
+        $settings = $this->settings->find($tenant->id);
+        $secret = $this->settings->secret($tenant->id);
+        if ($settings === null || $secret === null) {
+            throw ValidationException::single('room', 'The online classroom is not connected.');
+        }
         $now = $this->clock->now()->getTimestamp();
-        $expires = $session->endTs() + self::PASS_GRACE_MINUTES * 60;
-        $token = JitsiToken::make($settings, $secret, $session->roomName, [
+        $token = JitsiToken::make($settings, $secret, $room, [
             'id' => sprintf('%d-%d', $tenant->id, $user->user->id),
             'name' => $user->user->displayName,
-            'moderator' => $teaches,
+            'moderator' => $moderator,
         ], $now - 60, $expires);
 
         return [
             'domain' => $settings->domain,
-            'room' => $session->roomName,
+            'room' => $room,
             'token' => $token,
             'expires' => $expires,
-            'moderator' => $teaches,
+            'moderator' => $moderator,
             'lowData' => $settings->lowData,
         ];
+    }
+
+    /**
+     * Whether the classroom server answers: it fetches the meeting script the
+     * pages load. Says nothing about the token settings, which only a real
+     * join can prove.
+     *
+     * @return array{ok: bool, detail: string}
+     */
+    public function check(Tenant $tenant): array
+    {
+        $settings = $this->settings->find($tenant->id);
+        if ($settings === null) {
+            return ['ok' => false, 'detail' => 'The classroom is not connected.'];
+        }
+        if (!function_exists('curl_init')) {
+            return ['ok' => false, 'detail' => 'This server cannot make web requests (PHP curl is missing).'];
+        }
+        $curl = curl_init($settings->origin() . '/external_api.js');
+        if ($curl === false) {
+            return ['ok' => false, 'detail' => 'Could not start the check.'];
+        }
+        curl_setopt_array($curl, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_TIMEOUT => 8,
+            CURLOPT_RANGE => '0-2047',
+            CURLOPT_USERAGENT => 'DML-LMS classroom check',
+        ]);
+        $body = curl_exec($curl);
+        $status = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+        $error = curl_error($curl);
+        curl_close($curl);
+        if (!is_string($body) || $status === 0) {
+            return ['ok' => false, 'detail' => sprintf('%s did not answer (%s). Check DNS, the certificate and that Jitsi is running.', $settings->domain, $error === '' ? 'no reply' : $error)];
+        }
+        if ($status >= 400 || (!str_contains($body, 'JitsiMeetExternalAPI') && !str_contains($body, 'function'))) {
+            return ['ok' => false, 'detail' => sprintf('%s answered with HTTP %d but not with the Jitsi meeting script.', $settings->domain, $status)];
+        }
+
+        return ['ok' => true, 'detail' => sprintf('%s answered and serves the Jitsi meeting script.', $settings->domain)];
     }
 
     /**

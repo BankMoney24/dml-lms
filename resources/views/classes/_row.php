@@ -29,6 +29,7 @@ $markTones = ['present' => 'done', 'late' => 'draft', 'absent' => 'danger', 'exc
   </div>
   <span class="lc-state">
     <?php if ($phase === 'cancelled'): ?><?= $v->badge('Cancelled', 'danger') ?>
+    <?php elseif (($phase === 'live' || $phase === 'open') && $s->inClassroom() && ($linkTitle ?? true)): ?><a class="button button-small lc-enter" href="/classes/<?= $s->id ?>/room"><?= $v->icon('live') ?><?= $phase === 'live' ? 'Enter' : 'Enter early' ?></a>
     <?php elseif ($phase === 'live'): ?><span class="lc-live">Live now</span>
     <?php elseif ($phase === 'open'): ?><span class="lc-live lc-soon">Starting soon</span>
     <?php elseif ($mark !== null): ?><?= $v->badge($markLabels[$mark] ?? $mark, $markTones[$mark] ?? 'neutral') ?>

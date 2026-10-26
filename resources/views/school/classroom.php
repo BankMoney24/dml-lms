@@ -29,8 +29,12 @@ $appId = $settings->appId ?? 'dml-lms';
         <dt>App id</dt><dd><code><?= $v->e($settings->appId) ?></code></dd>
         <dt>App secret</dt><dd>Stored encrypted. It is never shown again, not even to you.</dd>
         <dt>Learners start in</dt><dd><?= $settings->lowData ? 'Data saver: small video, one speaker at a time' : 'Normal video' ?></dd>
-        <dt>Last changed</dt><dd><?= $v->datetime($settings->updatedAt) ?><?= $settings->updatedBy !== '' ? ' by ' . $v->e($settings->updatedBy) : '' ?></dd>
+        <dt>Last changed</dt><dd><?= $v->datetime($settings->updatedAt) ?><?= $settings->updatedBy !== '' ? ' by ' . $v->e($settings->updatedBy) : ' from the server console' ?></dd>
       </dl>
+      <form method="post" action="/school/classroom/check" class="inline">
+        <?= $v->csrfField() ?>
+        <button type="submit" class="button button-small button-quiet">Check the connection</button>
+      </form>
     <?php else: ?>
       <p>The classroom needs a Jitsi Meet server set up for token sign-in, usually on a subdomain such as <code>live.yourschool.org</code>. Your technical person can follow the steps below; it takes about an hour on a fresh server.</p>
     <?php endif; ?>
@@ -70,7 +74,9 @@ allow_empty_token = false</code></pre></div>
         so nobody can open a room without a pass from this site.</li>
       <li>So that only teachers run the room (muting others, removing someone), enable token-based moderator rights, for example the community module <code>token_affiliation</code>: passes from this site mark teachers as owners and learners as members. Without it, Jitsi picks moderators its own way, usually whoever joins first.</li>
       <li>For learners behind strict mobile networks, add a TURN relay (coturn) on TCP 443.</li>
-      <li>Paste the server name, app id and secret above, then plan a test class in the online classroom and join it from two phones.</li>
+      <li>Paste the server name, app id and secret above. Or, on the server, without copying the secret anywhere:
+        <div class="code-block code-wrap"><pre><code>cat /root/jitsi-jwt-secret.txt | sudo -u dmldeploy -H php /var/www/dml-lms/current/bin/console classroom:connect <?= $v->e($v->shared('tenant')?->slug ?? 'school') ?> --domain=<?= $v->e($domain) ?> --app-id=<?= $v->e($appId) ?></code></pre></div></li>
+      <li>Start a class now from Live classes and join it from a second phone.</li>
     </ol>
     <p class="small muted">Recording is not part of this set-up. After a class, teachers can upload a recording to the class page.</p>
   </section>

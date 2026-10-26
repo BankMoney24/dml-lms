@@ -46,6 +46,7 @@ Health endpoints (`/health`, `/health/ready`) skip session, tenant and auth.
 | Subscriptions | The subscribe page and My subscriptions (ADR 0026); payment_claims and payment_instructions live in Payments (TransferPayments) | Courses, Learning, Payments, Applications |
 | Platform (sample data) | SampleSchool and SampleClock: `sample:seed` drives the real services through 90 days in one transaction (ADR 0027) | All learning modules |
 | LiveClasses | class_sessions and class_attendance: planning, joining, the register, attendance summaries (ADR 0028); the online classroom (self-hosted Jitsi: classroom_settings with a sealed secret, signed HS256 passes, class_events for join/here/leave and minutes in class) and class materials and recordings (ADR 0029) | Groups, Guardians, Courses, Notifications, Study (calendar), Files |
+| Meetings | meetings, meeting_invites, meeting_events: video meetings in the online classroom for staff, classes, parents and named people; passes from LiveClasses\Classroom (ADR 0030) | LiveClasses (Classroom), Groups, Guardians, Notifications, Study (calendar) |
 | Platform/Seo | page metadata, share images, robots and sitemap on the canonical address (ADR 0019) | Tenancy, Courses, Site |
 | Groups | learner_groups (classes, cohorts), members, courses set for a group, progress grid (ADR 0013) | Courses, Learning, Identity, Audit |
 | Payments | course prices, payment_accounts (sealed Paystack keys), payments, payment_events, checkout, verify and webhook handling (ADR 0012) | Courses, Learning, Identity, Audit |

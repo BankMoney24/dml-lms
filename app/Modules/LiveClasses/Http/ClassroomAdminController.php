@@ -50,6 +50,15 @@ final class ClassroomAdminController
         return Response::redirect('/school/classroom');
     }
 
+    /** POST /school/classroom/check: does the server answer? */
+    public function check(Request $request): Response
+    {
+        $result = $this->classroom->check(RequestContext::tenant($request));
+        $this->session->flash($result['ok'] ? 'success' : 'error', $result['detail']);
+
+        return Response::redirect('/school/classroom');
+    }
+
     public function disconnect(Request $request): Response
     {
         $this->classroom->disconnect(RequestContext::tenant($request), RequestContext::user($request), $request->clientIp);

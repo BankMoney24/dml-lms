@@ -36,6 +36,11 @@ final class LiveClasses
     public const NOTIFY_SCHEDULED = 'class.scheduled';
     public const NOTIFY_CANCELLED = 'class.cancelled';
     public const NOTIFY_ABSENT = 'class.absent';
+    public const NOTIFY_LIVE = 'class.live';
+    /** Lengths offered for a class started there and then. */
+    public const QUICK_MINUTES = [30, 45, 60, 90, 120];
+    /** Most a running class can be stretched to, in total. */
+    public const MAX_MINUTES = 480;
 
     public function __construct(
         private readonly ClassSessionRepository $sessions,
@@ -109,6 +114,7 @@ final class LiveClasses
                 'starts_at' => $start->format('Y-m-d H:i:s'),
                 'ends_at' => $start->modify('+' . $v['minutes'] . ' minutes')->format('Y-m-d H:i:s'),
                 'mode' => $v['mode'],
+                'style' => $v['style'],
                 'location' => $v['location'],
                 'join_url' => $v['join_url'],
                 'room_name' => $v['mode'] === 'classroom' ? ClassSession::newRoomName() : null,
@@ -149,6 +155,7 @@ final class LiveClasses
             'starts_at' => $v['start']->format('Y-m-d H:i:s'),
             'ends_at' => $v['start']->modify('+' . $v['minutes'] . ' minutes')->format('Y-m-d H:i:s'),
             'mode' => $v['mode'],
+            'style' => $v['style'],
             'location' => $v['location'],
             'join_url' => $v['join_url'],
             'recording_url' => $recording === '' ? null : $recording,
@@ -252,6 +259,89 @@ final class LiveClasses
         return $marked;
     }
 
+    /**
+     * A class started there and then in the online classroom (ADR 0030): no
+     * planning, the learners are told it is live, and the teacher goes
+     * straight in. Returns the new class.
+     */
+    public function startNow(Tenant $tenant, LearnerGroup $group, CurrentUser $actor, string $title, int $minutes, string $style, string $clientIp): ClassSession
+    {
+        $this->authorise($tenant, $group, $actor);
+        if (!$this->classroomReady($tenant)) {
+            throw ValidationException::single('quick', 'The online classroom is not set up for this school yet. An administrator can connect it under School, Classroom.');
+        }
+        if (!in_array($minutes, self::QUICK_MINUTES, true)) {
+            throw ValidationException::single('quick', 'Choose how long the class will run.');
+        }
+        $title = trim((string) preg_replace('/\s+/u', ' ', $title));
+        if ($title === '') {
+            $title = 'Live class: ' . $group->name;
+        }
+        if (mb_strlen($title) > 160) {
+            throw ValidationException::single('quick', 'Keep the title under 160 characters.');
+        }
+        $now = $this->clock->now()->setTimezone(new DateTimeZone('UTC'));
+        $start = $now->setTime((int) $now->format('H'), (int) $now->format('i'));
+        $id = $this->sessions->create($tenant->id, [
+            'group_id' => $group->id,
+            'course_id' => null,
+            'series_id' => null,
+            'title' => $title,
+            'description' => '',
+            'starts_at' => $start->format('Y-m-d H:i:s'),
+            'ends_at' => $start->modify('+' . $minutes . ' minutes')->format('Y-m-d H:i:s'),
+            'mode' => 'classroom',
+            'style' => isset(ClassSession::STYLES[$style]) ? $style : 'lecture',
+            'location' => '',
+            'join_url' => null,
+            'room_name' => ClassSession::newRoomName(),
+            'created_by' => $actor->user->id,
+        ]);
+        $this->audit->record($tenant->id, $actor->user->id, 'class.started_now', 'class_session', $id, ['minutes' => $minutes], $clientIp);
+        $this->notifier?->notifyMany(
+            $tenant->id,
+            $this->learnerIds($tenant, $group),
+            self::NOTIFY_LIVE,
+            'Live now: ' . $title,
+            sprintf('%s started a class for %s. Join from your phone or computer.', $actor->user->displayName, $group->name),
+            '/classes/' . $id . '/room',
+        );
+
+        return $this->sessions->find($tenant->id, $id) ?? throw HttpException::notFound();
+    }
+
+    /** Adds time to a class that is on (up to 8 hours in all). Returns the new end, in UTC. */
+    public function extend(Tenant $tenant, ClassSession $session, CurrentUser $actor, int $minutes): string
+    {
+        $group = $this->groupOf($tenant, $session);
+        $this->authorise($tenant, $group, $actor);
+        $now = $this->clock->now()->getTimestamp();
+        if ($session->isCancelled() || $session->hasEnded($now) || !in_array($minutes, [15, 30, 60], true)) {
+            throw ValidationException::single('extend', 'Only a class that is on can be made longer.');
+        }
+        $end = $session->endTs() + $minutes * 60;
+        if ($end - $session->startTs() > self::MAX_MINUTES * 60) {
+            throw ValidationException::single('extend', 'A class can last up to 8 hours.');
+        }
+        $this->sessions->setEnd($tenant->id, $session->id, gmdate('Y-m-d H:i:s', $end));
+
+        return gmdate('Y-m-d H:i:s', $end);
+    }
+
+    /** Ends a class now: the room closes to new joiners and the register can be taken. */
+    public function finish(Tenant $tenant, ClassSession $session, CurrentUser $actor, string $clientIp): void
+    {
+        $group = $this->groupOf($tenant, $session);
+        $this->authorise($tenant, $group, $actor);
+        $now = $this->clock->now()->getTimestamp();
+        if ($session->isCancelled() || $session->hasEnded($now)) {
+            return;
+        }
+        $end = max($now, $session->startTs() + 60);
+        $this->sessions->setEnd($tenant->id, $session->id, gmdate('Y-m-d H:i:s', $end));
+        $this->audit->record($tenant->id, $actor->user->id, 'class.ended', 'class_session', $session->id, [], $clientIp);
+    }
+
     /** @return list<int> */
     private function learnerIds(Tenant $tenant, LearnerGroup $group): array
     {
@@ -275,7 +365,8 @@ final class LiveClasses
 
     /**
      * @param array<string, string> $input
-     * @return array{title: string, description: string, start: DateTimeImmutable, minutes: int, mode: string, location: string, join_url: ?string, course_id: ?int, weeks: int}
+     * @return array{title: string, description: string, start: DateTimeImmutable, minutes: int, mode: string, style: string, location: string, join_url: ?string, course_id: ?int,
+     *               weeks: int}
      */
     private function valid(Tenant $tenant, LearnerGroup $group, array $input, bool $creating): array
     {
@@ -316,6 +407,10 @@ final class LiveClasses
         if (!isset(ClassSession::MODES[$mode])) {
             $errors['mode'] = 'Choose where the class happens.';
         }
+        $style = (string) ($input['style'] ?? 'discussion');
+        if (!isset(ClassSession::STYLES[$style])) {
+            $style = 'discussion';
+        }
         $location = trim((string) preg_replace('/\s+/u', ' ', $input['location'] ?? ''));
         $link = trim($input['join_url'] ?? '');
         if (in_array($mode, ['room', 'both'], true) && ($location === '' || mb_strlen($location) > 200)) {
@@ -348,6 +443,7 @@ final class LiveClasses
             'start' => $start,
             'minutes' => $minutes,
             'mode' => $mode,
+            'style' => $style,
             'location' => in_array($mode, ['room', 'both'], true) ? $location : '',
             'join_url' => in_array($mode, ['online', 'both'], true) ? $link : null,
             'course_id' => $courseId,

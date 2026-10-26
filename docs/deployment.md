@@ -180,31 +180,79 @@ Each school address serves `/robots.txt` and `/sitemap.xml` (public pages only, 
 
 Nothing to install. Choose what your school calls them (class, cohort, group, stream or set) under **School → Settings → Type and academic year**, then create them from the new menu item. Learners in a class are enrolled in the courses set for it.
 
-### Online classroom (Jitsi Meet, ADR 0029)
+### Online classroom (Jitsi Meet, ADR 0029 and 0030)
 
-Live classes can run inside the site, on the school's own Jitsi Meet server. **Not yet tested against a real Jitsi server:** rehearse with two phones before the first real class.
+Live classes and meetings run inside the site, on the school's own Jitsi Meet. On 66.29.156.116 it runs **in Docker on the same server**, next to the other sites, with Apache passing `live.dmlschooloftechnology.org` to it. This is how it was set up (October 2026); each step leaves every other site and service unchanged.
 
-1. **A server for Jitsi.** The plan's starting point for one class of about 30 is 4 vCPU, 8 GB RAM and a 1 Gbps port. Measure, and grow only if needed. Keep it off the database server if you can.
-   * Jitsi's quick install supports Debian and Ubuntu. On AlmaLinux (like this server), use the official Docker set-up instead.
-2. **DNS.** Point `live.dmlschooloftechnology.org` at that server with an A record. Do this yourself in your DNS panel.
-3. **Install Jitsi Meet** from the official guide (Debian/Ubuntu quick install, or Docker) with a Let's Encrypt certificate.
-   * Open TCP 80/443 and UDP 10000 to the world.
-   * Never expose Prosody's or the videobridge's admin ports.
-4. **Token sign-in.** Choose an app id (for example `dml-lms`) and make a secret with `openssl rand -hex 32`.
-   * On Debian/Ubuntu: `apt install jitsi-meet-tokens` and give it the app id and secret.
-   * With Docker: set `ENABLE_AUTH=1`, `AUTH_TYPE=jwt`, `JWT_APP_ID` and `JWT_APP_SECRET` in `.env`.
-   * Prosody's VirtualHost for the domain must have `authentication = "token"`, the `app_id`, the `app_secret` and `allow_empty_token = false`, so no room opens without a pass from this site.
-5. **Teachers as moderators.** Enable token-based affiliation, for example the community `token_affiliation` Prosody module. Passes from the site carry `context.user.affiliation` = `owner` for teachers and `member` for learners. Without it, Jitsi picks moderators itself (usually whoever joins first).
-6. **TURN (recommended).** Learners behind strict mobile networks may need a relay.
-   * Install coturn on TCP 443 (or 5349) on the Jitsi server and point Jitsi's TURN settings at it.
-   * Relayed traffic uses the server's bandwidth.
-7. **Connect it.** As an administrator, open **School → Classroom** and paste the server name, app id and secret. The secret is stored encrypted and never shown again; to change it, paste a new one.
-8. **Rehearse.** Plan a class with "Online classroom on this site" a few minutes ahead, then:
-   * open it as the teacher (from 30 minutes before) and as a learner on a phone (from 15 minutes before);
-   * try Audio only and Data saver, screen sharing, and switching the phone's network off and on;
-   * check the register shows "joined online" and minutes in the classroom.
+**What is where**
 
-Recording is not included (Jibri needs a lot more CPU and its own server). Teachers upload recordings to the class page after the class.
+| Part | Where |
+|---|---|
+| Jitsi (stable release, Docker) | `/opt/jitsi/jitsi-docker-jitsi-meet-*` (`.env`, `docker-compose.override.yml`), data in `/opt/jitsi-meet-cfg` |
+| Ports | web 127.0.0.1:8510 (and 8543), jicofo 127.0.0.1:8588, videobridge 127.0.0.1:8580 and **UDP 10000** open to the world (firewalld zone `iredmail`). Port 8000 belongs to Tridax: do not use it. |
+| Apache | `/etc/httpd/conf.d/live-jitsi.conf`: port 80 for Let's Encrypt and a redirect, port 443 proxying to 127.0.0.1:8510 with WebSockets (`upgrade=websocket`) |
+| Certificate | certbot, webroot `/var/www/live-acme`, renews automatically and reloads Apache |
+| Token secret | `/root/jitsi-jwt-secret.txt` (root only) and `JWT_APP_SECRET` in Jitsi's `.env`; in the LMS sealed with APP_KEY |
+| Limits | `docker-compose.override.yml`: web 256 MB, prosody 512 MB, jicofo 1 GB, videobridge 2.5 GB and 4 cores |
+
+**Jitsi `.env` settings that matter**
+
+```
+HTTP_PORT=127.0.0.1:8510   HTTPS_PORT=127.0.0.1:8543   JVB_COLIBRI_PORT=8580   JICOFO_REST_PORT=8588
+PUBLIC_URL=https://live.dmlschooloftechnology.org   JVB_ADVERTISE_IPS=66.29.156.116   TZ=Africa/Lagos
+DISABLE_HTTPS=1   ENABLE_HTTP_REDIRECT=0   ENABLE_LETSENCRYPT=0   ENABLE_WELCOME_PAGE=0
+ENABLE_AUTH=1   ENABLE_GUESTS=0   AUTH_TYPE=jwt   JWT_APP_ID=dml-lms   JWT_APP_SECRET=<the secret>
+JWT_ACCEPTED_ISSUERS=dml-lms   JWT_ACCEPTED_AUDIENCES=jitsi   JWT_ALLOW_EMPTY=0
+XMPP_MUC_MODULES=token_affiliation   ENABLE_AUTO_OWNER=0
+JICOFO_MAX_MEMORY=768m   VIDEOBRIDGE_MAX_MEMORY=2048m
+```
+
+The containers run as uid 1000 and must own their storage: `chown -R 1000:1000 /opt/jitsi-meet-cfg/storage` (prosody stops at start with "not writable" otherwise).
+
+**Checks**
+
+```bash
+cd /opt/jitsi/jitsi-docker-jitsi-meet-*
+docker compose ps                                             # four containers Up
+docker compose exec prosody grep -nE 'authentication|allow_empty_token|token_affiliation' /run/prosody/config/conf.d/jitsi-meet.cfg.lua
+docker compose exec jicofo grep -n 'auto-owner' /run/jicofo/config/jicofo.conf   # enable-auto-owner = false
+sudo -u dmldeploy -H php /var/www/dml-lms/current/bin/console classroom:check dml
+```
+
+**Connect the LMS** without copying the secret anywhere:
+
+```bash
+cat /root/jitsi-jwt-secret.txt | sudo -u dmldeploy -H php /var/www/dml-lms/current/bin/console classroom:connect dml --domain=live.dmlschooloftechnology.org --app-id=dml-lms
+```
+
+(or paste it under **School → Classroom**; the page also has **Check the connection**).
+
+**Change the secret** (for example if it was ever shown or shared):
+
+```bash
+cd /opt/jitsi/jitsi-docker-jitsi-meet-*
+openssl rand -hex 32 > /root/jitsi-jwt-secret.txt && chmod 600 /root/jitsi-jwt-secret.txt
+sed -i -E "s|^JWT_APP_SECRET=.*|JWT_APP_SECRET=$(cat /root/jitsi-jwt-secret.txt)|" .env
+docker compose up -d
+cat /root/jitsi-jwt-secret.txt | sudo -u dmldeploy -H php /var/www/dml-lms/current/bin/console classroom:connect dml --domain=live.dmlschooloftechnology.org --app-id=dml-lms
+```
+
+Classes or meetings in progress drop and must rejoin; do it outside class hours.
+
+**Update Jitsi**: download the newer release next to the old one, copy `.env` and `docker-compose.override.yml` across, `docker compose down` in the old folder and `docker compose up -d` in the new one.
+
+**Undo everything**
+
+```bash
+cd /opt/jitsi/jitsi-docker-jitsi-meet-* && docker compose down
+rm -f /etc/httpd/conf.d/live-jitsi.conf && apachectl configtest && systemctl reload httpd
+firewall-cmd --zone=iredmail --remove-port=10000/udp; firewall-cmd --permanent --zone=iredmail --remove-port=10000/udp
+systemctl disable --now docker docker.socket
+```
+
+**On a separate server instead** (more capacity later): Ubuntu 24.04 or Debian 12 with the official quick install (`apt install jitsi-meet jitsi-meet-tokens`), the same app id, secret and moderator settings, and the A record for `live.` pointed at it.
+
+Capacity: about one class of 30 at a time on this server. In Data saver, expect very roughly 3–5 GB of upload per class hour (not measured); watch the VPS bandwidth allowance. Recording is not included; teachers upload recordings to the class page.
 
 ### Payments (Paystack)
 

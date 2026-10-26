@@ -57,10 +57,16 @@ $teacherEarly = $teaches && $phase === 'before' && $now >= $s->startTs() - \App\
         <?php if ($s->inRoom()): ?><p class="lc-where"><?= $v->icon('school') ?><span><strong>Room:</strong> <?= $v->e($s->location) ?></span></p><?php endif; ?>
         <?php if ($s->inClassroom()): ?>
           <?php if (in_array($phase, ['open', 'live'], true) || $teacherEarly): ?>
-            <div class="lc-join">
+            <div class="lc-join join-bar">
               <a class="button lc-join-button" href="/classes/<?= $s->id ?>/room"><?= $v->icon('live') ?><?= $teaches ? 'Open the classroom' : 'Enter the classroom' ?></a>
               <span class="small muted"><?= $teaches ? 'You run the room: mute, share your screen, let people speak.' : 'Works in your phone’s browser. You can choose audio only to save data.' ?></span>
             </div>
+            <?php if ($teaches && $phase === 'live'): ?>
+            <div class="lc-run small">
+              <form method="post" action="/classes/<?= $s->id ?>/extend" class="inline"><?= $v->csrfField() ?><input type="hidden" name="minutes" value="30"><button type="submit" class="linklike">Add 30 minutes</button></form>
+              <form method="post" action="/classes/<?= $s->id ?>/end" class="inline"><?= $v->csrfField() ?><button type="submit" class="linklike">End the class now</button></form>
+            </div>
+            <?php endif; ?>
           <?php elseif ($phase === 'before'): ?>
             <p class="lc-where"><?= $v->icon('live') ?><span>In the online classroom on this site. It opens here 15 minutes before the start<?= $teaches ? ' (30 minutes for teachers)' : '' ?>.</span></p>
           <?php else: ?>
@@ -195,6 +201,7 @@ $teacherEarly = $teaches && $phase === 'before' && $now >= $s->startTs() - \App\
           </div>
           <?= $v->field('minutes', 'Minutes', ['type' => 'number', 'value' => $o('minutes'), 'error' => $editErrors['minutes'] ?? null]) ?>
           <?= $v->field('mode', 'Where', ['type' => 'select', 'options' => $modes, 'value' => $o('mode'), 'error' => $editErrors['mode'] ?? null]) ?>
+          <?= $v->field('style', 'In the online classroom', ['type' => 'select', 'options' => \App\Modules\LiveClasses\ClassSession::STYLES, 'value' => $o('style')]) ?>
           <?= $v->field('location', 'Room', ['value' => $o('location'), 'maxlength' => 200, 'error' => $editErrors['location'] ?? null]) ?>
           <?= $v->field('join_url', 'Meeting link', ['type' => 'url', 'value' => $o('join_url'), 'maxlength' => 500, 'error' => $editErrors['join_url'] ?? null]) ?>
           <?= $v->field('recording_url', 'Recording link (if it is elsewhere)', ['type' => 'url', 'value' => $o('recording_url'), 'maxlength' => 500, 'error' => $editErrors['recording_url'] ?? null]) ?>

@@ -331,6 +331,7 @@ final class Application
             $c->get(Clock::class),
             $c->get(\App\Modules\Study\Deadlines::class),
             $c->get(\App\Modules\LiveClasses\ClassSessionRepository::class),
+            $c->get(\App\Modules\Meetings\MeetingRepository::class),
         ));
         $c->set(SupportRepository::class, static fn (Container $c) => new SupportRepository($c->get(Connection::class), $c->get(Clock::class)));
         $c->set(SupportService::class, static fn (Container $c) => new SupportService(
@@ -459,6 +460,7 @@ final class Application
             $c->get(\App\Modules\Paths\PathService::class),
             $c->get(\App\Modules\Achievements\Achievements::class),
             $c->get(\App\Modules\LiveClasses\ClassSessionRepository::class),
+            $c->get(\App\Modules\Meetings\MeetingRepository::class),
         ));
         $c->set(LoginController::class, static fn (Container $c) => new LoginController(
             $c->get(View::class),
@@ -898,6 +900,26 @@ final class Application
             $c->get(\App\Modules\LiveClasses\ClassMaterials::class),
             $c->get(\App\Modules\LiveClasses\Classroom\Classroom::class),
             $c->get(FileService::class),
+            $c->get(\App\Modules\Meetings\MeetingRepository::class),
+        ));
+        $c->set(\App\Modules\Meetings\MeetingRepository::class, static fn (Container $c) => new \App\Modules\Meetings\MeetingRepository(
+            $c->get(Connection::class),
+            $c->get(Clock::class),
+        ));
+        $c->set(\App\Modules\Meetings\Meetings::class, static fn (Container $c) => new \App\Modules\Meetings\Meetings(
+            $c->get(\App\Modules\Meetings\MeetingRepository::class),
+            $c->get(\App\Modules\LiveClasses\Classroom\Classroom::class),
+            $c->get(GroupRepository::class),
+            $c->get(AuditLog::class),
+            $c->get(Clock::class),
+            $c->get(Notifier::class),
+        ));
+        $c->set(\App\Modules\Meetings\Http\MeetingController::class, static fn (Container $c) => new \App\Modules\Meetings\Http\MeetingController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(\App\Modules\Meetings\Meetings::class),
+            $c->get(\App\Modules\Meetings\MeetingRepository::class),
+            $c->get(Clock::class),
         ));
         $c->set(SeoController::class, static fn (Container $c) => new SeoController(
             $c->get(Connection::class),

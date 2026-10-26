@@ -21,6 +21,7 @@ final class CalendarFeed
         private readonly Clock $clock,
         private readonly Deadlines $deadlines,
         private readonly ?\App\Modules\LiveClasses\ClassSessionRepository $classes = null,
+        private readonly ?\App\Modules\Meetings\MeetingRepository $meetings = null,
     ) {
     }
 
@@ -127,6 +128,27 @@ final class CalendarFeed
                     'DESCRIPTION:' . self::text(($c->isOnline() || $c->inClassroom() ? 'Join from the class page: ' : 'Details: ') . $url),
                     'URL:' . self::text($url),
                     'STATUS:' . ($c->isCancelled() ? 'CANCELLED' : 'CONFIRMED'),
+                    'END:VEVENT',
+                );
+            }
+        }
+        // Meetings (ADR 0030): the ones this person hosts or is invited to.
+        if ($this->meetings !== null) {
+            $now = $this->clock->now();
+            foreach ($this->meetings->forUser($tenant->id, $userId, $now->modify('-30 days')->format('Y-m-d H:i:s'), $now->modify('+120 days')->format('Y-m-d H:i:s'), 200) as $m) {
+                $url = $baseUrl . '/meetings/' . $m->id;
+                array_push(
+                    $lines,
+                    'BEGIN:VEVENT',
+                    'UID:' . self::text('meeting-' . $tenant->id . '-' . $m->id . '@' . $host),
+                    'DTSTAMP:' . $stamp,
+                    'DTSTART:' . (new \DateTimeImmutable($m->startsAt . ' UTC'))->format('Ymd\THis\Z'),
+                    'DTEND:' . (new \DateTimeImmutable($m->endsAt . ' UTC'))->format('Ymd\THis\Z'),
+                    'SUMMARY:' . self::text(($m->isCancelled() ? 'Cancelled: ' : '') . $m->title),
+                    'LOCATION:' . self::text('Online classroom'),
+                    'DESCRIPTION:' . self::text('Join from the meeting page: ' . $url),
+                    'URL:' . self::text($url),
+                    'STATUS:' . ($m->isCancelled() ? 'CANCELLED' : 'CONFIRMED'),
                     'END:VEVENT',
                 );
             }

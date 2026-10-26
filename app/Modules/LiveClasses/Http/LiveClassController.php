@@ -32,6 +32,7 @@ final class LiveClassController
         private readonly ?\App\Modules\LiveClasses\ClassMaterials $materials = null,
         private readonly ?\App\Modules\LiveClasses\Classroom\Classroom $classroom = null,
         private readonly ?\App\Modules\Files\FileService $fileService = null,
+        private readonly ?\App\Modules\Meetings\MeetingRepository $meetingRepo = null,
     ) {
     }
 
@@ -62,20 +63,78 @@ final class LiveClassController
             'materials' => array_values(array_filter($materials, static fn ($f): bool => $f->id !== $session->recordingFileId)),
             'now' => $this->clock->now()->getTimestamp(),
         ]), $access['ok'] ? 200 : 409)->withHeader('Cache-Control', 'private, no-store');
-        if ($pass === null) {
-            return $response;
-        }
-        $origin = 'https://' . $pass['domain'];
+        return $pass === null ? $response : RoomHeaders::apply($response, $pass['domain']);
+    }
 
-        // This page alone may load the Jitsi script and frame, and lets that
-        // frame use the camera, microphone and screen sharing.
-        return $response
-            ->withHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' $origin; style-src 'self'; img-src 'self' data:; font-src 'self'; "
-                . "connect-src 'self'; frame-src $origin; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'")
-            ->withHeader('Permissions-Policy', sprintf(
-                'camera=(self "%1$s"), microphone=(self "%1$s"), display-capture=(self "%1$s"), fullscreen=(self "%1$s"), autoplay=(self "%1$s"), geolocation=(), interest-cohort=()',
-                $origin,
-            ));
+    /** POST /classes/{session}/extend: more time while it runs (JSON for the room page). */
+    public function extend(Request $request): Response
+    {
+        $tenant = RequestContext::tenant($request);
+        $user = RequestContext::user($request);
+        $session = $this->live->sessionFor($tenant, $request->routeInt('session'), $user);
+        $wantsJson = str_contains((string) $request->header('accept'), 'application/json');
+        try {
+            $end = $this->live->extend($tenant, $session, $user, (int) ($request->input('minutes', '30') ?? '30'));
+        } catch (ValidationException $e) {
+            if ($wantsJson) {
+                return Response::json(['ok' => false, 'error' => implode(' ', $e->errors)], 409);
+            }
+            $this->session->flash('error', implode(' ', $e->errors));
+
+            return Response::redirect('/classes/' . $session->id);
+        }
+        if ($wantsJson) {
+            return Response::json([
+                'ok' => true,
+                'ends' => (int) strtotime($end . ' UTC'),
+                'ends_label' => (new \DateTimeImmutable($end, new \DateTimeZone('UTC')))->setTimezone(new \DateTimeZone($tenant->timezone))->format('H:i'),
+            ]);
+        }
+        $this->session->flash('success', 'Class made longer.');
+
+        return Response::redirect('/classes/' . $session->id);
+    }
+
+    /** POST /classes/{session}/end: finish now; the room closes and the register is ready. */
+    public function finish(Request $request): Response
+    {
+        $tenant = RequestContext::tenant($request);
+        $user = RequestContext::user($request);
+        $session = $this->live->sessionFor($tenant, $request->routeInt('session'), $user);
+        $this->live->finish($tenant, $session, $user, $request->clientIp);
+        $this->session->flash('success', 'Class ended. Take the register below; learners who joined online are already marked.');
+
+        return Response::redirect('/classes/' . $session->id . '#register');
+    }
+
+    /** POST /classes/now: start a class straight away for one of the teacher's classes (ADR 0030). */
+    public function startNow(Request $request): Response
+    {
+        $tenant = RequestContext::tenant($request);
+        $user = RequestContext::user($request);
+        $group = $this->groups->find($tenant->id, (int) ($request->input('group_id', '0') ?? '0'));
+        if ($group === null || !$this->live->mayTeach($tenant, $group, $user)) {
+            $this->session->flash('error', 'Choose one of the classes you teach.');
+
+            return Response::redirect('/classes');
+        }
+        try {
+            $session = $this->live->startNow(
+                $tenant,
+                $group,
+                $user,
+                (string) ($request->input('title', '') ?? ''),
+                (int) ($request->input('minutes', '60') ?? '60'),
+                (string) ($request->input('style', 'lecture') ?? 'lecture'),
+                $request->clientIp,
+            );
+        } catch (ValidationException $e) {
+            $this->session->flash('error', implode(' ', $e->errors));
+
+            return Response::redirect((string) ($request->input('back', '') ?? '') === 'group' ? '/groups/' . $group->id . '#classes' : '/classes');
+        }
+
+        return Response::redirect('/classes/' . $session->id . '/room');
     }
 
     /** POST /classes/{session}/signal: join, still here, leave (from the classroom page; also sent with sendBeacon). */
@@ -160,6 +219,10 @@ final class LiveClassController
             'mine' => $mine,
             'past' => $past,
             'teaches' => $teaches,
+            'myGroups' => $teaches ? array_map(static fn (array $r): array => ['id' => $r['group']->id, 'name' => $r['group']->name], $this->groups->overview($tenant->id, $teacherId)) : [],
+            'classroomReady' => $this->live->classroomReady($tenant),
+            'meetings' => $this->meetingRepo?->forUser($tenant->id, $user->user->id, $nowSql, $now->modify('+7 days')->format('Y-m-d H:i:s'), 5) ?? [],
+            'mayHost' => \App\Modules\Meetings\Meetings::mayHost($user),
             'today' => $teaches ? $this->sessions->forTeacher($tenant->id, $teacherId, $nowSql, $dayEnd) : [],
             'upcoming' => $teaches ? $this->sessions->forTeacher($tenant->id, $teacherId, $dayEnd, $now->modify('+21 days')->format('Y-m-d H:i:s')) : [],
             'registers' => $teaches ? $this->sessions->registersToTake($tenant->id, $teacherId, $nowSql, $now->modify('-30 days')->format('Y-m-d H:i:s')) : [],
@@ -230,7 +293,7 @@ final class LiveClassController
         $user = RequestContext::user($request);
         $session = $this->live->sessionFor($tenant, $request->routeInt('session'), $user);
         $input = [];
-        foreach (['title', 'date', 'time', 'minutes', 'mode', 'location', 'join_url', 'course_id', 'description', 'recording_url'] as $key) {
+        foreach (['title', 'date', 'time', 'minutes', 'mode', 'style', 'location', 'join_url', 'course_id', 'description', 'recording_url'] as $key) {
             $input[$key] = (string) ($request->input($key, '') ?? '');
         }
         try {
@@ -293,7 +356,7 @@ final class LiveClassController
             'now' => $this->clock->now()->getTimestamp(),
             'errors' => $errors,
             'old' => $old + [
-                'title' => $session->title, 'date' => $date, 'time' => $time, 'minutes' => (string) $session->minutes(), 'mode' => $session->mode,
+                'title' => $session->title, 'date' => $date, 'time' => $time, 'minutes' => (string) $session->minutes(), 'mode' => $session->mode, 'style' => $session->style,
                 'location' => $session->location, 'join_url' => (string) $session->joinUrl, 'course_id' => (string) ($session->courseId ?? ''),
                 'description' => $session->description, 'recording_url' => (string) $session->recordingUrl, 'reason' => '',
             ],

@@ -238,7 +238,7 @@ final class GroupController
         [$tenant, $group] = $this->group($request);
         // The form's fields are prefixed so they never clash with the group page's other forms.
         $input = [];
-        foreach (['title', 'date', 'time', 'minutes', 'mode', 'location', 'join_url', 'course_id', 'weeks', 'description'] as $key) {
+        foreach (['title', 'date', 'time', 'minutes', 'mode', 'style', 'location', 'join_url', 'course_id', 'weeks', 'description'] as $key) {
             $input[$key] = (string) ($request->input('class_' . $key, '') ?? '');
         }
         if ($this->live === null) {

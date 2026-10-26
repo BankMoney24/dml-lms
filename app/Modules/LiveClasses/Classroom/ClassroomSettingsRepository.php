@@ -41,7 +41,7 @@ final class ClassroomSettingsRepository
     }
 
     /** Saves the set-up; a null secret keeps the one already stored. */
-    public function save(int $tenantId, string $domain, string $appId, ?string $secret, bool $lowData, int $userId): void
+    public function save(int $tenantId, string $domain, string $appId, ?string $secret, bool $lowData, ?int $userId): void
     {
         $now = $this->clock->sqlNow();
         if ($secret === null) {

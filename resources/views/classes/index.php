@@ -11,13 +11,63 @@
  * @var list<\App\Modules\LiveClasses\ClassSession> $upcoming
  * @var list<\App\Modules\LiveClasses\ClassSession> $registers
  * @var int $now
+ * @var list<array{id: int, name: string}> $myGroups
+ * @var bool $classroomReady
+ * @var list<\App\Modules\Meetings\Meeting> $meetings
+ * @var bool $mayHost
  */
 $school = $v->shared('tenant');
+$myGroups ??= [];
+$classroomReady ??= false;
+$meetings ??= [];
+$mayHost ??= false;
+$userId = (int) ($v->shared('user')?->id ?? 0);
 ?>
-<header class="page-head">
-  <h1>Live classes</h1>
-  <p class="lead"><?= $teaches ? 'Classes you teach, and registers still to take.' : 'Classes your teachers have planned for you. Join online classes from here when they start.' ?></p>
+<header class="page-head page-head-row">
+  <div>
+    <h1>Live classes</h1>
+    <p class="lead"><?= $teaches ? 'Classes you teach, and registers still to take.' : 'Classes your teachers have planned for you. Join online classes from here when they start.' ?></p>
+  </div>
+  <?php if ($mayHost && $classroomReady): ?><a class="button button-quiet" href="/meetings/new"><?= $v->icon('people') ?>New meeting</a><?php endif; ?>
 </header>
+
+<?php if ($teaches && $classroomReady && $myGroups !== []): ?>
+<section class="quick-class" aria-labelledby="quick-h">
+  <div class="quick-class-intro">
+    <h2 id="quick-h"><?= $v->icon('live') ?>Start a class now</h2>
+    <p class="small">No planning: learners are told it is live and join from their phones. You go straight into the classroom.</p>
+  </div>
+  <form method="post" action="/classes/now" class="quick-class-form">
+    <?= $v->csrfField() ?>
+    <?php if (count($myGroups) === 1): ?>
+      <input type="hidden" name="group_id" value="<?= (int) $myGroups[0]['id'] ?>">
+      <p class="quick-for small">For <strong><?= $v->e($myGroups[0]['name']) ?></strong></p>
+    <?php else: ?>
+      <div class="field"><label for="quick-group">For</label>
+        <select id="quick-group" name="group_id"><?php foreach ($myGroups as $g): ?><option value="<?= (int) $g['id'] ?>"><?= $v->e($g['name']) ?></option><?php endforeach; ?></select></div>
+    <?php endif; ?>
+    <div class="field"><label for="quick-title">Title <span class="optional">(optional)</span></label><input id="quick-title" name="title" maxlength="160" placeholder="Live class"></div>
+    <fieldset class="opts"><legend>How long</legend>
+      <?php foreach ([30 => '30 min', 60 => '1 hour', 90 => '1½ hours'] as $mins => $label): ?>
+        <label class="opt"><input type="radio" name="minutes" value="<?= $mins ?>"<?= $mins === 60 ? ' checked' : '' ?>><span><?= $label ?></span></label>
+      <?php endforeach; ?>
+    </fieldset>
+    <fieldset class="opts"><legend>Style</legend>
+      <label class="opt"><input type="radio" name="style" value="lecture" checked><span>Lecture</span></label>
+      <label class="opt"><input type="radio" name="style" value="discussion"><span>Discussion</span></label>
+    </fieldset>
+    <button type="submit" class="button quick-go"><?= $v->icon('play') ?>Start now</button>
+  </form>
+</section>
+<?php endif; ?>
+
+<?php if ($meetings !== []): ?>
+<section class="lc-section" aria-labelledby="meet-h">
+  <h2 id="meet-h">Meetings this week</h2>
+  <ul class="lc-list"><?php foreach ($meetings as $m): ?><?php include __DIR__ . '/../meetings/_row.php'; ?><?php endforeach; ?></ul>
+  <p class="small"><a href="/meetings">All meetings</a></p>
+</section>
+<?php endif; ?>
 
 <?php if ($teaches): ?>
 <div class="lc-columns">

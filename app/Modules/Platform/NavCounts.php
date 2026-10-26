@@ -18,7 +18,10 @@ final class NavCounts
     {
     }
 
-    /** @return array{reviews: int, support: int, children: int, requests: int, questions: int, applications: int, claims: int, in_group: int, teaches_group: int, registers: int} */
+    /**
+     * @return array{reviews: int, support: int, children: int, requests: int, questions: int, applications: int, claims: int, in_group: int, teaches_group: int,
+     *               registers: int, meetings: int}
+     */
     public function for(CurrentUser $current, int $tenantId): array
     {
         $userId = $current->user->id;
@@ -45,6 +48,13 @@ final class NavCounts
                  WHERE s.tenant_id = ? AND s.status = 'scheduled' AND s.ends_at < UTC_TIMESTAMP() AND s.ends_at >= UTC_TIMESTAMP() - INTERVAL 30 DAY
                    AND NOT EXISTS (SELECT 1 FROM class_attendance a WHERE a.tenant_id = s.tenant_id AND a.session_id = s.id AND a.marked_by IS NOT NULL)",
                 [$userId, $tenantId],
+            ),
+            // Meetings (ADR 0030): ones this person is invited to or hosts in the next week.
+            'meetings' => (int) $this->db->fetchValue(
+                "SELECT COUNT(*) FROM meetings m WHERE m.tenant_id = ? AND m.status = 'scheduled'
+                   AND m.ends_at > UTC_TIMESTAMP() AND m.starts_at < UTC_TIMESTAMP() + INTERVAL 7 DAY
+                   AND (m.host_id = ? OR EXISTS (SELECT 1 FROM meeting_invites i WHERE i.tenant_id = m.tenant_id AND i.meeting_id = m.id AND i.user_id = ?))",
+                [$tenantId, $userId, $userId],
             ),
             'questions' => $current->can(Permission::CourseManage)
                 ? (int) $this->db->fetchValue("SELECT COUNT(*) FROM lesson_questions WHERE tenant_id = ? AND status = 'open' AND staff_answered = 0 AND accepted_answer_id IS NULL", [$tenantId])

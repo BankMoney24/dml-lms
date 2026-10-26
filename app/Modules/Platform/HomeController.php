@@ -46,6 +46,7 @@ final class HomeController
         private readonly ?\App\Modules\Paths\PathService $paths = null,
         private readonly ?\App\Modules\Achievements\Achievements $achievements = null,
         private readonly ?\App\Modules\LiveClasses\ClassSessionRepository $classes = null,
+        private readonly ?\App\Modules\Meetings\MeetingRepository $meetings = null,
     ) {
     }
 
@@ -203,8 +204,19 @@ final class HomeController
             $teaching['registers'] = count($this->classes->registersToTake($tenant->id, $teacherId, $nowUtc->format('Y-m-d H:i:s'), $nowUtc->modify('-30 days')->format('Y-m-d H:i:s')));
         }
 
+        // Meetings (ADR 0030): one that is on now, or about to be, for this person.
+        $liveMeeting = null;
+        foreach ($this->meetings?->forUser($tenant->id, $user->user->id, $nowUtc->format('Y-m-d H:i:s'), $nowUtc->modify('+30 minutes')->format('Y-m-d H:i:s'), 5) ?? [] as $m) {
+            $phase = $m->phase($nowUtc->getTimestamp());
+            if ($phase === 'live' || $phase === 'open' || ($phase === 'before' && $m->hostId === $user->user->id)) {
+                $liveMeeting = $m;
+                break;
+            }
+        }
+
         return Response::html($this->view->render('dashboard/index', [
             'nextClasses' => $nextClasses,
+            'liveMeeting' => $liveMeeting,
             'nowTs' => $nowUtc->getTimestamp(),
             'activity' => $activity,
             'myPaths' => $myPaths,

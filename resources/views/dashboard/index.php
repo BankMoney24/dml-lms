@@ -26,6 +26,8 @@ $comingUp ??= [];
 $recentNotes ??= [];
 /** @var list<\App\Modules\LiveClasses\ClassSession> $nextClasses */
 $nextClasses ??= [];
+/** @var ?\App\Modules\Meetings\Meeting $liveMeeting */
+$liveMeeting ??= null;
 $nowTs ??= time();
 $liveNow = null;
 foreach ($nextClasses as $nc) {
@@ -41,7 +43,7 @@ $greeting = $hour < 12 ? 'Good morning' : ($hour < 17 ? 'Good afternoon' : 'Good
 $myPaths ??= [];
 $earned ??= [];
 $hasSide = $activity !== null || $comingUp !== [] || $recentNotes !== [] || $earned !== [] || $nextClasses !== [];
-$hasMain = $continue !== null || $children !== [] || $myGroups !== [] || $myPaths !== [] || $liveNow !== null;
+$hasMain = $continue !== null || $children !== [] || $myGroups !== [] || $myPaths !== [] || $liveNow !== null || $liveMeeting !== null;
 ?>
 <header class="home-head">
   <p class="home-date"><?= $v->e($now->format('l j F')) ?></p>
@@ -101,6 +103,15 @@ $hasMain = $continue !== null || $children !== [] || $myGroups !== [] || $myPath
     <form method="post" action="/classes/<?= $liveNow->id ?>/join" data-checkin hidden><?= $v->csrfField() ?></form>
   </div>
   <?php endif; ?>
+</section>
+<?php endif; ?>
+
+<?php if ($liveNow === null && $liveMeeting !== null): $lm = $liveMeeting; ?>
+<section class="live-now" aria-labelledby="live-meet-h">
+  <p class="live-now-kicker"><span class="lc-live<?= $lm->phase($nowTs) === 'live' ? '' : ' lc-soon' ?>"><?= $lm->phase($nowTs) === 'live' ? 'Meeting now' : 'Meeting soon' ?></span> <?= $v->e($lm->hostName) ?></p>
+  <h2 id="live-meet-h" class="live-now-title"><a href="/meetings/<?= $lm->id ?>"><?= $v->e($lm->title) ?></a></h2>
+  <p class="live-now-when"><?= $v->datetime($lm->startsAt, 'H:i') ?>–<?= $v->datetime($lm->endsAt, 'H:i') ?>, online classroom</p>
+  <div class="lc-join"><a class="button lc-join-button" href="/meetings/<?= $lm->id ?>/room"><?= $v->icon('live') ?>Join the meeting</a></div>
 </section>
 <?php endif; ?>
 
