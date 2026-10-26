@@ -47,7 +47,11 @@ final class Recommendations
             $score = 0;
             $reasons = [];
             foreach ($profile->goals as $goal) {
-                $hit = $goal === 'school' ? $course->track === 'school' : self::mentions($text, self::WORDS[$goal] ?? []);
+                $hit = match ($goal) {
+                    'school' => $course->track === 'school',
+                    'everyday' => $course->track === 'everyday',
+                    default => self::mentions($text, self::WORDS[$goal] ?? []),
+                };
                 if ($hit) {
                     $score += 3;
                     $reasons[] = LearnerProfile::GOALS[$goal][0];

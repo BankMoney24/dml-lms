@@ -15,6 +15,7 @@ final class Tenant
         'university' => 'University',
         'polytechnic' => 'Polytechnic',
         'training_centre' => 'Training centre',
+        'community' => 'Community or informal learning',
         'other' => 'Other',
     ];
 

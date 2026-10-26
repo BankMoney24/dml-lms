@@ -72,7 +72,7 @@ final class MarkdownTest extends TestCase
         $this->assertStringContainsString('<h2>Top</h2><h3>Sub</h3>', $html, 'the page owns h1');
         $this->assertStringContainsString('<ul><li>one</li><li>two<ul><li>nested <code>code</code></li></ul></li></ul>', $html);
         $this->assertStringContainsString('<ol><li>first</li><li>second</li></ol>', $html);
-        $this->assertStringContainsString('<aside class="callout callout-warning"><p class="callout-title">Warning</p><p>Be careful.</p></aside>', $html);
+        $this->assertStringContainsString('<div class="callout callout-warning" role="note"><p class="callout-title">Warning</p><p>Be careful.</p></div>', $html);
         $this->assertStringContainsString('<th scope="col" class="align-right">Use</th>', $html);
         $this->assertStringContainsString('<td><code>ls</code></td>', $html);
     }

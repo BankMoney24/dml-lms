@@ -7,7 +7,11 @@
  * @var \App\Modules\Tenancy\Tenant $school
  * @var array<string, string> $errors
  * @var array<string, string> $old
+ * @var bool $hasFullDraft
+ * @var list<string> $choices what the full draft decides for the school
  */
+$hasFullDraft ??= false;
+$choices ??= [];
 $base = '/school/website/' . $page->slug;
 ?>
 <?= $v->breadcrumbs(['Website' => '/school/website', $page->title => null]) ?>
@@ -50,6 +54,14 @@ $base = '/school/website/' . $page->slug;
       <?php else: ?>
         <p>Ready. Read the preview once more: this page speaks for your school.</p>
         <form method="post" action="<?= $base ?>/publish"><?= $v->csrfField() ?><button type="submit" class="button button-small">Publish</button></form>
+      <?php endif; ?>
+      <?php if ($hasFullDraft && !$page->isPublished()): ?>
+        <details class="full-draft"<?= !$saved ? ' open' : '' ?>>
+          <summary>Start from a full draft</summary>
+          <p class="small">A complete page written from your school's settings and courses<?= $saved ? '. It replaces what is in the box now' : '' ?>. It makes these choices for you; change any you do not agree with before publishing:</p>
+          <ul class="small"><?php foreach ($choices as $choice): ?><li><?= $v->e($choice) ?></li><?php endforeach; ?></ul>
+          <form method="post" action="<?= $base ?>/full-draft"><?= $v->csrfField() ?><button type="submit" class="button button-small button-quiet">Use the full draft</button></form>
+        </details>
       <?php endif; ?>
       <?php if (in_array($page->slug, ['privacy', 'terms', 'refunds', 'safeguarding'], true)): ?>
         <p class="small muted">Policies are legal documents. Have someone who knows the law that applies to your school check this one before you publish it.</p>

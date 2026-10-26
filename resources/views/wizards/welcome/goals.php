@@ -7,7 +7,7 @@
 use App\Modules\Joining\LearnerProfile;
 
 $chosen = (array) ($values['goals'] ?? []);
-$icons = ['code' => 'code', 'networks' => 'network', 'security' => 'shield', 'data' => 'chart', 'school' => 'school', 'career' => 'briefcase'];
+$icons = ['code' => 'code', 'networks' => 'network', 'security' => 'shield', 'data' => 'chart', 'school' => 'school', 'career' => 'briefcase', 'everyday' => 'people'];
 $error = $errors['goals'] ?? null;
 ?>
 <fieldset class="field"<?= $error !== null ? ' aria-describedby="goals-error"' : '' ?>>

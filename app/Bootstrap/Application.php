@@ -968,6 +968,10 @@ final class Application
             $c->get(\App\Modules\Meetings\MeetingRepository::class),
             $c->get(Clock::class),
         ));
+        $c->set(\App\Modules\Platform\Http\PlatformPagesController::class, static fn (Container $c) => new \App\Modules\Platform\Http\PlatformPagesController(
+            $c->get(View::class),
+            $config->get('SECURITY_CONTACT', '') ?? '',
+        ));
         $c->set(SeoController::class, static fn (Container $c) => new SeoController(
             $c->get(Connection::class),
             $c->get(\App\Modules\Tenancy\CanonicalUrl::class),
@@ -990,6 +994,11 @@ final class Application
             $c->get(Session::class),
             $c->get(\App\Modules\Site\SitePages::class),
             $c->get(\App\Modules\Site\SitePageRepository::class),
+            $c->get(\App\Modules\Site\FullDrafts::class),
+        ));
+        $c->set(\App\Modules\Site\FullDrafts::class, static fn (Container $c) => new \App\Modules\Site\FullDrafts(
+            $c->get(CourseRepository::class),
+            $c->get(PaymentAccountRepository::class),
         ));
         $c->set(\App\Modules\Platform\Seo\ShareController::class, static fn (Container $c) => new \App\Modules\Platform\Seo\ShareController(
             new \App\Modules\Platform\Seo\ShareCard($storage . '/share', self::basePath('resources/fonts')),

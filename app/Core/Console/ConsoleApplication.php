@@ -64,6 +64,8 @@ final class ConsoleApplication
                 'classroom:connect' => $this->classroomConnect($args),
                 'classroom:check' => $this->classroomCheck($args),
                 'schema:dictionary' => $this->schemaDictionary(),
+                'files:scan-test' => $this->scanTest(),
+                'site:full-drafts' => $this->siteFullDrafts($args),
                 default => $this->help(),
             };
         } catch (Throwable $e) {
@@ -113,6 +115,10 @@ final class ConsoleApplication
                                                     the command line, and is stored encrypted.
           classroom:check <tenant-slug>             Show the classroom server (never the secret) and check it answers
           schema:dictionary                         Print the data dictionary (Markdown) from the live schema
+          files:scan-test                           Check the upload virus scanner (ClamAV) with the EICAR test text
+          site:full-drafts <tenant-slug> [--publish] Save complete drafts of the website pages not yet published
+                                            (admissions, contact, privacy, terms, refunds, safeguarding);
+                                            with --publish, also publish them. Read them first.
           school:brand <tenant-slug> [--logo=<png>] [--theme=<key>] [--tagline="<text>"]
                                                     Set a school's logo, colour theme and tagline in one go.
                                                     The DML logo ships in public/assets/brand/dml-mark.png
@@ -128,6 +134,91 @@ final class ConsoleApplication
         echo $ran === [] ? "Nothing to migrate.\n" : 'Applied: ' . implode(', ', $ran) . "\n";
 
         return 0;
+    }
+
+    /**
+     * Saves full drafts (ADR 0033) of the school's pages that are not published and still
+     * have gaps (or were never written), and with --publish publishes them. Each page and
+     * the choices it makes are printed, so the person running it sees what goes live.
+     *
+     * @param list<string> $args
+     */
+    private function siteFullDrafts(array $args): int
+    {
+        [$positional, $options] = self::options($args);
+        [$slug] = $this->requireArgs($positional, 1, 'site:full-drafts <tenant-slug> [--publish]');
+        $tenant = $this->container->get(TenantRepository::class)->findBySlug($slug) ?? throw new \RuntimeException('No tenant with that slug.');
+        $db = $this->container->get(Connection::class);
+        $owner = (int) $db->fetchValue("SELECT user_id FROM memberships WHERE tenant_id = ? AND role = 'owner' AND status = 'active' ORDER BY user_id LIMIT 1", [$tenant->id]);
+        if ($owner === 0) {
+            throw new \RuntimeException('The school has no owner to record as the author.');
+        }
+        $pages = $this->container->get(\App\Modules\Site\SitePageRepository::class);
+        $drafts = $this->container->get(\App\Modules\Site\FullDrafts::class);
+        $audit = $this->container->get(\App\Modules\Audit\AuditLog::class);
+        $today = (new \DateTimeImmutable('now', new \DateTimeZone($tenant->timezone ?: 'UTC')))->format('Y-m-d');
+        $publish = array_key_exists('publish', $options);
+        foreach (\App\Modules\Site\FullDrafts::PAGES as $page) {
+            $existing = $pages->find($tenant->id, $page);
+            if ($existing !== null && $existing->isPublished()) {
+                echo "  /{$page}: already published, left as it is\n";
+                continue;
+            }
+            $hasGaps = $existing === null || preg_match('/\[\[[^\]]*\]\]/u', $existing->body . $existing->summary) === 1 || trim($existing->summary) === '';
+            if ($hasGaps) {
+                $draft = $drafts->draft($page, $tenant, $today) ?? throw new \LogicException();
+                $pages->save($tenant->id, $page, $draft['title'], $draft['summary'], $draft['body'], $owner);
+                $audit->record($tenant->id, $owner, 'site.page_saved', 'site_page', null, ['page' => $page, 'via' => 'console full draft']);
+                echo "  /{$page}: full draft saved. It decides: " . implode(' ', \App\Modules\Site\FullDrafts::choices($page)) . "\n";
+            } else {
+                echo "  /{$page}: the school's own draft kept\n";
+            }
+            if ($publish) {
+                $saved = $pages->find($tenant->id, $page) ?? throw new \LogicException();
+                $problems = \App\Modules\Site\SitePages::problems($saved, $tenant);
+                if ($problems !== []) {
+                    echo "    not published: " . implode(' ', $problems) . "\n";
+                    continue;
+                }
+                $pages->setStatus($tenant->id, $page, \App\Modules\Site\SitePage::PUBLISHED, $owner);
+                $audit->record($tenant->id, $owner, 'site.page_published', 'site_page', $saved->id, ['page' => $page, 'via' => 'console']);
+                echo "    published\n";
+            }
+        }
+        echo $publish ? "Done. The pages are on the website and in the footer.\n" : "Done. Read them under School → Website, then publish each one (or run again with --publish).\n";
+
+        return 0;
+    }
+
+    /** Checks the upload virus scanner with the EICAR test text, which every scanner reports and which harms nothing. */
+    private function scanTest(): int
+    {
+        $scanner = $this->container->get(\App\Modules\Files\VirusScanner::class);
+        if (!$scanner instanceof \App\Modules\Files\ClamdScanner) {
+            echo "Scanning is off: set UPLOAD_SCANNER=clamd in .env (deploy/server/setup-clamav.sh does it).\n";
+
+            return 1;
+        }
+        if (!$scanner->ping()) {
+            echo "ClamAV does not answer at CLAMD_HOST:CLAMD_PORT. Uploads are being refused until it does.\n";
+
+            return 1;
+        }
+        $file = (string) tempnam(sys_get_temp_dir(), 'eicar');
+        // The standard anti-virus test string (eicar.org), split so this source file is not itself flagged.
+        file_put_contents($file, 'X5O!P%@AP[4\\PZX54(P^)7CC)7}$' . 'EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*');
+        try {
+            $scanner->scan($file);
+            echo "ClamAV answered but did not flag the EICAR test text. Its virus database may be missing: run freshclam.\n";
+
+            return 1;
+        } catch (\App\Modules\Files\InfectedFile $e) {
+            echo 'OK: ClamAV is answering and caught the test text (' . $e->getMessage() . "). Every upload is now scanned.\n";
+
+            return 0;
+        } finally {
+            @unlink($file);
+        }
     }
 
     /** Prints the data dictionary (Markdown) from the live schema; see docs/data-dictionary.md. */

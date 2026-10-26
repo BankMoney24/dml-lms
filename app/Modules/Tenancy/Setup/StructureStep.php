@@ -20,6 +20,7 @@ final class StructureStep extends WizardStep
         'university' => ['semesters', ['100 Level', '200 Level', '300 Level', '400 Level', '500 Level'], 'group'],
         'polytechnic' => ['semesters', ['ND 1', 'ND 2', 'HND 1', 'HND 2'], 'group'],
         'training_centre' => ['flexible', [], 'cohort'],
+        'community' => ['flexible', [], 'group'],
         'other' => ['flexible', [], 'group'],
     ];
 

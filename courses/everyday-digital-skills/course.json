@@ -1,0 +1,404 @@
+{
+ "title": "Everyday Digital Skills: Your Phone, Your Money, Your Business",
+ "summary": "Practical skills for life and work, learned on your own phone at your own pace: make your phone faster and cheaper to use, send and receive money without being scammed, sell on WhatsApp and Google Maps, and keep your accounts safe. For traders, artisans, parents and anyone learning for themselves. No experience needed.",
+ "track": "everyday",
+ "level": "beginner",
+ "duration_hours": 6,
+ "access": "open",
+ "outcomes": [
+  "Set up a phone so it is locked, up to date, has space and uses less data",
+  "Send money by app, USSD or POS and check the receiver before paying",
+  "Recognise common payment scams and know what to do in the first minutes after one",
+  "Set up WhatsApp Business with a catalogue and automatic messages",
+  "Take clear product photos with any phone and get a business found on Google Maps",
+  "Write a clear, professional email and protect accounts with strong passwords and two-step verification"
+ ],
+ "prerequisites": "A smartphone (Android or iPhone) you can practise on. Reading at a basic level. Everything else is explained step by step.",
+ "modules": [
+  {
+   "title": "Your phone, working for you",
+   "lessons": [
+    {
+     "type": "text",
+     "title": "Get to know your phone",
+     "file": "lessons/01-know-your-phone.md"
+    },
+    {
+     "type": "text",
+     "title": "Save data and airtime",
+     "file": "lessons/02-save-data.md"
+    },
+    {
+     "type": "quiz",
+     "title": "Check: your phone",
+     "pass_threshold": 60,
+     "intro": "Five quick questions. You can try again as many times as you like.",
+     "questions": [
+      {
+       "prompt": "What is the safest way to lock your phone screen?",
+       "options": [
+        "A pattern drawn on the screen",
+        "A PIN of at least 6 digits, or a fingerprint with a PIN behind it",
+        "No lock, so you can open it quickly",
+        "The PIN 123456"
+       ],
+       "correct": 1,
+       "explanation": "A longer PIN is hard to guess; patterns can often be read from finger smudges."
+      },
+      {
+       "prompt": "Why should you install phone and app updates?",
+       "options": [
+        "They change the colours",
+        "They fix security holes criminals use",
+        "They give you free data",
+        "They are needed only for new phones"
+       ],
+       "correct": 1,
+       "explanation": "Updates close weaknesses that criminals know about."
+      },
+      {
+       "prompt": "Which uses NO data from your bundle?",
+       "options": [
+        "Watching YouTube on mobile data",
+        "Updating apps on mobile data",
+        "Downloading a video on trusted Wi-Fi",
+        "Sending WhatsApp videos on mobile data"
+       ],
+       "correct": 2,
+       "explanation": "Wi-Fi does not use your mobile data bundle."
+      },
+      {
+       "prompt": "Where should you NOT open your bank app?",
+       "options": [
+        "At home on your own Wi-Fi",
+        "On your mobile data",
+        "On an open Wi-Fi network with no password that you do not trust",
+        "On your office Wi-Fi that your company manages"
+       ],
+       "correct": 2,
+       "explanation": "Untrusted open Wi-Fi can be watched by others; use your mobile data for banking."
+      },
+      {
+       "prompt": "Your phone is nearly full and slow. What helps first?",
+       "options": [
+        "Charging it overnight",
+        "Deleting unused apps and large WhatsApp videos after backing up what you need",
+        "Turning up the brightness",
+        "Buying more data"
+       ],
+       "correct": 1,
+       "explanation": "Freeing space makes the phone faster and lets it save new photos and messages."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Money on your phone, safely",
+   "lessons": [
+    {
+     "type": "text",
+     "title": "Sending and receiving money",
+     "file": "lessons/04-send-money.md"
+    },
+    {
+     "type": "text",
+     "title": "Scams and how to stop them",
+     "file": "lessons/05-scams.md"
+    },
+    {
+     "type": "lab",
+     "title": "Lab: spot the scam message",
+     "lab": "phishing",
+     "intro": "Look at each message and decide whether it is safe or a scam. Look closely at the sender, the link and what it asks you to do."
+    },
+    {
+     "type": "quiz",
+     "title": "Check: money and scams",
+     "pass_threshold": 70,
+     "intro": "Six questions about paying safely.",
+     "questions": [
+      {
+       "prompt": "Before you press send on a transfer, what must you check?",
+       "options": [
+        "Only the amount",
+        "The receiver's name shown by the bank, the amount and the bank",
+        "The weather",
+        "Nothing: transfers can always be reversed"
+       ],
+       "correct": 1,
+       "explanation": "The name shown by your bank confirms you are paying the right account."
+      },
+      {
+       "prompt": "A customer shows you a screenshot of a transfer and wants to leave with the goods. What do you do?",
+       "options": [
+        "Accept the screenshot",
+        "Check your own bank app or official bank alert for the money first",
+        "Ask them to send the screenshot again",
+        "Give half the goods"
+       ],
+       "correct": 1,
+       "explanation": "Screenshots and SMS alerts are easy to fake. Only money you see in your own account is real."
+      },
+      {
+       "prompt": "Someone calls 'from your bank' and asks for the code you just received by SMS. What should you do?",
+       "options": [
+        "Read it to them quickly",
+        "Hang up and call the bank on the number on your card or official website",
+        "Send it by WhatsApp instead",
+        "Ask them to call back later and then give it"
+       ],
+       "correct": 1,
+       "explanation": "Banks never ask for your OTP, PIN or password. Call them yourself on the official number."
+      },
+      {
+       "prompt": "A stranger says they sent money to you 'by mistake' and asks you to send it back to another account. What is safest?",
+       "options": [
+        "Send it back at once",
+        "Check your own balance and, if money really arrived, ask your bank to reverse it",
+        "Send half back",
+        "Give them your BVN so they can check"
+       ],
+       "correct": 1,
+       "explanation": "This is a common trick. Let your bank handle real mistaken payments."
+      },
+      {
+       "prompt": "Money has left your account that you did not send. What do you do FIRST?",
+       "options": [
+        "Wait a few days to see if it comes back",
+        "Post about it on social media",
+        "Call your bank's fraud line at once to block the account and trace the transfer",
+        "Change your phone wallpaper"
+       ],
+       "correct": 2,
+       "explanation": "Minutes matter: the bank can sometimes stop or trace the money if you call immediately."
+      },
+      {
+       "prompt": "Which offer is almost certainly a scam?",
+       "options": [
+        "A shop's posted price for rice",
+        "An 'investment' that doubles your money in two weeks",
+        "Your bank's app asking you to log in after an update you installed from the app store",
+        "A receipt after you paid"
+       ],
+       "correct": 1,
+       "explanation": "Promises of fast, guaranteed profit are a classic sign of a scam."
+      }
+     ]
+    },
+    {
+     "type": "assignment",
+     "title": "Your money safety plan",
+     "file": "lessons/08-money-plan.md",
+     "required": false
+    }
+   ]
+  },
+  {
+   "title": "Selling and getting found online",
+   "lessons": [
+    {
+     "type": "text",
+     "title": "Set up WhatsApp Business",
+     "file": "lessons/09-whatsapp-business.md"
+    },
+    {
+     "type": "text",
+     "title": "Good product photos with your phone",
+     "file": "lessons/10-product-photos.md"
+    },
+    {
+     "type": "text",
+     "title": "Be found on Google Maps",
+     "file": "lessons/11-google-maps.md"
+    },
+    {
+     "type": "quiz",
+     "title": "Check: selling online",
+     "pass_threshold": 60,
+     "intro": "Five questions about selling with your phone.",
+     "questions": [
+      {
+       "prompt": "What is a greeting message in WhatsApp Business?",
+       "options": [
+        "A message sent automatically to new customers",
+        "A birthday message",
+        "A paid advert",
+        "A message to your family"
+       ],
+       "correct": 0,
+       "explanation": "It welcomes new customers and tells them how to order, even when you are busy."
+      },
+      {
+       "prompt": "Which makes the best product photo?",
+       "options": [
+        "Flash on, at night",
+        "Daylight from a window, plain background, clean lens",
+        "A photo copied from another seller's page",
+        "A dark room with the brightness turned up afterwards"
+       ],
+       "correct": 1,
+       "explanation": "Good natural light and a plain background make products clear. Copying photos is dishonest."
+      },
+      {
+       "prompt": "How can customers see the size of a product in a photo?",
+       "options": [
+        "They cannot",
+        "Show it in a hand, being worn, or next to a common object",
+        "Make the photo very large",
+        "Write 'big' in the caption"
+       ],
+       "correct": 1,
+       "explanation": "Something familiar next to the product shows its real size."
+      },
+      {
+       "prompt": "Someone calls offering to 'verify' your Google Business Profile for a fee. What do you do?",
+       "options": [
+        "Pay them quickly",
+        "Ignore it: Google does not charge to list a business",
+        "Give them your Gmail password",
+        "Pay half now, half later"
+       ],
+       "correct": 1,
+       "explanation": "Listing on Google Business Profile is free; these calls are scams."
+      },
+      {
+       "prompt": "A customer leaves a bad review. What is the best response?",
+       "options": [
+        "Ignore it",
+        "Reply politely and offer to put it right",
+        "Reply angrily",
+        "Pay for fake good reviews to hide it"
+       ],
+       "correct": 1,
+       "explanation": "A calm, helpful reply shows future customers you care. Fake reviews are dishonest and can get you removed."
+      }
+     ]
+    },
+    {
+     "type": "assignment",
+     "title": "Post your first product",
+     "file": "lessons/13-first-product.md",
+     "required": false
+    }
+   ]
+  },
+  {
+   "title": "Learning and working online",
+   "lessons": [
+    {
+     "type": "text",
+     "title": "Email that gets a reply",
+     "file": "lessons/14-email.md"
+    },
+    {
+     "type": "text",
+     "title": "Protect your accounts",
+     "file": "lessons/15-protect-accounts.md"
+    },
+    {
+     "type": "text",
+     "title": "Keep learning for free (optional)",
+     "file": "lessons/16-keep-learning.md",
+     "required": false
+    },
+    {
+     "type": "quiz",
+     "title": "Final check",
+     "pass_threshold": 70,
+     "intro": "Eight questions from the whole course. Pass this, with the other checks, to finish the course.",
+     "questions": [
+      {
+       "prompt": "Which is the strongest password?",
+       "options": [
+        "password123",
+        "Your phone number",
+        "my goat eats mango every friday",
+        "Your birthday"
+       ],
+       "correct": 2,
+       "explanation": "Long passphrases are easy to remember and very hard to guess."
+      },
+      {
+       "prompt": "Why use a different password for each important account?",
+       "options": [
+        "It is required by law",
+        "If one website is hacked, your other accounts stay safe",
+        "It makes your phone faster",
+        "So you can forget them"
+       ],
+       "correct": 1,
+       "explanation": "Reused passwords let criminals open every account with one stolen password."
+      },
+      {
+       "prompt": "What does two-step verification do?",
+       "options": [
+        "Asks for a second thing, like a code, so a stolen password is not enough",
+        "Makes your password shorter",
+        "Shares your account with a friend",
+        "Removes your password"
+       ],
+       "correct": 0,
+       "explanation": "A criminal who has your password still cannot get in without the second step."
+      },
+      {
+       "prompt": "Which email subject is best for a job application?",
+       "options": [
+        "Hello",
+        "Job",
+        "Application: Shop Assistant, Ikeja branch",
+        "URGENT!!!"
+       ],
+       "correct": 2,
+       "explanation": "A clear subject tells the reader exactly what the email is about."
+      },
+      {
+       "prompt": "How should you send a CV by email?",
+       "options": [
+        "As a photo of the screen",
+        "As a PDF with a clear name such as Your-Name-CV.pdf",
+        "As a voice note",
+        "Pasted into the subject line"
+       ],
+       "correct": 1,
+       "explanation": "PDFs look the same on every device, and a clear name helps the reader."
+      },
+      {
+       "prompt": "A job advert asks you to pay for a 'processing form' before the interview. This is…",
+       "options": [
+        "Normal for good jobs",
+        "A warning sign: real employers do not charge you to get a job",
+        "Required by government",
+        "A sign of a high salary"
+       ],
+       "correct": 1,
+       "explanation": "Paying to get a job is a common scam."
+      },
+      {
+       "prompt": "A code arrives by SMS that you did not ask for. What should you do?",
+       "options": [
+        "Share it with whoever calls about it",
+        "Do not share it; someone may be trying to get into your account",
+        "Reply to the SMS with your PIN",
+        "Post it online"
+       ],
+       "correct": 1,
+       "explanation": "Unexpected codes often mean someone is trying your password. Never share them."
+      },
+      {
+       "prompt": "Which saves the most data on WhatsApp?",
+       "options": [
+        "Auto-downloading all videos on mobile data",
+        "Setting media to download only on Wi-Fi",
+        "Sending more voice notes",
+        "Turning off Wi-Fi"
+       ],
+       "correct": 1,
+       "explanation": "Videos are large; downloading them only on Wi-Fi saves your bundle."
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

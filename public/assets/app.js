@@ -4,7 +4,12 @@
 
   // Connection banner: tell people plainly when they are offline.
   var banner = document.getElementById('netstatus');
-  function updateNet() { if (banner) { banner.hidden = navigator.onLine; } }
+  var offlineText = banner ? banner.textContent : '';
+  function updateNet() {
+    document.documentElement.classList.toggle('is-offline', !navigator.onLine);
+    if (banner && !navigator.onLine) { banner.textContent = offlineText; }
+    if (banner) { banner.hidden = navigator.onLine; }
+  }
   window.addEventListener('online', updateNet);
   window.addEventListener('offline', updateNet);
   updateNet();
@@ -503,6 +508,188 @@
     input.addEventListener('blur', function () { caps.hidden = true; });
   });
 
+  // ---- Offline (ADR 0033) ----
+  // Lessons saved on this device for reading without a connection, and progress made offline
+  // kept in an outbox until the connection is back. Everything is per person: another person
+  // signing in on the same device, or signing out, removes it.
+  var ownerMeta = document.querySelector('meta[name="dml-device-owner"]');
+  var owner = ownerMeta ? ownerMeta.getAttribute('content') : '';
+  var canKeep = !!(window.caches && store && window.fetch);
+  var SAVED_CACHE = 'dml-saved-' + owner;
+  var indexKey = 'dml-saved:' + owner;
+  var outboxKey = 'dml-outbox:' + owner;
+  function readJson(key) { try { return JSON.parse((store && store.getItem(key)) || '[]'); } catch (e) { return []; } }
+  function writeJson(key, value) { try { if (store) { store.setItem(key, JSON.stringify(value)); } } catch (e) { /* storage full */ } }
+  function forgetDevice(keepOwner) {
+    if (window.caches) {
+      caches.keys().then(function (keys) {
+        keys.forEach(function (k) { if (k.indexOf('dml-saved-') === 0 && k !== 'dml-saved-' + keepOwner) { caches.delete(k); } });
+      });
+    }
+    if (store) {
+      for (var i = store.length - 1; i >= 0; i--) {
+        var k = store.key(i) || '';
+        if ((k.indexOf('dml-saved:') === 0 || k.indexOf('dml-outbox:') === 0) && k !== 'dml-saved:' + keepOwner && k !== 'dml-outbox:' + keepOwner) { store.removeItem(k); }
+      }
+    }
+  }
+  if (owner) { forgetDevice(owner); }
+  Array.prototype.forEach.call(document.querySelectorAll('form[action="/logout"]'), function (form) {
+    form.addEventListener('submit', function () { forgetDevice('-'); });
+  });
+
+  function savedList() { return readJson(indexKey); }
+  function isSaved(url) { return savedList().some(function (x) { return x.u === url; }); }
+  function saveLesson(url, title, course) {
+    return fetch(url, { credentials: 'same-origin' }).then(function (response) {
+      if (!response.ok || response.redirected) { throw new Error('not saved'); }
+      return caches.open(SAVED_CACHE).then(function (cache) { return cache.put(url, response); });
+    }).then(function () {
+      var list = savedList().filter(function (x) { return x.u !== url; });
+      list.unshift({ u: url, t: title, c: course, at: Date.now() });
+      writeJson(indexKey, list.slice(0, 300));
+    });
+  }
+  function removeLesson(url) {
+    writeJson(indexKey, savedList().filter(function (x) { return x.u !== url; }));
+    return caches.open(SAVED_CACHE).then(function (cache) { return cache.delete(url); });
+  }
+
+  if (canKeep && owner) {
+    // One lesson.
+    Array.prototype.forEach.call(document.querySelectorAll('[data-offline-save]'), function (bar) {
+      var url = location.pathname;
+      var button = bar.querySelector('[data-offline-toggle]');
+      var word = bar.querySelector('[data-offline-word]');
+      var status = bar.querySelector('[data-offline-status]');
+      var note = status ? status.textContent : '';
+      function show() {
+        var saved = isSaved(url);
+        word.textContent = saved ? 'Saved for offline: remove' : 'Save for offline';
+        button.setAttribute('aria-pressed', saved ? 'true' : 'false');
+        bar.classList.toggle('is-saved', saved);
+      }
+      bar.hidden = false;
+      show();
+      button.addEventListener('click', function () {
+        if (isSaved(url)) { removeLesson(url).then(function () { show(); status.textContent = 'Removed from this device.'; }); return; }
+        if (!navigator.onLine) { status.textContent = 'Connect to save this lesson for offline.'; return; }
+        status.textContent = 'Saving…';
+        saveLesson(url, bar.getAttribute('data-title') || document.title, bar.getAttribute('data-course') || '').then(function () {
+          show(); status.textContent = 'Saved. Open it from this device any time, even with no connection.' + (note ? ' ' + note : '');
+        }).catch(function () { status.textContent = 'Could not save it. Check the connection and try again.'; });
+      });
+    });
+    // A whole course.
+    Array.prototype.forEach.call(document.querySelectorAll('[data-offline-all]'), function (bar) {
+      var lessons;
+      try { lessons = JSON.parse(bar.getAttribute('data-offline-all') || '[]'); } catch (e) { lessons = []; }
+      if (!lessons.length) { return; }
+      var button = bar.querySelector('[data-offline-toggle]');
+      var word = bar.querySelector('[data-offline-word]');
+      var status = bar.querySelector('[data-offline-status]');
+      var course = bar.getAttribute('data-course') || '';
+      function count() { return lessons.filter(function (l) { return isSaved(l.u); }).length; }
+      function show() {
+        var n = count();
+        word.textContent = n === lessons.length ? 'Saved for offline: remove' : 'Save the whole course for offline';
+        status.textContent = n > 0 && n < lessons.length ? n + ' of ' + lessons.length + ' lessons saved on this device.' : (n === lessons.length ? 'All ' + n + ' lessons are on this device.' : '');
+      }
+      bar.hidden = false;
+      show();
+      button.addEventListener('click', function () {
+        if (count() === lessons.length) {
+          Promise.all(lessons.map(function (l) { return removeLesson(l.u); })).then(show);
+          return;
+        }
+        if (!navigator.onLine) { status.textContent = 'Connect to save the course for offline.'; return; }
+        button.setAttribute('aria-disabled', 'true');
+        var done = 0;
+        var next = function (i) {
+          if (i >= lessons.length) { button.removeAttribute('aria-disabled'); show(); return; }
+          status.textContent = 'Saving ' + (i + 1) + ' of ' + lessons.length + '…';
+          (isSaved(lessons[i].u) ? Promise.resolve() : saveLesson(lessons[i].u, lessons[i].t, course)).then(function () { done++; next(i + 1); })
+            .catch(function () { button.removeAttribute('aria-disabled'); status.textContent = 'Stopped after ' + done + ' lessons: the connection dropped. Try again to save the rest.'; });
+        };
+        next(0);
+      });
+    });
+    // The list of saved lessons (Saved and notes page, and the offline page).
+    Array.prototype.forEach.call(document.querySelectorAll('[data-offline-library]'), function (box) {
+      var list = savedList();
+      var ul = box.querySelector('ul');
+      if (!ul || !list.length) { return; }
+      list.forEach(function (x) {
+        var li = document.createElement('li');
+        var a = document.createElement('a');
+        a.href = x.u;
+        a.textContent = x.t;
+        li.appendChild(a);
+        if (x.c) { var span = document.createElement('span'); span.className = 'small muted'; span.textContent = ' ' + x.c; li.appendChild(span); }
+        ul.appendChild(li);
+      });
+      box.hidden = false;
+    });
+  }
+
+  // Progress made offline waits in an outbox (forms marked data-offline-queue) and is sent when the connection returns.
+  function outbox() { return readJson(outboxKey); }
+  function say(text) {
+    var live = document.getElementById('netstatus');
+    if (!live) { return; }
+    live.textContent = text;
+    live.hidden = false;
+    if (navigator.onLine) { window.setTimeout(function () { live.hidden = true; }, 6000); }
+  }
+  function flushOutbox() {
+    var items = outbox();
+    if (!items.length || !navigator.onLine || !window.fetch) { return; }
+    var sent = 0;
+    var keep = [];
+    var signIn = false;
+    var chain = Promise.resolve();
+    items.forEach(function (item) {
+      chain = chain.then(function () {
+        var body = new URLSearchParams();
+        item.f.forEach(function (pair) { body.append(pair[0], pair[1]); });
+        return fetch(item.a, { method: 'POST', body: body, credentials: 'same-origin' }).then(function (r) {
+          if (new URL(r.url).pathname.indexOf('/login') === 0) { signIn = true; keep.push(item); return; }
+          if (r.ok) { sent++; } // other refusals (for example a lesson removed since) are dropped
+        }).catch(function () { keep.push(item); });
+      });
+    });
+    chain.then(function () {
+      writeJson(outboxKey, keep);
+      if (sent) { say(sent === 1 ? 'Back online: 1 thing you did offline was sent.' : 'Back online: ' + sent + ' things you did offline were sent.'); }
+      if (signIn) { say('Sign in again to send what you did offline. It is still saved on this device.'); }
+    });
+  }
+  window.addEventListener('online', flushOutbox);
+  if (owner) { flushOutbox(); }
+
+  // Sending a form with no connection: queue it when that is safe, otherwise say plainly that it needs a connection.
+  document.addEventListener('submit', function (e) {
+    var form = e.target;
+    if (e.defaultPrevented || navigator.onLine || !(form instanceof HTMLFormElement) || form.method.toLowerCase() !== 'post') { return; }
+    e.preventDefault();
+    var label = form.getAttribute('data-offline-queue');
+    var message;
+    if (label !== null && owner && store) {
+      var fields = [];
+      new FormData(form).forEach(function (value, key) { if (typeof value === 'string') { fields.push([key, value]); } });
+      var items = outbox().filter(function (x) { return !(x.a === form.action && x.l === label); });
+      items.push({ a: form.action, f: fields, l: label, at: Date.now() });
+      writeJson(outboxKey, items.slice(-200));
+      message = 'Saved on this device. It will be sent when you are back online.';
+      Array.prototype.forEach.call(form.querySelectorAll('button[type=submit], button:not([type])'), function (b) { b.setAttribute('aria-disabled', 'true'); });
+    } else {
+      message = 'You are offline. This needs a connection: try again when you are back online.';
+    }
+    var note = form.querySelector('.offline-note');
+    if (!note) { note = document.createElement('p'); note.className = 'offline-note small'; note.setAttribute('role', 'status'); form.appendChild(note); }
+    note.textContent = message;
+  });
+
   // Sending a form: the button shows it is working and a second tap does not send it twice.
   // Forms that handle their own sending (they cancel the event) and GET forms are left alone.
   function setBusy(form, busy) {
@@ -620,7 +807,7 @@
   window.addEventListener('resize', function () { window.clearTimeout(resizeTimer); resizeTimer = window.setTimeout(scrollRegions, 200); });
 
   // Service worker caches only public static assets and an offline page.
-  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  if ('serviceWorker' in navigator && window.isSecureContext) {
     navigator.serviceWorker.register('/sw.js').catch(function () { /* optional */ });
   }
 })();

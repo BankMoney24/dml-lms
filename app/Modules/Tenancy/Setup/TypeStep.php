@@ -18,6 +18,7 @@ final class TypeStep extends WizardStep
         'university' => 'Suggests semesters and 100 to 500 level.',
         'polytechnic' => 'Suggests semesters and ND 1 to HND 2.',
         'training_centre' => 'Short courses and cohorts, with no fixed academic year.',
+        'community' => 'People learning for life and work, at their own pace: short practical courses and groups, no terms or levels.',
         'other' => 'Start with no fixed structure and set it up your way.',
     ];
 

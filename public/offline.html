@@ -5,13 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>You are offline</title>
 <link rel="stylesheet" href="/assets/app.css">
+<script src="/assets/offline.js" defer></script>
 </head>
 <body>
-<main class="wrap">
+<main class="wrap offline-page">
   <section class="narrow">
     <h1>You are offline</h1>
-    <p class="lead">This page needs a connection. Answers you chose in a quiz are still saved on this device.</p>
-    <p>Reconnect, then reload the page to carry on.</p>
+    <p class="lead">This page needs a connection. Lessons you saved for offline still open, and quiz answers you chose are kept on this device.</p>
+    <section class="offline-library" data-offline-library hidden aria-labelledby="saved-h">
+      <h2 id="saved-h">Saved on this device</h2>
+      <ul></ul>
+    </section>
+    <p>When you are back online, reload the page. Lessons you marked as finished while offline are sent then.</p>
+    <p><button type="button" class="button" data-reload>Try again</button></p>
   </section>
 </main>
 </body>

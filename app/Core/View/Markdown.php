@@ -158,7 +158,7 @@ final class Markdown
             $lines[0] = $m[2];
 
             return sprintf(
-                '<aside class="callout callout-%s"><p class="callout-title">%s</p>%s</aside>',
+                '<div class="callout callout-%s" role="note"><p class="callout-title">%s</p>%s</div>',
                 $kind,
                 self::CALLOUTS[$kind],
                 $this->blocks($lines, $depth + 1),

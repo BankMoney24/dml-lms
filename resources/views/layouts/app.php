@@ -37,6 +37,7 @@ $shell = $tenant !== null && $user !== null;
 <title><?= $v->e($meta['title']) ?></title>
 <meta name="description" content="<?= $v->e($meta['description']) ?>">
 <meta name="robots" content="<?= $v->e($meta['robots']) ?>">
+<?php if ($user !== null && $tenant !== null): ?><meta name="dml-device-owner" content="<?= $v->e(substr(hash('sha256', $tenant->id . ':' . $user->id), 0, 16)) ?>"><?php endif; ?>
 <?php if ($meta['canonical'] !== null): ?>
 <link rel="canonical" href="<?= $v->e($meta['canonical']) ?>">
 <meta property="og:site_name" content="<?= $v->e($meta['siteName']) ?>">
@@ -196,7 +197,7 @@ $shell = $tenant !== null && $user !== null;
         </div>
       </details>
     </header>
-    <div class="netstatus" id="netstatus" role="status" aria-live="polite" hidden>You are offline. Pages you opened recently may still work; anything you send will need a connection.</div>
+    <div class="netstatus" id="netstatus" role="status" aria-live="polite" hidden>You are offline. Lessons you saved for offline still open, and lessons you finish are sent when you reconnect.</div>
     <main id="main" class="shell-content">
       <?php if ($msg = $v->shared('flash_success')): ?><p class="notice notice-ok toast" role="status"><?= $v->e($msg) ?></p><?php endif; ?>
       <?php if ($msg = $v->shared('flash_error')): ?><p class="notice notice-err" role="alert"><?= $v->e($msg) ?></p><?php endif; ?>
@@ -210,6 +211,8 @@ $shell = $tenant !== null && $user !== null;
         <li><a href="/help">Get help</a></li>
         <li><a href="/verify">Check a certificate</a></li>
         <?php foreach ($sitePages as $pagePath => $pageName): ?><li><a href="<?= $v->e($pagePath) ?>"><?= $v->e($pageName) ?></a></li><?php endforeach; ?>
+        <li><a href="/accessibility">Accessibility</a></li>
+        <li><a href="/developers">Developers</a></li>
       </ul>
     </footer>
   </div>
@@ -272,7 +275,7 @@ $shell = $tenant !== null && $user !== null;
     <?php endif; ?>
   </div>
 </header>
-<div class="netstatus" id="netstatus" role="status" aria-live="polite" hidden>You are offline. Pages you opened recently may still work; anything you send will need a connection.</div>
+<div class="netstatus" id="netstatus" role="status" aria-live="polite" hidden>You are offline. Lessons you saved for offline still open, and lessons you finish are sent when you reconnect.</div>
 <main id="main" class="wrap">
   <?php if ($msg = $v->shared('flash_success')): ?><p class="notice notice-ok" role="status"><?= $v->e($msg) ?></p><?php endif; ?>
   <?php if ($msg = $v->shared('flash_error')): ?><p class="notice notice-err" role="alert"><?= $v->e($msg) ?></p><?php endif; ?>
@@ -288,6 +291,8 @@ $shell = $tenant !== null && $user !== null;
       <?php if ($tenant->website !== ''): ?><li><a href="<?= $v->e($tenant->website) ?>" rel="noopener"><?= $v->e((string) preg_replace('#^https?://(www\.)?#', '', rtrim($tenant->website, '/'))) ?></a></li><?php endif; ?>
       <?php if ($user !== null): ?><li><a href="/help">Get help</a></li><?php endif; ?>
       <li><a href="/verify">Check a certificate</a></li>
+      <li><a href="/accessibility">Accessibility</a></li>
+      <li><a href="/developers">Developers</a></li>
     </ul>
     <?php if ($sitePages !== []): ?>
     <nav class="footer-pages" aria-label="About the school">

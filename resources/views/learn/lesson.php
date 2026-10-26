@@ -35,6 +35,11 @@ $latest = $submissions[0] ?? null;
       <button type="submit" class="save-toggle" aria-pressed="<?= $isSaved ? 'true' : 'false' ?>"><?= $v->icon($isSaved ? 'saved-on' : 'saved') ?><span><?= $isSaved ? 'Saved' : 'Save' ?></span><span class="visually-hidden"> this lesson for later</span></button>
     </form>
   </header>
+  <?php /* Offline copy on this device (ADR 0033); shown only where the browser can keep one. */ ?>
+  <div class="offline-bar" data-offline-save data-title="<?= $v->e($lesson->title) ?>" data-course="<?= $v->e($course->title) ?>" hidden>
+    <button type="button" class="button button-small button-quiet" data-offline-toggle><?= $v->icon('download') ?><span data-offline-word>Save for offline</span></button>
+    <span class="small muted" data-offline-status role="status"><?= $lesson->takesMedia() ? 'The page is saved; the video or recording needs a connection unless you download it below.' : '' ?></span>
+  </div>
 
   <?php if ($lesson->learnerCompletes()): ?>
     <?php if ($mediaFile !== null): $mediaSrc = '/files/' . $mediaFile->id; include __DIR__ . '/../files/_player.php'; ?>
@@ -58,7 +63,7 @@ $latest = $submissions[0] ?? null;
     <?php if ($completed): ?>
       <p class="notice notice-done">You have completed this lesson.</p>
     <?php else: ?>
-      <form method="post" action="<?= $base ?>/lessons/<?= $lesson->id ?>/complete">
+      <form method="post" action="<?= $base ?>/lessons/<?= $lesson->id ?>/complete" data-offline-queue="<?= $v->e('Lesson finished: ' . $lesson->title) ?>">
         <?= $v->csrfField() ?>
         <button type="submit" class="button"><?= $lesson->isVideo() ? 'I have watched it: mark complete' : ($lesson->isAudio() ? 'I have listened: mark complete' : 'Mark as complete') ?></button>
       </form>

@@ -12,7 +12,8 @@ final class Course
     public const LEVELS = ['beginner' => 'Beginner', 'intermediate' => 'Intermediate', 'advanced' => 'Advanced'];
 
     /** Formal curriculum subjects (e.g. SS1–SS3) or vocational and professional skills. */
-    public const TRACKS = ['school' => 'School subject', 'skills' => 'Skills'];
+    /** school: a curriculum subject; skills: vocational or professional; everyday: informal learning for life and work (ADR 0033). */
+    public const TRACKS = ['school' => 'School subject', 'skills' => 'Skills', 'everyday' => 'Everyday learning'];
 
     public const ACCESS_MEMBERS = 'members';
     public const ACCESS_OPEN = 'open';

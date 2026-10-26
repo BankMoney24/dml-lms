@@ -113,7 +113,13 @@ php-fpm -t && apachectl configtest && systemctl reload php-fpm httpd
 
 Video is played in 4 MB pieces (HTTP range requests), so a class watching recordings does not tie up PHP workers. A full download of a large recording does hold one worker until it finishes.
 
-**Virus scanning (recommended):** install ClamAV and point the app at it.
+**Virus scanning (recommended):** run the setup script. It reuses iRedMail's ClamAV when it is there (no extra memory), otherwise installs ClamAV, then sets `.env` and checks it with a harmless test file:
+
+```bash
+bash /var/www/dml-lms/current/deploy/server/setup-clamav.sh
+```
+
+The manual steps it automates, for a server without iRedMail:
 
 ```bash
 dnf install -y clamav clamd clamav-update          # from EPEL

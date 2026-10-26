@@ -67,6 +67,10 @@ final class CoursePackageImporter
                 'prerequisites' => self::str($package, 'prerequisites', 'course', ''),
                 'track' => self::str($package, 'track', 'course', ''),
             ]));
+            // "access": "open" lets anyone read the readings without an account (ADR 0021), for informal learners (ADR 0033).
+            if (self::str($package, 'access', 'course', '') === Course::ACCESS_OPEN) {
+                $this->step('access', fn () => $this->authoring->setAccess($course, $author, Course::ACCESS_OPEN));
+            }
 
             $counts = ['modules' => 0, 'lessons' => 0, 'questions' => 0, 'files' => 0];
             foreach (self::list($package, 'modules', 'course') as $m => $module) {
@@ -175,6 +179,11 @@ final class CoursePackageImporter
             'max_attempts' => isset($lesson['max_attempts']) ? (string) $lesson['max_attempts'] : '',
             'lab_key' => self::str($lesson, 'lab', $at, ''),
         ]));
+
+        // "required": false: extra reading or practice that learners may skip (ADR 0032).
+        if (($lesson['required'] ?? true) === false) {
+            $this->lessons->setMandatory($course->tenantId, $course->id, $lessonId, false);
+        }
 
         $media = $this->media;
         if (isset($lesson['media']) && $media !== null) {

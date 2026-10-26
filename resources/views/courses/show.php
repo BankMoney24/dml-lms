@@ -117,6 +117,18 @@ $chips[] = $v->plural($lessonCount, 'lesson');
     <progress class="meter" max="<?= max(1, $lessonCount) ?>" value="<?= $done ?>" aria-label="Your progress"></progress>
     <p class="start-action"><a class="button" href="/courses/<?= $v->e($course->slug) ?>/lessons/<?= $firstOpen->id ?>"><?= $done === 0 ? 'Start' : 'Continue' ?>: <?= $v->e($firstOpen->title) ?></a></p>
     <?php include __DIR__ . '/_standing.php'; ?>
+    <?php
+    $offlineLessons = [];
+    foreach ($outline as $module) {
+        foreach ($module['lessons'] as $l) {
+            $offlineLessons[] = ['u' => '/courses/' . $course->slug . '/lessons/' . $l->id, 't' => $l->title];
+        }
+    }
+    ?>
+    <div class="offline-bar" data-offline-all="<?= $v->e((string) json_encode($offlineLessons, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) ?>" data-course="<?= $v->e($course->title) ?>" hidden>
+      <button type="button" class="button button-small button-quiet" data-offline-toggle><?= $v->icon('download') ?><span data-offline-word>Save the whole course for offline</span></button>
+      <span class="small muted" data-offline-status role="status"></span>
+    </div>
   <?php elseif ($enrolment !== null): ?>
     <p class="start-title">Every lesson is done</p>
     <?php include __DIR__ . '/_standing.php'; ?>

@@ -7,7 +7,7 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 | Item | Status | Notes |
 |---|---|---|
 | Repository, layout, coding standards | Built | PSR-12 (phpcs), PHPStan level 8, strict types |
-| Architecture overview, ADRs | Built | `docs/architecture.md`, `docs/adr/0001–0032`; design system in `docs/design-system.md`; interface audit and checklist in `docs/overhaul-checklist.md` |
+| Architecture overview, ADRs | Built | `docs/architecture.md`, `docs/adr/0001–0033`; design system in `docs/design-system.md`; interface audit and checklist in `docs/overhaul-checklist.md` |
 | ERD / data dictionary | Built | Schema diagram in architecture.md; `docs/data-dictionary.md` generated from the live schema (`bin/console schema:dictionary`) with what each table holds and its kind of personal data; a test keeps it complete |
 | Threat model | Built | `docs/threat-model.md`: assets, trust boundaries, STRIDE threats with the controls that answer them, and the top remaining risks |
 | CI (lint, analysis, tests, secret scan, asset budget) | Built | `.github/workflows/ci.yml`, PHP 8.3 / 8.4 / 8.5 matrix on MySQL 8.4 |
@@ -73,7 +73,7 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 | Applications and waiting list | Built | Per course: join directly or apply and wait, optional number of places with a waiting list; visitor and member applications, place in line, Teach → Applications to offer places (free courses enrol at once, paid ones then pay) or decline, accounts created for new people. ADR 0025 |
 | Subscribing and paying the school | Built | One subscribe page per course (account → payment → start): free courses start at once; paid ones by Paystack or by paying the school directly and telling it, confirmed by the school before the course opens. My subscriptions page with progress, waiting items and receipts. ADR 0026 |
 | NTF-003 | Next | SMS/WhatsApp after consent review |
-| §8 offline | Partial | Offline banner, static-asset service worker, quiz drafts on device until server confirms, idempotent submit. IndexedDB outbox and conflict handling next |
+| §8 offline | Built | Offline banner; lessons and whole courses saved on the device for offline reading (removed at sign-out); finished lessons kept in an outbox and sent on reconnection; quiz drafts on device until the server confirms; clear message for anything else that needs a connection; offline page lists saved lessons. ADR 0033 |
 | §9 public API v1 | Next | |
 | §12 accessibility | Partial | Semantic HTML, labels, error association, focus styles, reduced motion, 44px main targets and 24px minimum (WCAG 2.2). axe-core scan of 110 page/role views at eight widths in light and dark mode: no violations (update 31, `docs/overhaul-checklist.md`). Not yet audited with assistive technology |
 

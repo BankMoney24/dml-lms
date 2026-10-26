@@ -2771,3 +2771,29 @@ th[aria-sort="descending"] .sort-mark { border-top: 0.45rem solid var(--primary)
 .pay-detail-link { display: inline-flex; align-items: center; min-height: 1.5rem; white-space: nowrap; font-weight: 650; }
 .pay-events ul { margin: var(--space-2) 0 0; padding-left: var(--space-5); }
 @media (max-width: 40rem) { .table-stack th[scope="row"] { grid-column: 1 / -1; padding: 0; border: 0; text-align: left; } }
+
+/* Developers page (ADR 0033) */
+.dev-grid { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); margin: var(--space-5) 0; }
+.dev-card { padding: var(--space-4) var(--space-5); border: 1px solid var(--line); border-radius: var(--radius-m); background: var(--surface); }
+.dev-card h2 { font-size: var(--step-1); }
+.dev-card p:last-child { margin-bottom: 0; }
+.dev-section { margin-top: var(--space-6); }
+.dev-facts { padding-left: var(--space-5); max-width: var(--measure); }
+.dev-facts li { margin-bottom: var(--space-2); }
+.dev-sectors { margin-top: var(--space-3); }
+.full-draft { margin: var(--space-4) 0; padding-top: var(--space-3); border-top: 1px solid var(--line); }
+.full-draft summary { font-weight: 700; cursor: pointer; }
+
+/* Offline (ADR 0033) */
+.offline-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin: 0 0 var(--space-4); }
+.offline-bar .button .icon { width: 1rem; height: 1rem; }
+.offline-bar.is-saved .button { border-color: var(--lamp); color: var(--ink); background: var(--lamp-soft); }
+.offline-note { margin: var(--space-2) 0 0; padding: var(--space-2) var(--space-3); border-left: 3px solid var(--warn); background: var(--warn-soft); border-radius: 0 var(--radius-s) var(--radius-s) 0; }
+.offline-library ul { margin: var(--space-2) 0 0; padding-left: var(--space-5); }
+.offline-library li { margin-bottom: var(--space-1); }
+.offline-page .narrow { max-width: 40rem; padding: var(--space-6) 0; }
+.offline-library li .small { display: block; }
+/* The TridaxLabs list on the light Developers page (the popover version is on navy). */
+.dev-sectors .tridax-sector h3 { color: var(--ink); font-size: var(--step-0); }
+.dev-sectors .tridax-sector li { color: var(--ink-soft); font-size: var(--step--1); }
+.dev-sectors .tridax-sector li::before { background: var(--lamp); }

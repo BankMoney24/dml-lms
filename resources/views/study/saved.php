@@ -12,6 +12,12 @@ $tabs = ['all' => 'Everything', 'saved' => 'Saved', 'notes' => 'With notes'];
   <p class="lead">Lessons you saved for later and the notes you wrote. Only you can see this page.</p>
 </header>
 
+<section class="panel offline-library" data-offline-library hidden aria-labelledby="device-h">
+  <h2 id="device-h">On this device, for offline</h2>
+  <p class="small muted">These open even with no connection. They are removed when you sign out.</p>
+  <ul></ul>
+</section>
+
 <?php if ($counts['all'] === 0): ?>
   <?= $v->emptyState('Nothing saved yet', 'On any lesson, choose Save to come back to it later, or write a note beside it. They all appear here.', '/', 'Go to your courses') ?>
 <?php else: ?>

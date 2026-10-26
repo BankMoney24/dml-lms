@@ -60,12 +60,15 @@ Interface:
 
 Pending features (from the invoice's pending list):
 
+- [x] Everyday (informal) learning track, community school type, and a complete free course (update 33)
+- [x] Developers page, accessibility statement and security.txt (update 33)
+
 - [x] Refunds and discount codes (update 32, ADR 0032)
 - [ ] Instalments
 - [x] Per-course completion rules (update 32)
 - [x] Learner report sheets for parents and staff, printable (update 32)
 - [ ] Public API v1 (for PrimeERP and others) with per-school keys
-- [ ] Full offline mode for lessons
+- [x] Offline lessons: save a lesson or whole course, outbox for finished lessons (update 33)
 - [x] Threat model (`docs/threat-model.md`) and data dictionary (`docs/data-dictionary.md`) (update 32)
 - [ ] SMS / WhatsApp: needs a provider account and a consent review first
 - [ ] Recording and YouTube streaming: needs a separate Jibri server (more memory than the current server can spare)
@@ -77,7 +80,7 @@ Server and account tasks (done by the school on the server; instructions in each
 - [ ] Rotate the backup key, store it off the server, set `REMOTE`
 - [ ] Email provider, SPF and DKIM; Google Search Console
 - [ ] Paystack live key
-- [ ] Publish the website pages (the checklist on School settings shows which are left)
+- [ ] Publish the website pages: full drafts can now be saved in one step (School → Website, or `site:full-drafts`), then read and publish
 - [ ] Staging copy
 
 ## How to repeat the checks

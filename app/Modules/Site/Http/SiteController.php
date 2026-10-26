@@ -25,6 +25,7 @@ final class SiteController
         private readonly Session $session,
         private readonly SitePages $site,
         private readonly SitePageRepository $pages,
+        private readonly ?\App\Modules\Site\FullDrafts $drafts = null,
     ) {
     }
 
@@ -39,6 +40,22 @@ final class SiteController
         }
 
         return $this->renderPublic($request, $page, false);
+    }
+
+    /** POST /school/website/{page}/full-draft: replace an unpublished page with a complete draft to read and adjust (ADR 0033). */
+    public function fullDraft(Request $request): Response
+    {
+        $slug = $this->slug($request);
+        $tenant = RequestContext::tenant($request);
+        $existing = $this->pages->find($tenant->id, $slug);
+        $draft = $this->drafts?->draft($slug, $tenant, (new \DateTimeImmutable('now', new \DateTimeZone($tenant->timezone ?: 'UTC')))->format('Y-m-d'));
+        if ($draft === null || ($existing !== null && $existing->isPublished())) {
+            throw HttpException::notFound();
+        }
+        $this->site->save($tenant, RequestContext::user($request), $slug, $draft, $request->clientIp);
+        $this->session->flash('success', 'A full draft is saved. Read it, change anything that is not right for your school, then publish it.');
+
+        return Response::redirect('/school/website/' . $slug);
     }
 
     public function index(Request $request): Response
@@ -166,6 +183,8 @@ final class SiteController
             'page' => $page,
             'saved' => $page->id !== 0,
             'problems' => SitePages::problems($page, $tenant),
+            'hasFullDraft' => $this->drafts !== null && in_array($slug, \App\Modules\Site\FullDrafts::PAGES, true),
+            'choices' => \App\Modules\Site\FullDrafts::choices($slug),
             'school' => $tenant,
             'errors' => $errors,
             'old' => $old + ['title' => $page->title, 'summary' => $page->summary, 'body' => $page->body],

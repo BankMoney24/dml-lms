@@ -244,7 +244,7 @@ final class CourseRepository
             'SELECT COUNT(*) AS all_n, SUM(' . self::PRICE_SQL['free'] . ') AS free_n, SUM(' . self::PRICE_SQL['open'] . ') AS open_n,'
             . ' SUM(' . self::PRICE_SQL['paid'] . ') AS paid_n,'
             . " SUM(c.level = 'beginner') AS l_beginner, SUM(c.level = 'intermediate') AS l_intermediate, SUM(c.level = 'advanced') AS l_advanced,"
-            . " SUM(c.track = 'school') AS t_school, SUM(c.track = 'skills') AS t_skills"
+            . " SUM(c.track = 'school') AS t_school, SUM(c.track = 'skills') AS t_skills, SUM(c.track = 'everyday') AS t_everyday"
             . ' FROM courses c WHERE ' . $where,
             $params,
         ) ?? [];

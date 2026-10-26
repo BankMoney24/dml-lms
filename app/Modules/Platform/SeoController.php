@@ -84,6 +84,8 @@ final class SeoController
             foreach ($this->pages->published($tenant->id) as $page) {
                 $urls[] = [$base . $page->path(), $page->updatedAt];
             }
+            $urls[] = [$base . '/accessibility', null];
+            $urls[] = [$base . '/developers', null];
             // Every published course when the list is public; otherwise only open ones (ADR 0021).
             $open = "c.access = 'open' AND (c.price_minor IS NULL OR c.price_minor <= 0 OR c.currency IS NULL)";
             $visible = $tenant->publicCatalogue ? '1 = 1' : $open;

@@ -60,6 +60,9 @@ return static function (Router $r): void {
     // Search engines: no session, no cookies; the school comes from the verified host (none on the platform host).
     $r->get('/robots.txt', [SeoController::class, 'robots'], [Kernel::BARE, 'host-tenant']);
     $r->get('/sitemap.xml', [SeoController::class, 'sitemap'], [Kernel::BARE, 'host-tenant']);
+    $r->get('/.well-known/security.txt', [\App\Modules\Platform\Http\PlatformPagesController::class, 'securityTxt'], [Kernel::BARE]);
+    $r->get('/developers', [\App\Modules\Platform\Http\PlatformPagesController::class, 'developers'], ['tenant']);
+    $r->get('/accessibility', [\App\Modules\Platform\Http\PlatformPagesController::class, 'accessibility'], ['tenant']);
     $r->get('/health/ready', [HealthController::class, 'ready'], [Kernel::BARE]);
     // Link-preview images for social networks (ADR 0019): public, cookie-free, cached.
     $r->get('/share/site.png', [ShareController::class, 'site'], [Kernel::BARE, 'host-tenant', 'tenant']);
@@ -332,6 +335,7 @@ return static function (Router $r): void {
     $r->post('/school/website/{page}', [SiteController::class, 'save'], $school);
     $r->get('/school/website/{page}/preview', [SiteController::class, 'preview'], $school);
     $r->post('/school/website/{page}/publish', [SiteController::class, 'publish'], $school);
+    $r->post('/school/website/{page}/full-draft', [SiteController::class, 'fullDraft'], $school);
     $r->post('/school/website/{page}/unpublish', [SiteController::class, 'unpublish'], $school);
 
     // Wizard engine; each wizard checks who may run it.

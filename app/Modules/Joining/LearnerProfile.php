@@ -15,6 +15,7 @@ final class LearnerProfile
         'data' => ['Data and AI', 'Working with data, spreadsheets and artificial intelligence'],
         'school' => ['School subjects', 'Practicals and exam preparation'],
         'career' => ['A job in tech', 'Practical skills employers ask for'],
+        'everyday' => ['Everyday digital skills', 'Your phone, money online, selling and staying safe'],
     ];
 
     /** key => [label, one line] */

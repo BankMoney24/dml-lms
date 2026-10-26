@@ -118,11 +118,23 @@ $admissionsPage = array_values(array_filter($sitePages, static fn ($sp): bool =>
 </section>
 <?php endif; ?>
 
+<?php $everydayCards ??= []; if ($everydayCards !== []): ?>
+<section class="section everyday-strip" aria-labelledby="everyday-h">
+  <div class="section-head">
+    <h2 id="everyday-h">Learn for everyday life</h2>
+    <a href="/courses?track=everyday">All everyday courses</a>
+  </div>
+  <p class="muted section-sub">Short, practical courses for your phone, your money and your business. No school needed: start on your phone today and go at your own pace.</p>
+  <?php $cards = $everydayCards; include __DIR__ . '/../courses/_list.php'; ?>
+</section>
+<?php endif; ?>
+
 <section class="section audience" aria-labelledby="audience-h">
   <h2 id="audience-h">Who learns here</h2>
   <ul class="audience-list">
     <li><?= $v->icon('code') ?><h3>Programmers</h3><p>Skip what you know, practise in the code playground and labs, and ask under any lesson when you are stuck.</p></li>
     <li><?= $v->icon('school') ?><h3>Students</h3><p>Lessons that work on a phone, quizzes that explain every answer, and teachers who see your progress.</p></li>
+    <?php if ($everydayCards !== []): ?><li><?= $v->icon('people') ?><h3>Traders, artisans and parents</h3><p>Use your phone for money, selling and learning, safely. Short lessons you can save and read offline.</p></li><?php endif; ?>
     <li><?= $v->icon('briefcase') ?><h3>Adults changing career</h3><p>Practical skills in a sensible order<?= $tenant->certificatesEnabled ? ', with certificates employers can check online' : '' ?>. Learn around work, at your own pace.</p></li>
   </ul>
   <?php if ($signUpOpen): ?><p class="audience-cta"><a class="button button-accent" href="/join">Create your free account</a><span class="muted small">Paid courses show their price before you join them.</span></p><?php endif; ?>

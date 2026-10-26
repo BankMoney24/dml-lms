@@ -83,6 +83,10 @@ final class HomeController
                     ? $this->cards->build($tenant->id, $this->courses->browse($tenant->id, ['openOnly' => true], 3))
                     : [],
                 'signUpOpen' => $tenant->signUpOpen(),
+                // Informal learning (ADR 0033): practical courses for life and work, for anyone.
+                'everydayCards' => $tenant->publicCatalogue
+                    ? $this->cards->build($tenant->id, $this->courses->browse($tenant->id, ['track' => 'everyday'], 3))
+                    : [],
                 'sitePages' => $this->sitePages?->published($tenant->id) ?? [],
                 'indexable' => true,
                 'jsonLd' => [
