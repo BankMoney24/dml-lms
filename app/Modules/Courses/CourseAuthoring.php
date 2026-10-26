@@ -194,6 +194,27 @@ final class CourseAuthoring
         $this->audit->record($course->tenantId, $author->user->id, 'course.enrolment_changed', 'course', $course->id, ['mode' => $mode, 'capacity' => $capacity]);
     }
 
+    /**
+     * What finishing the course takes, besides every required lesson (ADR 0032):
+     * optionally an average across the required quizzes. Empty text: no average.
+     */
+    public function setCompletion(Course $course, CurrentUser $author, string $averageText): ?int
+    {
+        $this->authoriseFor($course, $author);
+        $averageText = trim(rtrim(trim($averageText), '%'));
+        $average = null;
+        if ($averageText !== '') {
+            if (preg_match('/^\d{1,3}$/', $averageText) !== 1 || (int) $averageText < 1 || (int) $averageText > 100) {
+                throw ValidationException::single('completion_min_average', 'Enter a percentage from 1 to 100, or leave it empty.');
+            }
+            $average = (int) $averageText;
+        }
+        $this->courses->updateCompletion($course->tenantId, $course->id, $average);
+        $this->audit->record($course->tenantId, $author->user->id, 'course.completion_changed', 'course', $course->id, ['min_average' => $average]);
+
+        return $average;
+    }
+
     public function addModule(Course $course, CurrentUser $author, string $title): int
     {
         $this->authoriseFor($course, $author);
@@ -259,8 +280,17 @@ final class CourseAuthoring
         $valid = $this->validLesson($lesson->type, ['lab_key' => (string) $lesson->labKey] + $input + ['type' => $lesson->type]);
 
         $preview = $lesson->canBePreview() && ($input['preview'] ?? '') === '1';
-        $this->db->transaction(function () use ($course, $lesson, $valid, $author, $preview): void {
+        // Callers that do not send "required" leave it as it is.
+        $required = array_key_exists('required', $input) ? $input['required'] === '1' : $lesson->mandatory;
+        if (!$required && $lesson->mandatory && count($this->lessons->mandatoryLessonIds($course->tenantId, $course->id)) <= 1) {
+            throw ValidationException::single('required', 'A course needs at least one required lesson, or no one could finish it.');
+        }
+        $this->db->transaction(function () use ($course, $lesson, $valid, $author, $preview, $required): void {
             $this->lessons->updateLesson($course->tenantId, $course->id, $lesson->id, $valid['title'], $valid['body'], $valid['media_url'], $preview);
+            if ($required !== $lesson->mandatory) {
+                $this->lessons->setMandatory($course->tenantId, $course->id, $lesson->id, $required);
+                $this->audit->record($course->tenantId, $author->user->id, 'lesson.required_changed', 'lesson', $lesson->id, ['required' => $required]);
+            }
             if ($lesson->isQuiz()) {
                 $assessment = $this->assessments->findForLesson($course->tenantId, $lesson->id);
                 if ($assessment !== null) {

@@ -594,7 +594,7 @@
   function scrollRegions() {
     var used = {};
     Array.prototype.forEach.call(document.querySelectorAll('[data-scroll-region]'), function (el) { var l = el.getAttribute('aria-label'); if (l) { used[l] = (used[l] || 0) + 1; } });
-    Array.prototype.forEach.call(document.querySelectorAll('.table-wrap, .code-block pre'), function (el) {
+    Array.prototype.forEach.call(document.querySelectorAll('.table-wrap, .report-scroll, .code-block pre'), function (el) {
       var scrolls = el.scrollWidth > el.clientWidth + 1;
       if (scrolls && !el.hasAttribute('tabindex')) {
         el.setAttribute('tabindex', '0');

@@ -35,6 +35,7 @@ final class TeachController
         private readonly SubmissionRepository $pendingReviews,
         private readonly LabCatalogue $labs = new LabCatalogue([]),
         private readonly ?PaymentAccountRepository $paymentAccounts = null,
+        private readonly ?\App\Modules\Learning\LearningService $learning = null,
     ) {
     }
 
@@ -123,6 +124,26 @@ final class TeachController
             : 'Saved. People join directly' . ($old['capacity'] !== '' ? ' until the ' . (int) $old['capacity'] . ' places are taken, then join the waiting list.' : '.'));
 
         return Response::redirect('/teach/courses/' . $course->id);
+    }
+
+    /** What finishing the course takes (ADR 0032): every required lesson, and optionally a quiz average. */
+    public function updateCompletion(Request $request): Response
+    {
+        $course = $this->course($request);
+        $text = $request->input('completion_min_average', '') ?? '';
+        try {
+            $average = $this->authoring->setCompletion($course, RequestContext::user($request), $text);
+        } catch (ValidationException $e) {
+            return $this->renderEdit($course, $e->errors, ['completion_min_average' => $text], 422);
+        }
+        $updated = $this->courses->findById($course->tenantId, $course->id) ?? $course;
+        $finished = $this->learning?->recheckCourse($updated) ?? 0;
+        $this->session->flash('success', ($average === null
+            ? 'Saved. Learners finish the course when every required lesson is done.'
+            : 'Saved. Learners also need an average of ' . $average . '% across the required quizzes.')
+            . ($finished > 0 ? ' ' . $finished . ($finished === 1 ? ' learner has' : ' learners have') . ' now finished the course.' : ''));
+
+        return Response::redirect('/teach/courses/' . $course->id . '#completion-h');
     }
 
     /** Who can read the course: people who join, or everyone (ADR 0021). */
@@ -298,6 +319,10 @@ final class TeachController
             'course' => $course,
             'outline' => $outline,
             'questionCounts' => $questionCounts,
+            'requiredQuizzes' => count(array_filter(
+                array_merge(...array_map(static fn (array $m): array => $m['lessons'], $outline ?: [['lessons' => []]])),
+                static fn ($l): bool => $l->isQuiz() && $l->mandatory,
+            )),
             'publishProblems' => $course->isPublished() ? [] : $this->authoring->publishProblems($course),
             'labOptions' => $this->labs->options(),
             'defaultCurrency' => $course->currency ?? ($this->paymentAccounts?->find($course->tenantId)['currency'] ?? 'NGN'),

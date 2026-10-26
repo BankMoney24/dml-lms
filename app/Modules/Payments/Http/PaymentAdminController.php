@@ -25,7 +25,7 @@ use App\Modules\Payments\TransferPayments;
  */
 final class PaymentAdminController
 {
-    private const FILTERS = ['paid' => Payment::PAID, 'waiting' => Payment::PENDING, 'failed' => Payment::FAILED];
+    private const FILTERS = ['paid' => Payment::PAID, 'waiting' => Payment::PENDING, 'failed' => Payment::FAILED, 'refunded' => Payment::REFUNDED];
 
     public function __construct(
         private readonly View $view,
@@ -36,6 +36,8 @@ final class PaymentAdminController
         private readonly CourseRepository $courses,
         private readonly Clock $clock,
         private readonly ?TransferPayments $transfers = null,
+        private readonly ?\App\Modules\Payments\Refunds\Refunds $refunds = null,
+        private readonly ?\App\Modules\Payments\Refunds\RefundRepository $refundRows = null,
     ) {
     }
 
@@ -178,6 +180,70 @@ final class PaymentAdminController
         ]);
     }
 
+    /** POST /school/payments/{payment}/refund: pay back all or part of a payment (ADR 0032). */
+    public function refund(Request $request): Response
+    {
+        $tenant = RequestContext::tenant($request);
+        $paymentId = $request->routeInt('payment');
+        if ($this->refunds === null) {
+            return Response::redirect('/school/payments');
+        }
+        $input = [
+            'refund_amount' => (string) ($request->input('refund_amount', '') ?? ''),
+            'refund_reason' => (string) ($request->input('refund_reason', '') ?? ''),
+            'withdraw' => $request->input('withdraw', '0') === '1' ? '1' : '0',
+        ];
+        try {
+            $refund = $this->refunds->refund(
+                $tenant,
+                RequestContext::user($request),
+                $paymentId,
+                $input['refund_amount'],
+                $input['refund_reason'],
+                $input['withdraw'] === '1',
+                $request->clientIp
+            );
+        } catch (ValidationException $e) {
+            return $this->renderPayment($request, $paymentId, $e->errors, $input, 422);
+        }
+        $this->session->flash('success', $refund->status === \App\Modules\Payments\Refunds\Refund::PROCESSED
+            ? 'Recorded: ' . $refund->amount() . ' paid back. The learner has been told.'
+            : 'Paystack is paying back ' . $refund->amount() . ' to the card or account the learner paid with. It usually takes a few working days; this page updates when Paystack confirms it.');
+
+        return Response::redirect('/school/payments/' . $paymentId);
+    }
+
+    /** GET /school/payments/{payment}: one payment, what happened to it, and refunds. */
+    public function show(Request $request): Response
+    {
+        return $this->renderPayment($request, $request->routeInt('payment'));
+    }
+
+    /**
+     * @param array<string, string> $errors
+     * @param array<string, string> $old
+     */
+    private function renderPayment(Request $request, int $paymentId, array $errors = [], array $old = [], int $status = 200): Response
+    {
+        $tenant = RequestContext::tenant($request);
+        $row = $this->payments->findForSchool($tenant->id, $paymentId) ?? throw \App\Core\Http\HttpException::notFound();
+        $payment = $row['payment'];
+
+        return Response::html($this->view->render('school/payment', [
+            'pageTitle' => 'Payment ' . $payment->reference,
+            'payment' => $payment,
+            'learner' => $row['learner'],
+            'email' => $row['email'],
+            'course' => $row['course'],
+            'refunds' => $this->refundRows?->forPayment($tenant->id, $payment->id) ?? [],
+            'refundable' => $this->refunds?->refundable($tenant, $payment) ?? 0,
+            'events' => $this->payments->events($tenant->id, $payment->id),
+            'now' => $this->clock->now()->getTimestamp(),
+            'errors' => $errors,
+            'old' => $old + ['refund_amount' => '', 'refund_reason' => ''],
+        ]), $status);
+    }
+
     /** A cell starting with = + - @ or a control character is prefixed with a quote so it is shown, not run. */
     public static function cell(string $value): string
     {
@@ -195,13 +261,22 @@ final class PaymentAdminController
         $filter = isset(self::FILTERS[$filter]) ? $filter : '';
         $paidCourses = $this->courses->listPaid($tenant->id);
         $account = $this->accounts->find($tenant->id);
+        $rows = $this->payments->listForSchool($tenant->id, $filter === '' ? null : self::FILTERS[$filter]);
+        $refundRows = $this->refundRows?->forPayments($tenant->id, array_map(static fn (array $r): int => $r['payment']->id, $rows)) ?? [];
+        $refundable = [];
+        foreach ($rows as $r) {
+            $refundable[$r['payment']->id] = $this->refunds?->refundable($tenant, $r['payment']) ?? 0;
+        }
 
         return Response::html($this->view->render('school/payments', [
             'pageTitle' => 'Payments',
             'account' => $account,
             'webhookUrl' => RequestContext::baseUrl($request) . '/webhooks/paystack',
             'callbackUrl' => RequestContext::baseUrl($request) . '/payments/paystack/callback',
-            'rows' => $this->payments->listForSchool($tenant->id, $filter === '' ? null : self::FILTERS[$filter]),
+            'rows' => $rows,
+            'refundRows' => $refundRows,
+            'refundable' => $refundable,
+            'refundTotals' => $this->refundRows?->totalsSince($tenant->id, $this->clock->now()->modify('-30 days')->format('Y-m-d H:i:s')) ?? ['count' => 0, 'minor' => 0],
             'filter' => $filter,
             'totals' => $this->payments->totals($tenant->id, $this->clock->now()->modify('-30 days')->format('Y-m-d H:i:s')),
             'paidCourses' => $paidCourses,

@@ -63,6 +63,7 @@ final class ConsoleApplication
                 'school:brand' => $this->schoolBrand($args),
                 'classroom:connect' => $this->classroomConnect($args),
                 'classroom:check' => $this->classroomCheck($args),
+                'schema:dictionary' => $this->schemaDictionary(),
                 default => $this->help(),
             };
         } catch (Throwable $e) {
@@ -111,6 +112,7 @@ final class ConsoleApplication
                                                     from --secret-file or from standard input, never typed on
                                                     the command line, and is stored encrypted.
           classroom:check <tenant-slug>             Show the classroom server (never the secret) and check it answers
+          schema:dictionary                         Print the data dictionary (Markdown) from the live schema
           school:brand <tenant-slug> [--logo=<png>] [--theme=<key>] [--tagline="<text>"]
                                                     Set a school's logo, colour theme and tagline in one go.
                                                     The DML logo ships in public/assets/brand/dml-mark.png
@@ -124,6 +126,21 @@ final class ConsoleApplication
     {
         $ran = $this->container->get(Migrator::class)->migrate();
         echo $ran === [] ? "Nothing to migrate.\n" : 'Applied: ' . implode(', ', $ran) . "\n";
+
+        return 0;
+    }
+
+    /** Prints the data dictionary (Markdown) from the live schema; see docs/data-dictionary.md. */
+    private function schemaDictionary(): int
+    {
+        $dictionary = new \App\Core\Database\DataDictionary($this->container->get(Connection::class));
+        echo $dictionary->markdown();
+        $missing = $dictionary->undescribed();
+        if ($missing !== []) {
+            fwrite(STDERR, 'Tables without a description: ' . implode(', ', $missing) . "\n");
+
+            return 1;
+        }
 
         return 0;
     }

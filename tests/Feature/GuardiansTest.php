@@ -153,4 +153,46 @@ final class GuardiansTest extends AppTestCase
         $this->post(self::HOST, '/groups/' . $group . '/announcements', ['announcement' => 'Second note.']);
         $this->assertSame(1, (int) $this->db()->fetchValue('SELECT COUNT(*) FROM notifications WHERE user_id = ?', [$mum]), 'notices switched off');
     }
+
+    private function mumSignsIn(string $password): void
+    {
+        $this->signIn('mum@school.test', $password);
+        $this->post(self::HOST, '/account/password', ['current_password' => $password, 'new_password' => 'a brand new passphrase', 'confirm_password' => 'a brand new passphrase']);
+    }
+
+    public function testParentsAndStaffPrintAReportWithOnlyWhatTheyMaySee(): void
+    {
+        $this->mumSignsIn($this->linkMum(['progress' => '1', 'results' => '1']));
+        $report = $this->get(self::HOST, '/children/' . $this->tobi->id . '/report')->body;
+        $this->assertStringContainsString('Learner report', $report);
+        $this->assertStringContainsString('Completed', $report, 'Tobi finished the course');
+        $this->assertStringContainsString('Quiz of school', $report);
+        $this->assertStringContainsString('100%', $report);
+        $this->assertStringContainsString('Lessons finished in this period</dt><dd>2</dd>', $report);
+        $this->assertStringContainsString('data-print', $report);
+
+        // An earlier period has none of this term's lessons.
+        $old = $this->get(self::HOST, '/children/' . $this->tobi->id . '/report?from=2000-01-01&to=2000-03-01')->body;
+        $this->assertStringContainsString('Lessons finished in this period</dt><dd>0</dd>', $old);
+        $this->assertStringContainsString('at most 400 days', $this->get(self::HOST, '/children/' . $this->tobi->id . '/report?from=2000-01-01')->body);
+
+        // Not her child: nothing.
+        $this->assertSame(404, $this->get(self::HOST, '/children/' . $this->ada->id . '/report')->status);
+        $this->assertSame(403, $this->get(self::HOST, '/people/' . $this->tobi->id . '/report')->status);
+
+        $this->signIn('admin@school.test');
+        $staff = $this->get(self::HOST, '/people/' . $this->tobi->id . '/report')->body;
+        $this->assertStringContainsString('Quiz results', $staff);
+        $teacherId = (int) $this->db()->fetchValue("SELECT id FROM users WHERE email = 'teacher@school.test'");
+        $this->assertSame(404, $this->get(self::HOST, '/people/' . $teacherId . '/report')->status, 'reports are for learners');
+    }
+
+    public function testAParentWithoutResultsSeesProgressOnly(): void
+    {
+        $this->mumSignsIn($this->linkMum(['progress' => '1']));
+        $report = $this->get(self::HOST, '/children/' . $this->tobi->id . '/report')->body;
+        $this->assertStringContainsString('Courses', $report);
+        $this->assertStringNotContainsString('Quiz results', $report);
+        $this->assertStringNotContainsString('Quiz average', $report);
+    }
 }

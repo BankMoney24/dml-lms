@@ -47,6 +47,8 @@ final class PaymentService
         private readonly Logger $logger,
         private readonly Clock $clock,
         private readonly ?\App\Modules\Notifications\Notifier $notifier = null,
+        private readonly ?Coupons\Coupons $coupons = null,
+        private readonly ?Refunds\Refunds $refunds = null,
     ) {
     }
 
@@ -73,8 +75,8 @@ final class PaymentService
         return null;
     }
 
-    /** Starts a Paystack checkout and returns its address. */
-    public function startCheckout(Tenant $tenant, Course $course, CurrentUser $user, string $baseUrl, string $clientIp): string
+    /** Starts a Paystack checkout and returns its address. A discount code lowers the amount charged (ADR 0032). */
+    public function startCheckout(Tenant $tenant, Course $course, CurrentUser $user, string $baseUrl, string $clientIp, ?string $code = null): string
     {
         if (!$course->isPaid() || !$course->isPublished() || $course->tenantId !== $tenant->id) {
             throw HttpException::notFound();
@@ -92,6 +94,17 @@ final class PaymentService
             throw ValidationException::single('payment', 'You have started several payments in the last hour. If money left your account, wait a few minutes: it will show up here.');
         }
 
+        $price = (int) $course->priceMinor;
+        $coupon = null;
+        if ($code !== null && trim($code) !== '' && $this->coupons !== null) {
+            $quote = $this->coupons->quote($tenant, $course, $code);
+            if ($quote['price'] === 0) {
+                throw ValidationException::single('code', 'That code covers the whole price, so there is nothing to pay. Use it to start straight away.');
+            }
+            $price = $quote['price'];
+            $coupon = $quote['coupon'];
+        }
+
         $reference = sprintf('DML-%d-%s', $tenant->id, strtoupper(bin2hex(random_bytes(8))));
         $id = $this->payments->create([
             'tenant_id' => $tenant->id,
@@ -100,14 +113,16 @@ final class PaymentService
             'reference' => $reference,
             'provider' => 'paystack',
             'mode' => $account['mode'],
-            'amount_minor' => (int) $course->priceMinor,
+            'amount_minor' => $price,
             'currency' => (string) $course->currency,
             'status' => Payment::PENDING,
+            'coupon_id' => $coupon?->id,
+            'list_price_minor' => $coupon === null ? null : (int) $course->priceMinor,
         ]);
         $this->payments->recordEvent($tenant->id, $id, 'created:' . $reference, 'platform', 'checkout.started', 'pending');
 
         try {
-            $url = $this->paystack->initialize($secret, $user->user->email, (int) $course->priceMinor, (string) $course->currency, $reference, $baseUrl . '/payments/paystack/callback', [
+            $url = $this->paystack->initialize($secret, $user->user->email, $price, (string) $course->currency, $reference, $baseUrl . '/payments/paystack/callback', [
                 'school' => $tenant->slug,
                 'course' => $course->slug,
                 'payment_id' => $id,
@@ -117,9 +132,53 @@ final class PaymentService
             $this->logger->error('Paystack initialize failed', ['tenant' => $tenant->id, 'payment' => $id, 'error' => $e->getMessage()]);
             throw ValidationException::single('payment', 'The payment page could not be opened just now. Nothing was charged. Please try again in a few minutes.');
         }
-        $this->audit->record($tenant->id, $user->user->id, 'payment.started', 'course', $course->id, ['reference' => $reference, 'amount' => (int) $course->priceMinor], $clientIp);
+        $this->audit->record($tenant->id, $user->user->id, 'payment.started', 'course', $course->id, ['reference' => $reference, 'amount' => $price, 'coupon' => $coupon?->code], $clientIp);
 
         return $url;
+    }
+
+    /**
+     * A code that covers the whole price: the learner gets a place without paying.
+     * The code's row is locked while its uses are counted, so a code with one use
+     * left cannot be taken twice at the same moment.
+     */
+    public function redeemFree(Tenant $tenant, Course $course, CurrentUser $user, string $code, string $clientIp): Payment
+    {
+        if ($this->coupons === null || !$course->isPaid() || !$course->isPublished() || $course->tenantId !== $tenant->id) {
+            throw \App\Core\Http\HttpException::notFound();
+        }
+        $payment = $this->db->transaction(function () use ($tenant, $course, $user, $code): Payment {
+            $quote = $this->coupons->quote($tenant, $course, $code, true);
+            if ($quote['price'] !== 0) {
+                throw ValidationException::single('code', 'That code takes ' . $quote['coupon']->label() . ' off. Pay the rest to start.');
+            }
+            if ($this->payments->hasPaid($tenant->id, $user->user->id, $course->id)) {
+                throw ValidationException::single('code', 'You already have this course.');
+            }
+            $reference = sprintf('CPN-%d-%s', $tenant->id, strtoupper(bin2hex(random_bytes(6))));
+            $id = $this->payments->create([
+                'tenant_id' => $tenant->id,
+                'user_id' => $user->user->id,
+                'course_id' => $course->id,
+                'reference' => $reference,
+                'provider' => 'coupon',
+                'mode' => 'live',
+                'amount_minor' => 0,
+                'currency' => (string) $course->currency,
+                'status' => Payment::PAID,
+                'note' => 'Discount code ' . $quote['coupon']->code,
+                'coupon_id' => $quote['coupon']->id,
+                'list_price_minor' => (int) $course->priceMinor,
+            ]);
+            $this->payments->recordEvent($tenant->id, $id, 'coupon:' . $reference, 'platform', 'coupon.redeemed', 'paid', ['code' => $quote['coupon']->code]);
+            $payment = $this->payments->find($tenant->id, $id) ?? throw new \RuntimeException('Payment not stored.');
+            $this->enrolAfterPayment($tenant, $payment);
+
+            return $payment;
+        });
+        $this->audit->record($tenant->id, $user->user->id, 'coupon.redeemed', 'course', $course->id, ['reference' => $payment->reference], $clientIp);
+
+        return $payment;
     }
 
     /**
@@ -172,6 +231,14 @@ final class PaymentService
             return true;
         }
         $data = $event['data'];
+        if (str_starts_with($event['event'], 'refund.')) {
+            // Refund webhooks settle refunds started from the payments page (ADR 0032). Repeats are ignored.
+            if ($this->payments->recordEvent($tenant->id, null, 'webhook:' . $event['event'] . ':' . hash('sha256', $rawBody), 'webhook', $event['event'], 'received')) {
+                $this->refunds?->settleFromWebhook($tenant, $event['event'], $data);
+            }
+
+            return true;
+        }
         $reference = is_string($data['reference'] ?? null) ? $data['reference'] : '';
         if ($event['event'] !== 'charge.success' || $reference === '') {
             $this->payments->recordEvent($tenant->id, null, 'webhook:' . $event['event'] . ':' . hash('sha256', $rawBody), 'webhook', $event['event'], 'ignored');

@@ -27,6 +27,7 @@ $nothing = !$link->canProgress && !$link->canResults && !$link->canNotices;
 <header class="page-head">
   <h1><?= $v->e($link->learnerName) ?></h1>
   <p class="lead">You are <?= $v->e($first) ?>'s <?= $v->e(strtolower($link->relationshipLabel())) ?>. This page shows what <?= $v->e($school->name) ?> agreed you can see. You can look; nothing here can be changed.</p>
+  <?php if ($link->canProgress || $link->canResults): ?><p><a class="button button-small button-quiet" href="/children/<?= $link->learnerId ?>/report"><?= $v->icon('chart') ?>Report to print</a></p><?php endif; ?>
 </header>
 
 <?php if ($nothing): ?>

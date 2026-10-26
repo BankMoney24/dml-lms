@@ -60,12 +60,13 @@ Interface:
 
 Pending features (from the invoice's pending list):
 
-- [ ] Refunds, coupons and instalments
-- [ ] Per-course completion rules
-- [ ] Parent report sheets (printable)
+- [x] Refunds and discount codes (update 32, ADR 0032)
+- [ ] Instalments
+- [x] Per-course completion rules (update 32)
+- [x] Learner report sheets for parents and staff, printable (update 32)
 - [ ] Public API v1 (for PrimeERP and others) with per-school keys
 - [ ] Full offline mode for lessons
-- [ ] Threat model and data dictionary documents
+- [x] Threat model (`docs/threat-model.md`) and data dictionary (`docs/data-dictionary.md`) (update 32)
 - [ ] SMS / WhatsApp: needs a provider account and a consent review first
 - [ ] Recording and YouTube streaming: needs a separate Jibri server (more memory than the current server can spare)
 - [ ] Real-machine labs: needs isolated lab servers

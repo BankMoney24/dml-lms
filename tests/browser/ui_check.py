@@ -19,7 +19,7 @@ from playwright.sync_api import sync_playwright
 WIDTHS = [360, 390, 430, 768, 820, 1024, 1280, 1440]
 PUBLIC_PAGES = ["/", "/login", "/join", "/join/parent", "/password/forgot", "/courses", "/verify"]
 SIGNED_IN_PAGES = ["/", "/courses", "/classes", "/meetings", "/notifications", "/account", "/help", "/playground", "/search?q=net"]
-ADMIN_PAGES = ["/school", "/people", "/school/reports", "/school/payments", "/school/website", "/school/classroom", "/teach", "/groups", "/meetings/new"]
+ADMIN_PAGES = ["/school", "/people", "/school/reports", "/school/payments", "/school/payments/codes", "/school/website", "/school/classroom", "/teach", "/groups", "/meetings/new"]
 
 failures = []
 

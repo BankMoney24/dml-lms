@@ -33,6 +33,7 @@ final class LessonEditorController
         private readonly FileService $fileService,
         private readonly FileRepository $files,
         private readonly ?\App\Modules\Courses\LessonMedia $media = null,
+        private readonly ?\App\Modules\Learning\LearningService $learning = null,
     ) {
     }
 
@@ -113,6 +114,10 @@ final class LessonEditorController
             'max_attempts' => $request->input('max_attempts', '') ?? '',
             'preview' => $request->input('preview', '0') === '1' ? '1' : '0',
         ];
+        // The form always sends "required_shown"; then an unticked box means "not required".
+        if ($request->input('required_shown') === '1') {
+            $input['required'] = $request->input('required', '0') === '1' ? '1' : '0';
+        }
         try {
             $this->authoring->updateLesson($course, RequestContext::user($request), $lesson->id, $input);
         } catch (ValidationException $e) {
@@ -123,9 +128,14 @@ final class LessonEditorController
                 'pass_threshold' => $input['pass_threshold'],
                 'max_attempts' => $input['max_attempts'],
                 'preview' => $input['preview'],
+                'required' => $input['required'] ?? ($lesson->mandatory ? '1' : '0'),
             ], 422);
         }
-        $this->session->flash('success', 'Lesson saved.');
+        $finished = 0;
+        if ($lesson->mandatory && ($input['required'] ?? '1') === '0') {
+            $finished = $this->learning?->recheckCourse($course) ?? 0;
+        }
+        $this->session->flash('success', 'Lesson saved.' . ($finished > 0 ? ' ' . $finished . ($finished === 1 ? ' learner has' : ' learners have') . ' now finished the course.' : ''));
 
         return Response::redirect($this->editUrl($course, $lesson));
     }

@@ -261,6 +261,7 @@ final class Application
             $c->get(CertificateService::class),
             $c->get(PaymentRepository::class),
             $c->get(\App\Modules\Applications\ApplicationRepository::class),
+            $c->get(CourseRepository::class),
         ));
         $c->set(
             \App\Modules\Applications\ApplicationRepository::class,
@@ -299,6 +300,33 @@ final class Application
             $c->get(AuditLog::class),
             $c->get(Logger::class),
             $c->get(Clock::class),
+            $c->get(Notifier::class),
+            $c->get(\App\Modules\Payments\Coupons\Coupons::class),
+            $c->get(\App\Modules\Payments\Refunds\Refunds::class),
+        ));
+        $c->set(\App\Modules\Payments\Coupons\CouponRepository::class, static fn (Container $c) => new \App\Modules\Payments\Coupons\CouponRepository(
+            $c->get(Connection::class),
+            $c->get(Clock::class),
+        ));
+        $c->set(\App\Modules\Payments\Coupons\Coupons::class, static fn (Container $c) => new \App\Modules\Payments\Coupons\Coupons(
+            $c->get(\App\Modules\Payments\Coupons\CouponRepository::class),
+            $c->get(CourseRepository::class),
+            $c->get(AuditLog::class),
+            $c->get(Clock::class),
+        ));
+        $c->set(\App\Modules\Payments\Refunds\RefundRepository::class, static fn (Container $c) => new \App\Modules\Payments\Refunds\RefundRepository(
+            $c->get(Connection::class),
+            $c->get(Clock::class),
+        ));
+        $c->set(\App\Modules\Payments\Refunds\Refunds::class, static fn (Container $c) => new \App\Modules\Payments\Refunds\Refunds(
+            $c->get(Connection::class),
+            $c->get(PaymentRepository::class),
+            $c->get(\App\Modules\Payments\Refunds\RefundRepository::class),
+            $c->get(PaymentAccountRepository::class),
+            $c->get(PaystackApi::class),
+            $c->get(LearningService::class),
+            $c->get(AuditLog::class),
+            $c->get(Logger::class),
             $c->get(Notifier::class),
         ));
         $c->set(GroupRepository::class, static fn (Container $c) => new GroupRepository($c->get(Connection::class), $c->get(Clock::class)));
@@ -532,6 +560,7 @@ final class Application
             $c->get(SubmissionRepository::class),
             $c->get(LabCatalogue::class),
             $c->get(PaymentAccountRepository::class),
+            $c->get(LearningService::class),
         ));
         $c->set(ReviewController::class, static fn (Container $c) => new ReviewController(
             $c->get(View::class),
@@ -569,6 +598,7 @@ final class Application
             $c->get(FileService::class),
             $c->get(FileRepository::class),
             $c->get(\App\Modules\Courses\LessonMedia::class),
+            $c->get(LearningService::class),
         ));
         $c->set(\App\Modules\Courses\LessonMedia::class, static fn (Container $c) => new \App\Modules\Courses\LessonMedia(
             $c->get(FileService::class),
@@ -692,6 +722,7 @@ final class Application
             $c->get(\App\Modules\Payments\PaymentRepository::class),
             $c->get(CourseRepository::class),
             $c->get(UserRepository::class),
+            $c->get(\App\Modules\Payments\Refunds\RefundRepository::class),
         ));
         $c->set(\App\Modules\Applications\Admissions::class, static fn (Container $c) => new \App\Modules\Applications\Admissions(
             $c->get(Connection::class),
@@ -815,6 +846,14 @@ final class Application
             $c->get(CourseRepository::class),
             $c->get(Clock::class),
             $c->get(\App\Modules\Payments\TransferPayments::class),
+            $c->get(\App\Modules\Payments\Refunds\Refunds::class),
+            $c->get(\App\Modules\Payments\Refunds\RefundRepository::class),
+        ));
+        $c->set(\App\Modules\Payments\Http\CouponController::class, static fn (Container $c) => new \App\Modules\Payments\Http\CouponController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(\App\Modules\Payments\Coupons\Coupons::class),
+            $c->get(CourseRepository::class),
         ));
         // Subscribing and paying the school directly (ADR 0026).
         $c->set(\App\Modules\Payments\PaymentClaimRepository::class, static fn (Container $c) => new \App\Modules\Payments\PaymentClaimRepository($c->get(Connection::class), $c->get(Clock::class)));
@@ -842,6 +881,8 @@ final class Application
             $c->get(PaymentRepository::class),
             $c->get(\App\Modules\Payments\TransferPayments::class),
             $c->get(\App\Modules\Applications\ApplicationRepository::class),
+            $c->get(\App\Modules\Payments\Coupons\Coupons::class),
+            $c->get(\App\Core\Security\RateLimiter::class),
         ));
         $c->set(GroupController::class, static fn (Container $c) => new GroupController(
             $c->get(View::class),
@@ -979,6 +1020,18 @@ final class Application
             $c->get(GroupRepository::class),
             $c->get(CertificateService::class),
             $c->get(\App\Modules\LiveClasses\ClassSessionRepository::class),
+        ));
+        $c->set(\App\Modules\Guardians\Http\ReportSheetController::class, static fn (Container $c) => new \App\Modules\Guardians\Http\ReportSheetController(
+            $c->get(View::class),
+            $c->get(GuardianService::class),
+            new \App\Modules\Guardians\ReportSheet(
+                $c->get(Connection::class),
+                new ChildReport($c->get(Connection::class)),
+                $c->get(GroupRepository::class),
+                $c->get(CertificateService::class),
+                $c->get(Clock::class),
+                $c->get(\App\Modules\LiveClasses\ClassSessionRepository::class),
+            ),
         ));
         $c->set(\App\Modules\Search\Http\SearchController::class, static fn (Container $c) => new \App\Modules\Search\Http\SearchController(
             $c->get(View::class),

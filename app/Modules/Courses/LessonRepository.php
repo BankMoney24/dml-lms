@@ -159,6 +159,15 @@ final class LessonRepository
         );
     }
 
+    /** Whether finishing the course needs this lesson (ADR 0032). */
+    public function setMandatory(int $tenantId, int $courseId, int $lessonId, bool $mandatory): void
+    {
+        $this->db->execute(
+            'UPDATE lessons SET is_mandatory = ?, updated_at = ? WHERE tenant_id = ? AND course_id = ? AND id = ?',
+            [$mandatory ? 1 : 0, $this->clock->sqlNow(), $tenantId, $courseId, $lessonId],
+        );
+    }
+
     /** Points a video or audio lesson at its uploaded media file (null: none). */
     public function setMediaFile(int $tenantId, int $lessonId, ?int $fileId): void
     {

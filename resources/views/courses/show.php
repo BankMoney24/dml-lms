@@ -116,6 +116,10 @@ $chips[] = $v->plural($lessonCount, 'lesson');
     <p class="start-progress"><strong><?= $done ?> of <?= $lessonCount ?></strong> lessons done</p>
     <progress class="meter" max="<?= max(1, $lessonCount) ?>" value="<?= $done ?>" aria-label="Your progress"></progress>
     <p class="start-action"><a class="button" href="/courses/<?= $v->e($course->slug) ?>/lessons/<?= $firstOpen->id ?>"><?= $done === 0 ? 'Start' : 'Continue' ?>: <?= $v->e($firstOpen->title) ?></a></p>
+    <?php include __DIR__ . '/_standing.php'; ?>
+  <?php elseif ($enrolment !== null): ?>
+    <p class="start-title">Every lesson is done</p>
+    <?php include __DIR__ . '/_standing.php'; ?>
   <?php elseif ($applyState !== null): ?>
     <?php include __DIR__ . '/_apply.php'; ?>
   <?php elseif ($user === null && $course->isOpen() && $firstReadable !== null): ?>

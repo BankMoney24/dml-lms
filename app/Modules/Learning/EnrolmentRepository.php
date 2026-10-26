@@ -13,10 +13,11 @@ final class EnrolmentRepository
     {
     }
 
+    /** The learner's place on the course; null when they have none or were withdrawn from it. */
     public function find(int $tenantId, int $courseId, int $userId): ?Enrolment
     {
         $row = $this->db->fetchOne(
-            'SELECT * FROM enrolments WHERE tenant_id = ? AND course_id = ? AND user_id = ?',
+            "SELECT * FROM enrolments WHERE tenant_id = ? AND course_id = ? AND user_id = ? AND status <> 'withdrawn'",
             [$tenantId, $courseId, $userId],
         );
 
@@ -30,11 +31,15 @@ final class EnrolmentRepository
         return $row === null ? null : Enrolment::fromRow($row);
     }
 
-    /** Idempotent: a repeated enrol request returns the existing enrolment. */
+    /**
+     * Idempotent: a repeated enrol request returns the existing enrolment. Someone who
+     * was withdrawn gets their place back with their earlier progress.
+     */
     public function enrol(int $tenantId, int $courseId, int $userId): Enrolment
     {
         $this->db->execute(
-            'INSERT IGNORE INTO enrolments (tenant_id, course_id, user_id, status, enrolled_at) VALUES (?, ?, ?, ?, ?)',
+            "INSERT INTO enrolments (tenant_id, course_id, user_id, status, enrolled_at) VALUES (?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE status = IF(status = 'withdrawn', IF(completed_at IS NULL, 'active', 'completed'), status)",
             [$tenantId, $courseId, $userId, Enrolment::STATUS_ACTIVE, $this->clock->sqlNow()],
         );
         $enrolment = $this->find($tenantId, $courseId, $userId);
@@ -49,6 +54,28 @@ final class EnrolmentRepository
     public function countForCourse(int $tenantId, int $courseId): int
     {
         return (int) $this->db->fetchValue("SELECT COUNT(*) FROM enrolments WHERE tenant_id = ? AND course_id = ? AND status <> 'withdrawn'", [$tenantId, $courseId]);
+    }
+
+    /** Takes the learner off the course (ADR 0032). Their progress, results and certificates are kept. */
+    public function withdraw(int $tenantId, int $courseId, int $userId): bool
+    {
+        return $this->db->execute(
+            "UPDATE enrolments SET status = 'withdrawn' WHERE tenant_id = ? AND course_id = ? AND user_id = ? AND status <> 'withdrawn'",
+            [$tenantId, $courseId, $userId],
+        ) > 0;
+    }
+
+    /**
+     * Places on a course that are not finished yet, to check again after its completion rule changes.
+     *
+     * @return list<Enrolment>
+     */
+    public function unfinished(int $tenantId, int $courseId): array
+    {
+        return array_map(
+            Enrolment::fromRow(...),
+            $this->db->fetchAll("SELECT * FROM enrolments WHERE tenant_id = ? AND course_id = ? AND status = 'active' LIMIT 5000", [$tenantId, $courseId]),
+        );
     }
 
     public function markCompleted(int $tenantId, int $enrolmentId): void

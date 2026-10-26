@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Modules\Learning;
 
 /**
- * Course completion rule (ASM-004). The default rule: every mandatory lesson
- * is complete. Quiz lessons only count as complete once an attempt meets that
- * quiz's pass threshold, so the score requirement is carried by each quiz's
- * configurable threshold rather than a hardcoded course percentage.
+ * Course completion rule (ASM-004). Every required (mandatory) lesson is
+ * complete; quiz lessons count as complete once an attempt meets that quiz's
+ * pass mark. A course may also ask for an average across its required quizzes
+ * (each quiz's best score), set per course (ADR 0032).
  */
 final class CompletionRule
 {
@@ -16,12 +16,16 @@ final class CompletionRule
      * @param list<int> $mandatoryLessonIds
      * @param list<int> $completedLessonIds
      */
-    public function isComplete(array $mandatoryLessonIds, array $completedLessonIds): bool
+    public function isComplete(array $mandatoryLessonIds, array $completedLessonIds, ?int $minAverage = null, ?int $quizAverage = null): bool
     {
         if ($mandatoryLessonIds === []) {
             return false;
         }
+        if (array_diff($mandatoryLessonIds, $completedLessonIds) !== []) {
+            return false;
+        }
 
-        return array_diff($mandatoryLessonIds, $completedLessonIds) === [];
+        // A course without required quizzes has no average to meet.
+        return $minAverage === null || $quizAverage === null || $quizAverage >= $minAverage;
     }
 }

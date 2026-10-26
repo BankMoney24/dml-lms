@@ -48,7 +48,7 @@ final class CourseCards
         if ($userId !== null) {
             foreach (
                 $this->db->fetchAll(
-                    "SELECT course_id, status FROM enrolments WHERE tenant_id = ? AND user_id = ? AND course_id IN ($in)",
+                    "SELECT course_id, status FROM enrolments WHERE tenant_id = ? AND user_id = ? AND status <> 'withdrawn' AND course_id IN ($in)",
                     array_merge([$tenantId, $userId], $ids),
                 ) as $row
             ) {
@@ -60,7 +60,7 @@ final class CourseCards
                  FROM enrolments e
                  JOIN lesson_progress p ON p.tenant_id = e.tenant_id AND p.enrolment_id = e.id AND p.status = 'completed'
                  JOIN lessons l ON l.tenant_id = p.tenant_id AND l.id = p.lesson_id AND l.is_mandatory = 1
-                 WHERE e.tenant_id = ? AND e.user_id = ? AND e.course_id IN ($in)
+                 WHERE e.tenant_id = ? AND e.user_id = ? AND e.status <> 'withdrawn' AND e.course_id IN ($in)
                  GROUP BY e.course_id, l.module_id",
                     array_merge([$tenantId, $userId], $ids),
                 ) as $row

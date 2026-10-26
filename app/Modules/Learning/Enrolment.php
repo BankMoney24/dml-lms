@@ -8,6 +8,8 @@ final class Enrolment
 {
     public const STATUS_ACTIVE = 'active';
     public const STATUS_COMPLETED = 'completed';
+    /** Removed from the course (for example after a refund): no access, history kept (ADR 0032). */
+    public const STATUS_WITHDRAWN = 'withdrawn';
 
     public function __construct(
         public readonly int $id,

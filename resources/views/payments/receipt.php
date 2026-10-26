@@ -7,7 +7,10 @@
  * @var ?\App\Modules\Courses\Course $course
  * @var string $payerName
  * @var string $payerEmail
+ * @var list<\App\Modules\Payments\Refunds\Refund> $refunds
  */
+$refunds ??= [];
+$refunded = array_sum(array_map(static fn ($r): int => $r->status === 'failed' ? 0 : $r->amountMinor, $refunds));
 $school = $v->shared('tenant');
 ?>
 <div class="no-print">
@@ -26,7 +29,7 @@ $school = $v->shared('tenant');
     </div>
     <div class="receipt-title">
       <h1 id="receipt-h">Receipt</h1>
-      <p class="badge badge-ok">Paid</p>
+      <p class="badge <?= $payment->status === 'refunded' ? 'badge-neutral' : 'badge-ok' ?>"><?= $payment->status === 'refunded' ? 'Refunded' : ($refunded > 0 ? 'Paid, part refunded' : 'Paid') ?></p>
     </div>
   </header>
   <dl class="receipt-facts">
@@ -38,8 +41,26 @@ $school = $v->shared('tenant');
   </dl>
   <table class="table receipt-lines">
     <thead><tr><th scope="col">For</th><th scope="col" class="num">Amount</th></tr></thead>
-    <tbody><tr><td>Course: <?= $v->e($course?->title ?? 'Course') ?></td><td class="num"><?= $v->e($payment->amount()) ?></td></tr></tbody>
+    <tbody>
+      <?php if ($payment->discountMinor() > 0): ?>
+        <tr><td>Course: <?= $v->e($course?->title ?? 'Course') ?></td><td class="num"><?= $v->e(\App\Modules\Payments\Money::format((int) $payment->listPriceMinor, $payment->currency)) ?></td></tr>
+        <tr><td>Discount code</td><td class="num">−<?= $v->e(\App\Modules\Payments\Money::format($payment->discountMinor(), $payment->currency)) ?></td></tr>
+      <?php else: ?>
+        <tr><td>Course: <?= $v->e($course?->title ?? 'Course') ?></td><td class="num"><?= $v->e($payment->amount()) ?></td></tr>
+      <?php endif; ?>
+    </tbody>
     <tfoot><tr><th scope="row">Total paid</th><td class="num"><strong><?= $v->e($payment->amount()) ?></strong></td></tr></tfoot>
   </table>
+  <?php if ($refunds !== []): ?>
+  <table class="table receipt-lines">
+    <caption class="visually-hidden">Refunds</caption>
+    <thead><tr><th scope="col">Refund</th><th scope="col">Status</th><th scope="col" class="num">Amount</th></tr></thead>
+    <tbody>
+    <?php foreach ($refunds as $r): ?>
+      <tr><td><?= $v->datetime($r->createdAt, 'j F Y') ?>: <?= $v->e($r->reason) ?></td><td><?= $v->e($r->statusLabel()) ?></td><td class="num">−<?= $v->e($r->amount()) ?></td></tr>
+    <?php endforeach; ?>
+    </tbody>
+  </table>
+  <?php endif; ?>
   <p class="small muted receipt-note">Keep this receipt. Quote the reference if you contact <?= $v->e($school?->name) ?> about this payment.</p>
 </article>

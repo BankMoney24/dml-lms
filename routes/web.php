@@ -201,6 +201,7 @@ return static function (Router $r): void {
     $r->post('/teach/applications/{application:int}/offer', [\App\Modules\Applications\Http\ApplicationsAdminController::class, 'offer'], ['tenant', 'auth', 'can:course.manage']);
     $r->post('/teach/applications/{application:int}/decline', [\App\Modules\Applications\Http\ApplicationsAdminController::class, 'decline'], ['tenant', 'auth', 'can:course.manage']);
     $r->post('/teach/courses/{course:int}/enrolment', [TeachController::class, 'updateEnrolment'], ['tenant', 'auth', 'can:course.manage']);
+    $r->post('/teach/courses/{course:int}/completion', [TeachController::class, 'updateCompletion'], $teach);
     // Learning paths and achievements (ADR 0023).
     $r->get('/achievements', [AchievementsController::class, 'index'], ['tenant', 'auth', 'can:course.learn']);
     $r->get('/paths/{slug}', [PathController::class, 'show'], ['tenant']);
@@ -243,6 +244,8 @@ return static function (Router $r): void {
     // A guardian's view of their linked learners; the link is checked on every request.
     $r->get('/children', [ChildController::class, 'index'], ['tenant', 'auth']);
     $r->get('/children/{learner:int}', [ChildController::class, 'show'], ['tenant', 'auth']);
+    $r->get('/children/{learner:int}/report', [\App\Modules\Guardians\Http\ReportSheetController::class, 'forParent'], ['tenant', 'auth']);
+    $r->get('/people/{user:int}/report', [\App\Modules\Guardians\Http\ReportSheetController::class, 'forStaff'], $people);
     // Help requests (SUP-001): everyone asks, support staff answer.
     $r->get('/help', [SupportController::class, 'index'], ['tenant', 'auth']);
     $r->post('/help', [SupportController::class, 'store'], ['tenant', 'auth']);
@@ -312,6 +315,11 @@ return static function (Router $r): void {
     $r->post('/school/payments/instructions', [PaymentAdminController::class, 'instructions'], $school);
     $r->post('/school/payments/claims/{claim:int}/confirm', [PaymentAdminController::class, 'confirmClaim'], $school);
     $r->post('/school/payments/claims/{claim:int}/reject', [PaymentAdminController::class, 'rejectClaim'], $school);
+    $r->get('/school/payments/{payment:int}', [PaymentAdminController::class, 'show'], $school);
+    $r->post('/school/payments/{payment:int}/refund', [PaymentAdminController::class, 'refund'], $school);
+    $r->get('/school/payments/codes', [\App\Modules\Payments\Http\CouponController::class, 'index'], $school);
+    $r->post('/school/payments/codes', [\App\Modules\Payments\Http\CouponController::class, 'store'], $school);
+    $r->post('/school/payments/codes/{coupon:int}/status', [\App\Modules\Payments\Http\CouponController::class, 'status'], $school);
     $r->get('/logo', [SchoolController::class, 'logo'], ['tenant']);
     $r->get('/school/joining', [JoiningAdminController::class, 'index'], ['tenant', 'auth', 'can:members.manage']);
     $r->post('/school/joining/settings', [JoiningAdminController::class, 'saveSettings'], $school);

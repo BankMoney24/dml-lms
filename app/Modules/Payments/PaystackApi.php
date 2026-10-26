@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Payments;
 
-/** The three Paystack calls the platform makes. Tests replace this with a fake. */
+/** The Paystack calls the platform makes. Tests replace this with a fake. */
 interface PaystackApi
 {
     /**
@@ -25,4 +25,13 @@ interface PaystackApi
 
     /** True when Paystack accepts the key. @throws PaymentProviderError when Paystack cannot be reached */
     public function ping(string $secret): bool;
+
+    /**
+     * Asks Paystack to pay back all or part of a transaction (ADR 0032). Paystack
+     * usually answers "pending" and settles it later with a refund webhook.
+     *
+     * @return array{id: string, status: string}
+     * @throws PaymentProviderError
+     */
+    public function refund(string $secret, string $reference, int $amountMinor, string $reason): array;
 }

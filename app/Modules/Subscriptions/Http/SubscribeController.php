@@ -50,6 +50,8 @@ final class SubscribeController
         private readonly PaymentRepository $paymentRows,
         private readonly TransferPayments $transfers,
         private readonly ApplicationRepository $applications,
+        private readonly ?\App\Modules\Payments\Coupons\Coupons $coupons = null,
+        private readonly ?\App\Core\Security\RateLimiter $limiter = null,
     ) {
     }
 
@@ -82,6 +84,21 @@ final class SubscribeController
                 }
             }
         }
+        // A discount code typed on this page (ADR 0032): the price shown, and sent to checkout, is the discounted one.
+        $code = mb_substr(trim($request->query('code', '') ?? ''), 0, 40);
+        $quote = null;
+        $codeError = null;
+        if ($code !== '' && $state === 'pay' && $user !== null && $this->coupons !== null) {
+            if (!$this->codeAttemptAllowed($tenant->id, $user->user->id)) {
+                $codeError = 'Too many codes tried. Wait an hour, or ask the school.';
+            } else {
+                try {
+                    $quote = $this->coupons->quote($tenant, $course, $code);
+                } catch (ValidationException $e) {
+                    $codeError = $e->errors['code'] ?? 'That code cannot be used.';
+                }
+            }
+        }
         $raw = $this->session->pullFlash(self::FORM_FLASH);
         $data = $raw === null ? null : json_decode($raw, true);
         $errors = is_array($data) && is_array($data['errors'] ?? null) ? array_filter($data['errors'], 'is_string') : [];
@@ -100,6 +117,10 @@ final class SubscribeController
             'claim' => $user !== null && $course->isPaid() ? $this->transfers->latestFor($tenant, $user, $course) : null,
             'waiting' => $state === 'pay' && $user !== null ? $this->payments->waiting($tenant, $user->user->id, $course) : null,
             'methods' => PaymentClaim::METHODS,
+            'codesOn' => $this->coupons !== null,
+            'code' => $quote !== null ? $quote['coupon']->code : $code,
+            'quote' => $quote,
+            'codeError' => $codeError,
             'errors' => $errors,
             'old' => $old + ['method' => 'transfer', 'amount' => $course->priceMinor === null ? '' : (string) intdiv($course->priceMinor, 100), 'paid_on' => '', 'reference' => '', 'note' => ''],
         ]));
@@ -119,6 +140,36 @@ final class SubscribeController
             $this->session->flash('error', 'This course takes applications. Apply for a place; the school will add you.');
 
             return Response::redirect('/courses/' . $course->slug . '#apply');
+        }
+        $code = mb_substr(trim($request->input('code', '') ?? ''), 0, 40);
+        if ($code !== '' && $this->learning->needsPayment($course, $user) && $this->coupons !== null) {
+            if (!$this->codeAttemptAllowed($tenant->id, $user->user->id)) {
+                $this->session->flash('error', 'Too many codes tried. Wait an hour, or ask the school.');
+
+                return Response::redirect($here);
+            }
+            try {
+                $quote = $this->coupons->quote($tenant, $course, $code);
+                if ($quote['price'] === 0) {
+                    $this->payments->redeemFree($tenant, $course, $user, $code, $request->clientIp);
+                    $first = $this->lessons->orderedLessons($tenant->id, $course->id)[0] ?? null;
+                    $this->session->flash('success', 'Code ' . $quote['coupon']->code . ' accepted. You are subscribed to ' . $course->title . '.');
+
+                    return Response::redirect($first === null ? '/courses/' . $course->slug : '/courses/' . $course->slug . '/lessons/' . $first->id);
+                }
+                if (!$this->payments->isConnected($tenant)) {
+                    $this->session->flash('error', 'This code works with online payment, which this school does not take yet. Ask the school about paying the reduced price directly.');
+
+                    return Response::redirect($here . '?code=' . rawurlencode($code) . '#discount');
+                }
+                $url = $this->payments->startCheckout($tenant, $course, $user, $request->baseUrl(), $request->clientIp, $code);
+            } catch (ValidationException $e) {
+                $this->session->flash('error', implode(' ', $e->errors));
+
+                return Response::redirect($here . '?code=' . rawurlencode($code) . '#discount');
+            }
+
+            return Response::redirectToCheckout($url);
         }
         if ($this->learning->needsPayment($course, $user)) {
             if (!$this->payments->isConnected($tenant)) {
@@ -141,6 +192,12 @@ final class SubscribeController
         $this->session->flash('success', 'You are subscribed to ' . $course->title . '. ' . ($first === null ? 'Lessons appear here as they are added.' : 'Here is your first lesson.'));
 
         return Response::redirect($first === null ? '/courses/' . $course->slug : '/courses/' . $course->slug . '/lessons/' . $first->id);
+    }
+
+    /** Twenty code checks an hour per person, so codes cannot be guessed by trying many. */
+    private function codeAttemptAllowed(int $tenantId, int $userId): bool
+    {
+        return $this->limiter === null || $this->limiter->attempt('coupon:' . $tenantId . ':' . $userId, 20, 3600);
     }
 
     /** POST /courses/{slug}/subscribe/transfer: "I have paid the school." */

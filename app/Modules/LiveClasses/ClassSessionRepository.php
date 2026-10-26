@@ -279,12 +279,13 @@ final class ClassSessionRepository
      *
      * @return array{held: int, present: int, late: int, absent: int, excused: int, unmarked: int, rate: ?int, recent: list<array{session: ClassSession, status: ?string}>}
      */
-    public function learnerSummary(int $tenantId, int $userId, string $nowUtc, int $recent = 8): array
+    public function learnerSummary(int $tenantId, int $userId, string $nowUtc, int $recent = 8, ?string $fromUtc = null): array
     {
         $sessions = array_map(ClassSession::fromRow(...), $this->db->fetchAll(
             self::SELECT . " JOIN learner_group_members m ON m.tenant_id = s.tenant_id AND m.group_id = s.group_id AND m.user_id = ? AND m.role = 'learner'
-             WHERE s.tenant_id = ? AND s.status = 'scheduled' AND s.ends_at < ? AND s.starts_at >= m.added_at ORDER BY s.starts_at DESC LIMIT 200",
-            [$userId, $tenantId, $nowUtc],
+             WHERE s.tenant_id = ? AND s.status = 'scheduled' AND s.ends_at < ? AND s.starts_at >= m.added_at"
+             . ($fromUtc !== null ? ' AND s.starts_at >= ?' : '') . ' ORDER BY s.starts_at DESC LIMIT ' . ($fromUtc !== null ? 1000 : 200),
+            $fromUtc !== null ? [$userId, $tenantId, $nowUtc, $fromUtc] : [$userId, $tenantId, $nowUtc],
         ));
         $marks = [];
         if ($sessions !== []) {

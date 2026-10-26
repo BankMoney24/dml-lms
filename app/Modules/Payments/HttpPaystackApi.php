@@ -64,6 +64,21 @@ final class HttpPaystackApi implements PaystackApi
         }
     }
 
+    public function refund(string $secret, string $reference, int $amountMinor, string $reason): array
+    {
+        $data = $this->call('POST', '/refund', $secret, [
+            'transaction' => $reference,
+            'amount' => (string) $amountMinor,
+            'merchant_note' => mb_substr($reason, 0, 200),
+        ]);
+        $r = is_array($data['data'] ?? null) ? $data['data'] : [];
+
+        return [
+            'id' => is_scalar($r['id'] ?? null) ? (string) $r['id'] : '',
+            'status' => is_string($r['status'] ?? null) ? $r['status'] : 'pending',
+        ];
+    }
+
     /**
      * @param array<string, mixed>|null $body
      * @return array<string, mixed>

@@ -49,6 +49,20 @@ final class FakePaystack implements PaystackApi
         ];
     }
 
+    /** @var list<array{reference: string, amount: int, reason: string}> */
+    public array $refunds = [];
+    public string $refundStatus = 'pending';
+
+    public function refund(string $secret, string $reference, int $amountMinor, string $reason): array
+    {
+        if ($this->down) {
+            throw new PaymentProviderError('Could not reach Paystack.');
+        }
+        $this->refunds[] = ['reference' => $reference, 'amount' => $amountMinor, 'reason' => $reason];
+
+        return ['id' => (string) (3000000 + count($this->refunds)), 'status' => $this->refundStatus];
+    }
+
     public function ping(string $secret): bool
     {
         if ($this->down) {

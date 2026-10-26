@@ -22,6 +22,7 @@ final class ReceiptController
         private readonly PaymentRepository $payments,
         private readonly CourseRepository $courses,
         private readonly UserRepository $users,
+        private readonly ?\App\Modules\Payments\Refunds\RefundRepository $refunds = null,
     ) {
     }
 
@@ -30,7 +31,8 @@ final class ReceiptController
         $tenant = RequestContext::tenant($request);
         $me = RequestContext::user($request);
         $payment = $this->payments->findByReference($tenant->id, $request->routeParam('reference'));
-        if ($payment === null || !$payment->isPaid() || ($payment->userId !== $me->user->id && !$me->can(Permission::SchoolManage))) {
+        $shown = [\App\Modules\Payments\Payment::PAID, \App\Modules\Payments\Payment::REFUNDED];
+        if ($payment === null || !in_array($payment->status, $shown, true) || ($payment->userId !== $me->user->id && !$me->can(Permission::SchoolManage))) {
             throw HttpException::notFound();
         }
         $payer = $this->users->findById($payment->userId);
@@ -41,6 +43,7 @@ final class ReceiptController
             'course' => $this->courses->findById($tenant->id, $payment->courseId),
             'payerName' => $payer !== null ? $payer->displayName : '',
             'payerEmail' => $payer !== null ? $payer->email : '',
+            'refunds' => $this->refunds?->forPayment($tenant->id, $payment->id) ?? [],
         ]));
     }
 }

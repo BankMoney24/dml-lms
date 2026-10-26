@@ -101,6 +101,9 @@ $lessonErrors = array_diff_key($errors, $questionErrors, ['file' => true, 'media
       <?php if ($lesson->canBePreview()): ?>
       <label class="choice choice-tight preview-choice"><input type="checkbox" name="preview" value="1"<?= $o('preview', $lesson->preview ? '1' : '0') === '1' ? ' checked' : '' ?>><span><strong>Free preview.</strong> Anyone can read this lesson from the course page before joining<?= $course->isPaid() ? ' or paying' : '' ?>. Good for a first lesson.</span></label>
       <?php endif; ?>
+      <input type="hidden" name="required_shown" value="1">
+      <label class="choice choice-tight preview-choice<?= isset($errors['required']) ? ' has-error' : '' ?>"><input type="checkbox" id="required" name="required" value="1"<?= $o('required', $lesson->mandatory ? '1' : '0') === '1' ? ' checked' : '' ?><?= isset($errors['required']) ? ' aria-invalid="true" aria-describedby="required-error"' : '' ?>><span><strong>Needed to finish the course.</strong> Untick for extra reading or practice that learners may skip. Optional lessons do not count towards progress or finishing.</span></label>
+      <?php if (isset($errors['required'])): ?><p class="field-error" id="required-error"><?= $v->e($errors['required']) ?></p><?php endif; ?>
       <button type="submit" class="button">Save lesson</button>
     </form>
 

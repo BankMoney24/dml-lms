@@ -40,7 +40,7 @@ final class ChildReport
                        JOIN learner_groups g ON g.tenant_id = gc.tenant_id AND g.id = gc.group_id AND g.archived_at IS NULL
                       WHERE gc.tenant_id = e.tenant_id AND gc.course_id = e.course_id) AS due_on
              FROM enrolments e JOIN courses c ON c.tenant_id = e.tenant_id AND c.id = e.course_id
-             WHERE e.tenant_id = ? AND e.user_id = ? AND c.status = 'published'
+             WHERE e.tenant_id = ? AND e.user_id = ? AND e.status <> 'withdrawn' AND c.status = 'published'
              ORDER BY e.status = 'completed', last_at IS NULL, last_at DESC, c.title LIMIT 100",
             [$tenantId, $learnerId],
         ));

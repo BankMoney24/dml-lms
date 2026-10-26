@@ -9,6 +9,8 @@ final class Payment
     public const PENDING = 'pending';
     public const PAID = 'paid';
     public const FAILED = 'failed';
+    /** Paid back in full (ADR 0032). A part refund leaves the payment "paid". */
+    public const REFUNDED = 'refunded';
 
     public function __construct(
         public readonly int $id,
@@ -26,6 +28,9 @@ final class Payment
         public readonly ?string $note,
         public readonly string $createdAt,
         public readonly ?string $paidAt,
+        /** The discount code used, and the price before it (ADR 0032). */
+        public readonly ?int $couponId = null,
+        public readonly ?int $listPriceMinor = null,
     ) {
     }
 
@@ -48,6 +53,8 @@ final class Payment
             $row['note'] === null ? null : (string) $row['note'],
             (string) $row['created_at'],
             $row['paid_at'] === null ? null : (string) $row['paid_at'],
+            isset($row['coupon_id']) ? (int) $row['coupon_id'] : null,
+            isset($row['list_price_minor']) ? (int) $row['list_price_minor'] : null,
         );
     }
 
@@ -61,6 +68,12 @@ final class Payment
         return Money::format($this->amountMinor, $this->currency);
     }
 
+    /** The amount taken off by a discount code, or 0. */
+    public function discountMinor(): int
+    {
+        return $this->listPriceMinor === null ? 0 : max(0, $this->listPriceMinor - $this->amountMinor);
+    }
+
     /** Pending for more than a day: the learner left the checkout. */
     public function looksAbandoned(int $now): bool
     {
@@ -72,6 +85,7 @@ final class Payment
         return match (true) {
             $this->status === self::PAID => 'Paid',
             $this->status === self::FAILED => 'Failed',
+            $this->status === self::REFUNDED => 'Refunded',
             $this->looksAbandoned($now) => 'Not completed',
             default => 'Waiting',
         };
@@ -81,6 +95,9 @@ final class Payment
     {
         if ($this->provider === 'manual') {
             return 'Recorded by hand';
+        }
+        if ($this->provider === 'coupon') {
+            return 'Discount code (no payment needed)';
         }
 
         return 'Paystack' . ($this->channel !== null ? ' (' . str_replace('_', ' ', $this->channel) . ')' : '') . ($this->mode === 'test' ? ', test mode' : '');

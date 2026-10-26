@@ -49,7 +49,7 @@ final class GroupProgress
                         (SELECT COUNT(*) FROM lesson_progress p WHERE p.tenant_id = e.tenant_id AND p.enrolment_id = e.id AND p.status = 'completed') AS done,
                         (SELECT MAX(p.updated_at) FROM lesson_progress p WHERE p.tenant_id = e.tenant_id AND p.enrolment_id = e.id) AS last_at
                  FROM enrolments e
-                 WHERE e.tenant_id = ? AND e.user_id IN (" . $in($userIds) . ') AND e.course_id IN (' . $in($courseIds) . ')',
+                 WHERE e.tenant_id = ? AND e.status <> 'withdrawn' AND e.user_id IN (" . $in($userIds) . ') AND e.course_id IN (' . $in($courseIds) . ')',
                 array_merge([$tenantId], $userIds, $courseIds),
             ) as $r
         ) {

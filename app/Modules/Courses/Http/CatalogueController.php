@@ -173,6 +173,7 @@ final class CatalogueController
             'enrolment' => $enrolment,
             'certificate' => $this->certificates->forEnrolment($enrolment),
             'completedIds' => $enrolment === null ? [] : $this->progress->completedLessonIds($tenant->id, $enrolment->id),
+            'standing' => $this->learning->completionStanding($course, $enrolment),
             'indexable' => $tenant->publicCatalogue || $course->isOpen(),
             'signUpOpen' => $tenant->signUpOpen(),
             'admission' => $this->admission($course, $user, $enrolment !== null),

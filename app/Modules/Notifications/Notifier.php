@@ -19,6 +19,7 @@ final class Notifier
     public const GROUP_TEACHING = 'group.teaching';
     public const ANNOUNCEMENT = 'group.announcement';
     public const PAYMENT_PAID = 'payment.paid';
+    public const PAYMENT_REFUNDED = 'payment.refunded';
     public const CERTIFICATE = 'certificate.issued';
 
     public function __construct(private readonly NotificationRepository $notifications)

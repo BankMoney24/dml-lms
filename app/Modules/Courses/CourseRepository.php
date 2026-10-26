@@ -190,6 +190,15 @@ final class CourseRepository
         );
     }
 
+    /** The course's completion rule beyond its required lessons (ADR 0032). */
+    public function updateCompletion(int $tenantId, int $courseId, ?int $minAverage): void
+    {
+        $this->db->execute(
+            'UPDATE courses SET completion_min_average = ?, updated_at = ? WHERE tenant_id = ? AND id = ?',
+            [$minAverage, $this->clock->sqlNow(), $tenantId, $courseId],
+        );
+    }
+
     /** Learners holding a place now (not withdrawn), counted against the capacity. */
     public function placesTaken(int $tenantId, int $courseId): int
     {

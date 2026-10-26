@@ -16,10 +16,15 @@
  * @var array<string, string> $old
  * @var list<\App\Modules\Payments\PaymentClaim> $claims learners who say they paid directly, oldest first
  * @var string $instructions
+ * @var array<int, list<\App\Modules\Payments\Refunds\Refund>> $refundRows payment id => refunds
+ * @var array<int, int> $refundable payment id => what can still be paid back
+ * @var array{count: int, minor: int} $refundTotals
  */
+$refundRows ??= [];
+$refundable ??= [];
 $schoolTab = 'payments';
 $o = static fn (string $k, string $d = ''): string => $old[$k] ?? $d;
-$tones = ['Paid' => 'done', 'Failed' => 'danger', 'Waiting' => 'draft', 'Not completed' => 'neutral'];
+$tones = ['Paid' => 'done', 'Failed' => 'danger', 'Waiting' => 'draft', 'Not completed' => 'neutral', 'Refunded' => 'neutral'];
 $connectErrors = array_intersect_key($errors, ['secret' => 1, 'currency' => 1]);
 $manualErrors = array_intersect_key($errors, ['email' => 1, 'course_id' => 1, 'amount' => 1, 'note' => 1]);
 ?>
@@ -69,6 +74,7 @@ $manualErrors = array_intersect_key($errors, ['email' => 1, 'course_id' => 1, 'a
     <?php if ($totals['paid_count'] > 0 && $totals['currency'] !== null): ?>
       <p class="pay-total"><?= $v->e(\App\Modules\Payments\Money::format($totals['paid_minor'], $totals['currency'])) ?></p>
       <p class="small muted">From <?= $v->e($v->plural($totals['paid_count'], 'payment')) ?>, including those recorded by hand. Test payments are not counted.</p>
+      <?php if (($refundTotals['count'] ?? 0) > 0): ?><p class="small muted">Paid back in the same 30 days: <?= $v->e(\App\Modules\Payments\Money::format($refundTotals['minor'], $totals['currency'])) ?> (<?= $v->e($v->plural($refundTotals['count'], 'refund')) ?>). Payments refunded in full are not in the total above.</p><?php endif; ?>
     <?php else: ?>
       <p class="muted">No payments in the last 30 days.</p>
     <?php endif; ?>
@@ -134,10 +140,10 @@ $manualErrors = array_intersect_key($errors, ['email' => 1, 'course_id' => 1, 'a
 <section class="pay-list" aria-labelledby="pay-list-h">
   <div class="settings-head">
     <h2 id="pay-list-h">Payment history</h2>
-    <?php if ($rows !== [] || $filter !== ''): ?><a href="/school/payments.csv" download>Download as a spreadsheet</a><?php endif; ?>
+    <p class="settings-head-links"><a href="/school/payments/codes">Discount codes</a><?php if ($rows !== [] || $filter !== ''): ?> <a href="/school/payments.csv" download>Download as a spreadsheet</a><?php endif; ?></p>
   </div>
   <nav class="tabs tabs-quiet" aria-label="Show payments">
-    <?php foreach (['' => 'All', 'paid' => 'Paid', 'waiting' => 'Waiting', 'failed' => 'Failed'] as $key => $label): ?>
+    <?php foreach (['' => 'All', 'paid' => 'Paid', 'waiting' => 'Waiting', 'failed' => 'Failed', 'refunded' => 'Refunded'] as $key => $label): ?>
       <a href="/school/payments<?= $key === '' ? '' : '?status=' . $key ?>"<?= $filter === $key ? ' aria-current="page"' : '' ?>><?= $label ?></a>
     <?php endforeach; ?>
   </nav>
@@ -146,15 +152,20 @@ $manualErrors = array_intersect_key($errors, ['email' => 1, 'course_id' => 1, 'a
   <?php else: ?>
   <div class="table-wrap">
     <table class="table pay-table" data-sortable>
-      <thead><tr><th scope="col">Learner</th><th scope="col">Course</th><th scope="col" class="num">Amount</th><th scope="col">Status</th><th scope="col">Date</th></tr></thead>
+      <thead><tr><th scope="col">Learner</th><th scope="col">Course</th><th scope="col" class="num">Amount</th><th scope="col">Status</th><th scope="col">Date</th><th scope="col"><span class="visually-hidden">More</span></th></tr></thead>
       <tbody>
       <?php foreach ($rows as $row): $p = $row['payment']; $label = $p->statusLabel($now); ?>
-        <tr>
+        <?php $refundsHere = $refundRows[$p->id] ?? []; $canRefund = ($refundable[$p->id] ?? 0) > 0; ?>
+        <tr id="payment-<?= $p->id ?>">
           <td data-label="Learner"><?= $v->e($row['learner']) ?><span class="small muted"><?= $v->e($row['email']) ?></span></td>
           <td data-label="Course"><?= $v->e($row['course']) ?><span class="small muted"><?= $v->e($p->methodLabel()) ?></span></td>
-          <td data-label="Amount" class="num"><?= $v->e($p->amount()) ?></td>
-          <td data-label="Status"><?= $v->badge($label, $tones[$label] ?? 'neutral') ?><?php if ($p->note !== null && $p->status !== 'pending'): ?><span class="small muted"><?= $v->e($p->note) ?></span><?php endif; ?></td>
+          <td data-label="Amount" class="num" data-sort="<?= $p->amountMinor ?>"><?= $v->e($p->amount()) ?><?php if ($p->discountMinor() > 0): ?><span class="small muted"><?= $v->e(\App\Modules\Payments\Money::format($p->discountMinor(), $p->currency)) ?> off with a code</span><?php endif; ?></td>
+          <td data-label="Status"><?= $v->badge($label, $tones[$label] ?? 'neutral') ?><?php if ($p->note !== null && $p->status !== 'pending'): ?><span class="small muted"><?= $v->e($p->note) ?></span><?php endif; ?>
+            <?php foreach ($refundsHere as $rf): ?><span class="small refund-line<?= $rf->status === 'failed' ? ' is-failed' : '' ?>"><?= $v->e($rf->statusLabel()) ?>: <?= $v->e($rf->amount()) ?>, <?= $v->e($rf->reason) ?></span><?php endforeach; ?></td>
           <td data-label="Date" data-sort="<?= $v->e((string) ($p->paidAt ?? $p->createdAt)) ?>"><?= $v->datetime($p->paidAt ?? $p->createdAt) ?><span class="small muted ref"><?= $v->e($p->reference) ?></span></td>
+          <td class="table-stack-action">
+            <a class="small pay-detail-link" href="/school/payments/<?= $p->id ?>"><?= $canRefund ? 'Details or refund' : 'Details' ?><span class="visually-hidden">: <?= $v->e($row['learner']) ?>, <?= $v->e($row['course']) ?></span></a>
+          </td>
         </tr>
       <?php endforeach; ?>
       </tbody>

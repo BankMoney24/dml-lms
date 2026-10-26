@@ -83,6 +83,7 @@ $filtered = $roleFilter !== null || ($find ?? '') !== '';
             <?php endif; ?>
             <?php if ($m['role']->value === 'learner'): $gc = $guardianCounts[$m['user_id']] ?? 0; ?>
               <a class="small people-guardians" href="/people/<?= $m['user_id'] ?>/guardians"><?= $gc === 0 ? 'Link a parent or guardian' : $v->e($v->plural($gc, 'parent or guardian', 'parents or guardians')) ?><span class="visually-hidden"> for <?= $v->e($m['name']) ?></span></a>
+              <a class="small people-guardians" href="/people/<?= $m['user_id'] ?>/report">Report<span class="visually-hidden"> for <?= $v->e($m['name']) ?></span></a>
             <?php endif; ?></td>
           <td>
             <?php if ($locked): ?>

@@ -27,6 +27,7 @@ final class LearningService
         private readonly CertificateService $certificates,
         private readonly PaymentRepository $payments,
         private readonly ?\App\Modules\Applications\ApplicationRepository $applications = null,
+        private readonly ?\App\Modules\Courses\CourseRepository $courses = null,
     ) {
     }
 
@@ -146,18 +147,69 @@ final class LearningService
             if ($enrolment->isCompleted()) {
                 return false;
             }
-            $complete = $this->rule->isComplete(
-                $this->lessons->mandatoryLessonIds($enrolment->tenantId, $enrolment->courseId),
-                $this->progress->completedLessonIds($enrolment->tenantId, $enrolment->id),
-            );
-            if ($complete) {
-                $this->enrolments->markCompleted($enrolment->tenantId, $enrolment->id);
-                $this->audit->record($enrolment->tenantId, $enrolment->userId, 'learning.course_completed', 'course', $enrolment->courseId);
-                $this->certificates->issueFor($enrolment);
-            }
-
-            return $complete;
+            return $this->completeIfDone($enrolment);
         });
+    }
+
+    /**
+     * Checks every unfinished place on a course again, after its completion rule
+     * changed (a lesson made optional, an average lowered or removed). Learners who
+     * now meet the rule finish the course and get their certificate.
+     *
+     * @return int how many learners finished the course because of the change
+     */
+    public function recheckCourse(Course $course): int
+    {
+        $finished = 0;
+        foreach ($this->enrolments->unfinished($course->tenantId, $course->id) as $enrolment) {
+            if ($this->db->transaction(fn (): bool => $this->completeIfDone($enrolment))) {
+                $finished++;
+            }
+        }
+
+        return $finished;
+    }
+
+    /**
+     * What finishing this course takes and where the learner stands (for the course page).
+     *
+     * @return array{min_average: ?int, average: ?int, quizzes: int}
+     */
+    public function completionStanding(Course $course, ?Enrolment $enrolment): array
+    {
+        $avg = $enrolment === null || $course->completionMinAverage === null ? null : $this->progress->quizAverage($course->tenantId, $enrolment->id, $course->id);
+
+        return ['min_average' => $course->completionMinAverage, 'average' => $avg['average'] ?? null, 'quizzes' => $avg['quizzes'] ?? 0];
+    }
+
+    /** Takes a learner off a course (after a refund, ADR 0032). Progress and certificates are kept. */
+    public function withdraw(int $tenantId, int $courseId, int $userId, int $byUserId): bool
+    {
+        $done = $this->enrolments->withdraw($tenantId, $courseId, $userId);
+        if ($done) {
+            $this->audit->record($tenantId, $byUserId, 'learning.withdrawn', 'course', $courseId, ['learner' => $userId]);
+        }
+
+        return $done;
+    }
+
+    private function completeIfDone(Enrolment $enrolment): bool
+    {
+        $minAverage = $this->courses?->findById($enrolment->tenantId, $enrolment->courseId)?->completionMinAverage;
+        $average = $minAverage === null ? null : ($this->progress->quizAverage($enrolment->tenantId, $enrolment->id, $enrolment->courseId)['average'] ?? null);
+        $complete = $this->rule->isComplete(
+            $this->lessons->mandatoryLessonIds($enrolment->tenantId, $enrolment->courseId),
+            $this->progress->completedLessonIds($enrolment->tenantId, $enrolment->id),
+            $minAverage,
+            $average,
+        );
+        if ($complete) {
+            $this->enrolments->markCompleted($enrolment->tenantId, $enrolment->id);
+            $this->audit->record($enrolment->tenantId, $enrolment->userId, 'learning.course_completed', 'course', $enrolment->courseId);
+            $this->certificates->issueFor($enrolment);
+        }
+
+        return $complete;
     }
 
     /** @return list<int> */

@@ -152,6 +152,26 @@ $n = 0;
       </form>
     </section>
 
+    <?php
+    $allLessons = array_merge([], ...array_map(static fn (array $m): array => $m['lessons'], $outline));
+    $requiredCount = count(array_filter($allLessons, static fn ($l): bool => $l->mandatory));
+    ?>
+    <section class="panel" aria-labelledby="completion-h">
+      <h2 id="completion-h">Finishing the course</h2>
+      <p class="small">Learners finish when every required lesson is done: <strong><?= $requiredCount ?> of <?= count($allLessons) ?></strong> lessons are required. Quizzes count once passed, assignments once approved. Make a lesson optional in its editor.</p>
+      <form method="post" action="<?= $base ?>/completion" class="form" novalidate>
+        <?= $v->csrfField() ?>
+        <?= $v->field('completion_min_average', 'Average needed across the required quizzes (%)', [
+            'value' => $o('completion_min_average', $course->completionMinAverage === null ? '' : (string) $course->completionMinAverage),
+            'inputmode' => 'numeric', 'optional' => true, 'maxlength' => 4, 'error' => $errors['completion_min_average'] ?? null,
+            'hint' => ($requiredQuizzes ?? 0) === 0
+                ? 'This course has no required quizzes yet, so an average has no effect until you add one.'
+                : 'Each quiz’s best score counts (' . $v->plural((int) $requiredQuizzes, 'required quiz', 'required quizzes') . '). Leave empty to rely on each quiz’s own pass mark.',
+        ]) ?>
+        <button type="submit" class="button button-small">Save</button>
+      </form>
+    </section>
+
     <section class="panel" aria-labelledby="enrol-h">
       <h2 id="enrol-h">How people join</h2>
       <?php $enrolNow = $o('enrolment', $course->enrolment); ?>

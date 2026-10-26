@@ -43,6 +43,8 @@ final class Course
         public readonly string $enrolment = self::ENROL_OPEN,
         /** Most learners at once; when full, new people join the waiting list. */
         public readonly ?int $capacity = null,
+        /** Besides every required lesson: the lowest average (percent) across required quizzes; null for none (ADR 0032). */
+        public readonly ?int $completionMinAverage = null,
     ) {
     }
 
@@ -69,6 +71,7 @@ final class Course
             ($row['access'] ?? '') === self::ACCESS_OPEN ? self::ACCESS_OPEN : self::ACCESS_MEMBERS,
             ($row['enrolment'] ?? '') === self::ENROL_APPLY ? self::ENROL_APPLY : self::ENROL_OPEN,
             isset($row['capacity']) && (int) $row['capacity'] > 0 ? (int) $row['capacity'] : null,
+            isset($row['completion_min_average']) && (int) $row['completion_min_average'] > 0 ? min(100, (int) $row['completion_min_average']) : null,
         );
     }
 

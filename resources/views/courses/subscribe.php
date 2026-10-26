@@ -15,7 +15,15 @@
  * @var array<string, string> $methods
  * @var array<string, string> $errors
  * @var array<string, string> $old
+ * @var bool $codesOn
+ * @var string $code
+ * @var ?array{coupon: \App\Modules\Payments\Coupons\Coupon, discount: int, price: int} $quote
+ * @var ?string $codeError
  */
+$codesOn ??= false;
+$code ??= '';
+$quote ??= null;
+$codeError ??= null;
 $slug = $v->e($course->slug);
 $paid = $course->isPaid();
 $counts = [];
@@ -135,13 +143,36 @@ $claimRejected = $claim !== null && $claim->status === 'rejected';
         </div>
       <?php endif; ?>
 
+      <?php if ($codesOn): ?>
+      <form method="get" action="<?= $v->e($here) ?>" class="code-box" id="discount">
+        <?= $v->field('code', 'Discount code', ['value' => $code, 'maxlength' => 40, 'autocomplete' => 'off', 'optional' => true, 'error' => $codeError,
+            'hint' => $quote === null ? 'If the school gave you one.' : null]) ?>
+        <button type="submit" class="button button-small button-quiet"><?= $quote === null ? 'Use code' : 'Change code' ?></button>
+      </form>
+      <?php if ($quote !== null): $price = \App\Modules\Payments\Money::format($quote['price'], (string) $course->currency); ?>
+        <p class="notice notice-done code-quote" role="status">Code <strong><?= $v->e($quote['coupon']->code) ?></strong>: <?= $v->e($quote['coupon']->label()) ?>.
+          <?= $quote['price'] === 0 ? 'The course is free for you.' : 'You pay <strong>' . $v->e($price) . '</strong> instead of <span class="price-was">' . $v->e((string) $course->priceLabel()) . '</span>.' ?></p>
+      <?php endif; ?>
+      <?php endif; ?>
+
+      <?php if ($quote !== null && $quote['price'] === 0): ?>
+      <section class="sub-panel sub-option" aria-labelledby="sub-free-h">
+        <h2 id="sub-free-h">Start with your code</h2>
+        <form method="post" action="<?= $v->e($here) ?>" class="sub-actions">
+          <?= $v->csrfField() ?>
+          <input type="hidden" name="code" value="<?= $v->e($quote['coupon']->code) ?>">
+          <button type="submit" class="button">Subscribe and start</button>
+        </form>
+      </section>
+      <?php else: ?>
       <?php if ($payOnline): ?>
       <section class="sub-panel sub-option" aria-labelledby="sub-online-h">
         <h2 id="sub-online-h">Pay online</h2>
         <p>Card, bank transfer or USSD on Paystack's secure page. You come straight back here and the course opens as soon as the payment is confirmed.</p>
         <form method="post" action="<?= $v->e($here) ?>" class="sub-actions">
           <?= $v->csrfField() ?>
-          <button type="submit" class="button">Pay <?= $v->e((string) $course->priceLabel()) ?> and subscribe</button>
+          <?php if ($quote !== null): ?><input type="hidden" name="code" value="<?= $v->e($quote['coupon']->code) ?>"><?php endif; ?>
+          <button type="submit" class="button">Pay <?= $v->e($quote !== null ? \App\Modules\Payments\Money::format($quote['price'], (string) $course->currency) : (string) $course->priceLabel()) ?> and subscribe</button>
         </form>
       </section>
       <?php endif; ?>
@@ -169,9 +200,10 @@ $claimRejected = $claim !== null && $claim->status === 'rejected';
           </div>
           <?= $v->field('note', 'Anything else the school should know (optional)', ['type' => 'textarea', 'rows' => 2, 'value' => $old['note'], 'maxlength' => 500, 'error' => $errors['note'] ?? null, 'hint' => 'For example, if someone else paid for you, their name.']) ?>
           <button type="submit" class="button<?= $payOnline ? ' button-quiet' : '' ?>">Tell the school I have paid</button>
-          <p class="small muted">The course opens when the school confirms the money arrived. Nothing is charged here.</p>
+          <p class="small muted">The course opens when the school confirms the money arrived. Nothing is charged here.<?= $quote !== null ? ' A discount code is applied to online payment; to use it when paying the school directly, show it to the school.' : '' ?></p>
         </form>
       </section>
+      <?php endif; ?>
     <?php endif; ?>
 
   <?php else: ?>
