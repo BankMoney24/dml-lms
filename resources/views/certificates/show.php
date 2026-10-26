@@ -22,17 +22,16 @@ $tenant = $v->shared('tenant');
       <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><rect class="px-soft" x="1" y="2" width="4.5" height="4.5"/><rect x="6.5" y="2" width="4.5" height="4.5"/><rect x="12" y="2" width="4.5" height="4.5"/><rect class="px-accent" x="17.5" y="2" width="4.5" height="4.5"/><rect x="6.5" y="7.5" width="4.5" height="4.5"/><rect class="px-soft" x="12" y="7.5" width="4.5" height="4.5"/><rect x="17.5" y="7.5" width="4.5" height="4.5"/><rect x="12" y="13" width="4.5" height="4.5"/><rect class="px-accent" x="17.5" y="13" width="4.5" height="4.5"/><rect x="17.5" y="18.5" width="4.5" height="4.5"/></svg>
       <?= $v->e($tenant?->name ?? '') ?>
     </p>
-    <p class="cert-kicker">Certificate of completion</p>
+    <h1 class="cert-kicker">Certificate of completion</h1>
     <p class="cert-line">This certifies that</p>
     <p class="cert-name"><?= $v->e($certificate->learnerName) ?></p>
     <p class="cert-line">has successfully completed</p>
     <p class="cert-course"><?= $v->e($certificate->courseTitle) ?></p>
     <?php if ($course !== null && ($course->levelLabel() !== null || $course->durationHours !== null)): ?>
-    <p class="cert-detail">
-      <?= $course->levelLabel() !== null ? $v->e($course->levelLabel() . ' level') : '' ?>
-      <?= $course->levelLabel() !== null && $course->durationHours !== null ? ', ' : '' ?>
-      <?= $course->durationHours !== null ? $v->e('about ' . $v->plural($course->durationHours, 'hour') . ' of study') : '' ?>
-    </p>
+    <p class="cert-detail"><?= $v->e(implode(', ', array_filter([
+        $course->levelLabel() !== null ? $course->levelLabel() . ' level' : null,
+        $course->durationHours !== null ? 'about ' . $v->plural($course->durationHours, 'hour') . ' of study' : null,
+    ]))) ?></p>
     <?php endif; ?>
     <div class="cert-foot">
       <div>

@@ -7,7 +7,7 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 | Item | Status | Notes |
 |---|---|---|
 | Repository, layout, coding standards | Built | PSR-12 (phpcs), PHPStan level 8, strict types |
-| Architecture overview, ADRs | Built | `docs/architecture.md`, `docs/adr/0001–0030` |
+| Architecture overview, ADRs | Built | `docs/architecture.md`, `docs/adr/0001–0031`; design system in `docs/design-system.md`; interface audit and checklist in `docs/overhaul-checklist.md` |
 | ERD / data dictionary | Partial | Schema diagram in architecture.md; full data dictionary next |
 | Threat model | Next | Controls are listed below; a written threat model is still required |
 | CI (lint, analysis, tests, secret scan, asset budget) | Built | `.github/workflows/ci.yml`, PHP 8.3 / 8.4 / 8.5 matrix on MySQL 8.4 |
@@ -75,7 +75,7 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 | NTF-003 | Next | SMS/WhatsApp after consent review |
 | §8 offline | Partial | Offline banner, static-asset service worker, quiz drafts on device until server confirms, idempotent submit. IndexedDB outbox and conflict handling next |
 | §9 public API v1 | Next | |
-| §12 accessibility | Partial | Semantic HTML, labels, error association, focus styles, reduced motion, 44px targets. Not yet audited with assistive technology |
+| §12 accessibility | Partial | Semantic HTML, labels, error association, focus styles, reduced motion, 44px main targets and 24px minimum (WCAG 2.2). axe-core scan of 110 page/role views at eight widths in light and dark mode: no violations (update 31, `docs/overhaul-checklist.md`). Not yet audited with assistive technology |
 
 ## Security controls in place
 

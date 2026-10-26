@@ -468,18 +468,156 @@
 
   // The Code studio has its own script (studio.js), loaded only on its pages.
 
-  // Show / hide password on sign-up.
+  // Show / hide password, and a warning when Caps Lock is on while typing one.
   Array.prototype.forEach.call(document.querySelectorAll('[data-reveal]'), function (button) {
     var input = document.getElementById(button.getAttribute('data-reveal'));
     if (!input) { return; }
+    var word = button.querySelector('[data-reveal-word]') || button;
     button.hidden = false;
     button.addEventListener('click', function () {
       var show = input.type === 'password';
       input.type = show ? 'text' : 'password';
-      button.textContent = show ? 'Hide' : 'Show';
-      button.setAttribute('aria-pressed', show ? 'true' : 'false');
+      word.textContent = show ? 'Hide' : 'Show';
+      input.focus();
+    });
+    // Never leave a password readable in the browser's form memory or on screen after sending.
+    if (input.form) { input.form.addEventListener('submit', function () { input.type = 'password'; word.textContent = 'Show'; }); }
+    var caps = document.createElement('p');
+    caps.className = 'caps-note';
+    caps.id = input.id + '-caps';
+    caps.hidden = true;
+    caps.textContent = 'Caps Lock is on.';
+    button.parentNode.insertAdjacentElement('afterend', caps);
+    function checkCaps(e) {
+      if (!e.getModifierState) { return; }
+      var on = e.getModifierState('CapsLock');
+      if (caps.hidden === on) {
+        caps.hidden = !on;
+        var ids = (input.getAttribute('aria-describedby') || '').split(' ').filter(function (x) { return x && x !== caps.id; });
+        if (on) { ids.push(caps.id); }
+        if (ids.length) { input.setAttribute('aria-describedby', ids.join(' ')); } else { input.removeAttribute('aria-describedby'); }
+      }
+    }
+    input.addEventListener('keydown', checkCaps);
+    input.addEventListener('keyup', checkCaps);
+    input.addEventListener('blur', function () { caps.hidden = true; });
+  });
+
+  // Sending a form: the button shows it is working and a second tap does not send it twice.
+  // Forms that handle their own sending (they cancel the event) and GET forms are left alone.
+  function setBusy(form, busy) {
+    if (busy) { form.setAttribute('data-sending', ''); } else { form.removeAttribute('data-sending'); }
+    Array.prototype.forEach.call(form.querySelectorAll('button[type=submit], button:not([type])'), function (b) {
+      if (busy) { b.setAttribute('aria-disabled', 'true'); } else if (!b.hasAttribute('data-keep-aria-disabled')) { b.removeAttribute('aria-disabled'); b.classList.remove('is-busy'); }
+    });
+  }
+  document.addEventListener('submit', function (e) {
+    var form = e.target;
+    if (e.defaultPrevented || !(form instanceof HTMLFormElement) || form.method.toLowerCase() !== 'post' || form.hasAttribute('data-no-busy') || form.target) { return; }
+    if (form.hasAttribute('data-sending')) { e.preventDefault(); return; }
+    setBusy(form, true);
+    var b = e.submitter;
+    if (b && b.tagName === 'BUTTON') { b.classList.add('is-busy'); }
+    // A download, or a page that never arrives: give the button back after a while.
+    window.setTimeout(function () { setBusy(form, false); }, 15000);
+  });
+  window.addEventListener('pageshow', function (e) {
+    if (e.persisted) { Array.prototype.forEach.call(document.querySelectorAll('form[data-sending]'), function (f) { setBusy(f, false); }); }
+  });
+
+  // Unsaved changes: warn before leaving a page with edited writing (forms with a text area, or marked data-unsaved).
+  var dirty = [];
+  Array.prototype.forEach.call(document.querySelectorAll('form[method=post]'), function (form) {
+    if (!form.hasAttribute('data-unsaved') && !form.querySelector('textarea')) { return; }
+    if (form.hasAttribute('data-draft-key') || form.hasAttribute('data-no-unsaved')) { return; }
+    var mark = function (e) { if (e.target && e.target.type !== 'file' && dirty.indexOf(form) === -1) { dirty.push(form); } };
+    form.addEventListener('input', mark);
+    form.addEventListener('change', mark);
+    form.addEventListener('submit', function (e) { if (!e.defaultPrevented) { dirty = dirty.filter(function (f) { return f !== form; }); } });
+    form.addEventListener('reset', function () { dirty = dirty.filter(function (f) { return f !== form; }); });
+  });
+  window.addEventListener('beforeunload', function (e) {
+    if (dirty.length) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  // Lists with filter boxes: a changed choice shows the new list straight away (the button stays for typing).
+  Array.prototype.forEach.call(document.querySelectorAll('form[data-autosubmit]'), function (form) {
+    Array.prototype.forEach.call(form.querySelectorAll('select'), function (sel) {
+      sel.addEventListener('change', function () { if (form.requestSubmit) { form.requestSubmit(); } else { form.submit(); } });
     });
   });
+
+  // Tables people compare: headings become sort buttons (the order is only on this page; nothing is saved).
+  Array.prototype.forEach.call(document.querySelectorAll('table[data-sortable]'), function (table) {
+    var body = table.tBodies[0];
+    var head = table.tHead && table.tHead.rows[0];
+    if (!body || !head || body.rows.length < 2) { return; }
+    var original = Array.prototype.slice.call(body.rows);
+    Array.prototype.forEach.call(head.cells, function (th, col) {
+      var onlyHidden = th.children.length === 1 && th.children[0].classList.contains('visually-hidden') && th.textContent.trim() === th.children[0].textContent.trim();
+      if (th.hasAttribute('data-no-sort') || th.textContent.trim() === '' || onlyHidden || th.querySelector('a, button, input')) { return; }
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'sort-button';
+      while (th.firstChild) { button.appendChild(th.firstChild); }
+      var mark = document.createElement('span');
+      mark.className = 'sort-mark';
+      mark.setAttribute('aria-hidden', 'true');
+      button.appendChild(mark);
+      th.appendChild(button);
+      button.addEventListener('click', function () {
+        var now = th.getAttribute('aria-sort');
+        var dir = now === 'ascending' ? 'descending' : (now === 'descending' ? 'none' : 'ascending');
+        Array.prototype.forEach.call(head.cells, function (c) { c.removeAttribute('aria-sort'); });
+        var rows = original.slice();
+        if (dir !== 'none') {
+          th.setAttribute('aria-sort', dir);
+          var key = function (row) {
+            var cell = row.cells[col];
+            if (!cell) { return ''; }
+            var raw = cell.getAttribute('data-sort') !== null ? cell.getAttribute('data-sort') : cell.textContent.trim();
+            var num = raw.replace(/[₦,%\s]/g, '');
+            return num !== '' && !isNaN(num) ? parseFloat(num) : raw.toLowerCase();
+          };
+          rows.sort(function (a, b) {
+            var x = key(a), y = key(b);
+            var r = (typeof x === 'number' && typeof y === 'number') ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true });
+            return dir === 'ascending' ? r : -r;
+          });
+        }
+        rows.forEach(function (r) { body.appendChild(r); });
+      });
+    });
+  });
+
+  // Wide tables and code that scroll sideways can be scrolled with the keyboard too.
+  function scrollRegions() {
+    var used = {};
+    Array.prototype.forEach.call(document.querySelectorAll('[data-scroll-region]'), function (el) { var l = el.getAttribute('aria-label'); if (l) { used[l] = (used[l] || 0) + 1; } });
+    Array.prototype.forEach.call(document.querySelectorAll('.table-wrap, .code-block pre'), function (el) {
+      var scrolls = el.scrollWidth > el.clientWidth + 1;
+      if (scrolls && !el.hasAttribute('tabindex')) {
+        el.setAttribute('tabindex', '0');
+        el.setAttribute('data-scroll-region', el.hasAttribute('aria-label') ? 'kept' : '');
+        if (!el.hasAttribute('aria-label')) {
+          var t = el.querySelector('caption');
+          var h = el.closest('section') && el.closest('section').querySelector('h2, h3');
+          el.setAttribute('role', 'region');
+          var label = (t || h) ? (t || h).textContent.trim() + (el.tagName === 'PRE' ? ' (code)' : ' (table)') : (el.tagName === 'PRE' ? 'Code' : 'Table');
+          // Each region needs its own name (two code samples under one heading become "… 1" and "… 2").
+          used[label] = (used[label] || 0) + 1;
+          el.setAttribute('aria-label', used[label] > 1 ? label + ' ' + used[label] : label);
+        }
+      } else if (!scrolls && el.hasAttribute('data-scroll-region')) {
+        el.removeAttribute('tabindex');
+        if (el.getAttribute('data-scroll-region') !== 'kept') { el.removeAttribute('role'); el.removeAttribute('aria-label'); }
+        el.removeAttribute('data-scroll-region');
+      }
+    });
+  }
+  scrollRegions();
+  var resizeTimer = null;
+  window.addEventListener('resize', function () { window.clearTimeout(resizeTimer); resizeTimer = window.setTimeout(scrollRegions, 200); });
 
   // Service worker caches only public static assets and an offline page.
   if ('serviceWorker' in navigator && location.protocol === 'https:') {

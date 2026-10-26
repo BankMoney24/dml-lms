@@ -530,7 +530,7 @@ fieldset[disabled] .choice { cursor: default; }
 .certificate { max-width: 52rem; margin: var(--space-4) auto 0; background: #fffdf6; color: #12161f; border-radius: var(--radius-m); padding: var(--space-3); box-shadow: 0 1px 0 var(--line), 0 12px 32px rgba(20, 33, 61, 0.12); }
 .certificate-inner { border: 2px solid #1670ad; outline: 3px solid #23a1de; outline-offset: -12px; border-radius: 6px; padding: var(--space-7) var(--space-6); text-align: center; }
 .cert-school { display: inline-flex; align-items: center; gap: var(--space-2); font-family: var(--font-head); font-weight: 800; font-size: var(--step-1); margin-bottom: var(--space-5); }
-.cert-kicker { font-size: var(--step--1); font-weight: 800; letter-spacing: 0.25em; text-transform: uppercase; color: #1670ad; }
+.cert-kicker { margin: 0 0 1em; font-family: var(--font-body); font-size: var(--step--1); font-weight: 800; line-height: 1.5; letter-spacing: 0.25em; text-transform: uppercase; color: #1670ad; }
 .cert-line { color: #4a5873; margin-bottom: var(--space-2); }
 .cert-name { font-family: var(--font-head); font-size: clamp(1.75rem, 5vw, 2.75rem); font-weight: 800; margin-bottom: var(--space-4); border-bottom: 2px solid #d5deea; display: inline-block; padding: 0 var(--space-5) var(--space-2); }
 .cert-course { font-family: var(--font-head); font-size: var(--step-2); font-weight: 750; margin-bottom: var(--space-2); }
@@ -1807,7 +1807,7 @@ kbd { font: 700 0.8125rem/1 var(--font-body); padding: 0.15rem 0.4rem; border: 1
 .pg-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
 .pg-run { background: #d52f2f; border-color: #d52f2f; color: #fff; }
 .pg-run .icon { width: 1rem; height: 1rem; fill: currentColor; }
-.pg-run kbd { font: 600 0.7rem/1 ui-monospace, Menlo, Consolas, monospace; padding: 0.2rem 0.35rem; border-radius: 4px; background: rgba(255, 255, 255, 0.18); margin-left: 0.25rem; }
+.pg-run kbd { font: 600 0.7rem/1 ui-monospace, Menlo, Consolas, monospace; padding: 0.2rem 0.35rem; border-radius: 4px; background: rgba(0, 0, 0, 0.24); margin-left: 0.25rem; }
 .pg-run kbd:first-of-type { margin-left: var(--space-2); }
 .pg-out { min-width: 0; border-radius: var(--radius-m); background: #0f131c; border: 1px solid #262e3f; color: #e6ebf3; overflow: hidden; }
 @media (min-width: 64rem) { .pg-out { position: sticky; top: var(--space-5); } }
@@ -2404,7 +2404,7 @@ kbd { font: 700 0.8125rem/1 var(--font-body); padding: 0.15rem 0.4rem; border: 1
 .ch-result.is-fail { color: var(--danger); }
 .ch-tests tr.is-pass { background: #e8f6ec; }
 .ch-tests tr.is-fail { background: var(--danger-soft); }
-.studio-actions .pg-run kbd { background: rgba(255, 255, 255, 0.18); border: 0; color: #fff; }
+.studio-actions .pg-run kbd { background: rgba(0, 0, 0, 0.24); border: 0; color: #fff; }
 .ch-tests code { white-space: nowrap; overflow-wrap: normal; }
 /* The gutter must not size the editor: it scrolls with the code instead. */
 .studio-editor .pg-gutter { contain: size; min-height: 100%; }
@@ -2420,7 +2420,7 @@ kbd { font: 700 0.8125rem/1 var(--font-body); padding: 0.15rem 0.4rem; border: 1
 .lc-day { font: 700 1.25rem var(--font-head); }
 .lc-mon { font-size: 0.68rem; font-weight: 600; color: var(--lamp); letter-spacing: 0.02em; }
 .lc-row.is-ended .lc-date { background: var(--line-strong); color: var(--ink); }
-.lc-row.is-ended .lc-mon { color: var(--ink-soft); }
+.lc-row.is-ended .lc-mon { color: inherit; }
 .lc-body { min-width: 0; }
 .lc-title { font-weight: 650; overflow-wrap: anywhere; }
 .lc-meta { margin: 0.15rem 0 0; color: var(--ink-soft); display: flex; flex-wrap: wrap; gap: 0 var(--space-3); }
@@ -2622,3 +2622,109 @@ kbd { font: 700 0.8125rem/1 var(--font-body); padding: 0.15rem 0.4rem; border: 1
 .lc-materials h2, .lc-recording h2 { font-size: var(--step-1); }
 
 .lc-reg-meta { display: block; font-weight: 400; }
+
+/* ---- Update 31: interaction states and list tools (ADR 0031) ---- */
+
+/* A button whose form is being sent: it keeps its words, adds a turning ring, and ignores more taps. */
+.button[aria-disabled="true"], button[aria-disabled="true"] { cursor: progress; }
+.button.is-busy { position: relative; }
+.button.is-busy::after {
+  content: ""; width: 0.95em; height: 0.95em; flex: none;
+  border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%;
+  animation: busy-turn 700ms linear infinite;
+}
+.linklike.is-busy::after { content: "…"; }
+@keyframes busy-turn { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .button.is-busy::after { animation: none; border-right-color: currentColor; opacity: 0.55; }
+}
+
+/* Password boxes: Show / Hide beside the box, and a plain warning when Caps Lock is on. */
+.reveal-row .reveal { min-width: 4.75rem; }
+.caps-note { margin: var(--space-1) 0 0; font-size: var(--step--1); font-weight: 650; color: var(--ink); }
+.caps-note::before { content: ""; display: inline-block; width: 0.55rem; height: 0.55rem; margin-right: 0.45rem; background: var(--warn); vertical-align: 0.05em; }
+
+/* Filter, order and find above long lists. Stacked on phones, one row from tablet width. */
+.list-tools { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); margin: var(--space-3) 0 var(--space-2); padding: var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-m); background: var(--surface); }
+.list-tool { display: grid; gap: var(--space-1); min-width: 0; flex: 1 1 9.5rem; }
+.list-tool-find { flex: 2 1 13rem; }
+.list-tool label { font-size: var(--step--1); font-weight: 650; color: var(--ink-soft); }
+.list-tool input, .list-tool select { width: 100%; min-height: 2.75rem; }
+.list-tool-actions { display: flex; align-items: center; gap: var(--space-3); }
+@media (max-width: 29.99rem) { .list-tool-actions .button { flex: 1 1 auto; } .list-tool-actions { flex: 1 1 100%; } }
+/* People: the list gets the room; the add form is a narrow column beside it on wide screens. */
+@media (min-width: 60rem) { .teach-layout.people-layout { grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem); } }
+.people-layout > aside { position: sticky; top: calc(var(--appbar-h) + var(--space-4)); }
+@media (max-width: 59.99rem) { .people-layout > aside { position: static; } }
+.list-count { min-height: 1.4em; margin: 0 0 var(--space-3); }
+
+/* Page numbers under long lists. */
+.pager { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: var(--space-4) 0; }
+.pager ul { display: flex; flex-wrap: wrap; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
+.pager a { display: inline-grid; place-items: center; min-width: 2.75rem; min-height: 2.75rem; padding: 0 var(--space-2); border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--surface); color: var(--ink); font-weight: 650; text-decoration: none; }
+.pager a:hover { border-color: var(--primary); color: var(--primary); }
+.pager a[aria-current="page"] { background: var(--brand-navy); border-color: var(--brand-navy); color: #fff; }
+.pager .pager-step { padding: 0 var(--space-3); }
+.pager-gap { display: inline-grid; place-items: center; min-width: 1.5rem; color: var(--ink-soft); }
+
+/* Sortable table headings: the heading itself is the button; the mark shows the current order. */
+.sort-button { display: inline-flex; align-items: center; gap: 0.35rem; min-height: 1.75rem; margin: -0.25rem -0.35rem; padding: 0.25rem 0.35rem; border: 0; border-radius: var(--radius-s); background: none; color: inherit; font: inherit; font-weight: 700; cursor: pointer; text-align: left; white-space: nowrap; }
+.sort-button:hover { color: var(--ink); background: var(--paper); }
+.sort-mark { display: inline-block; width: 0.55rem; height: 0.55rem; border: 1px solid currentColor; opacity: 0.35; }
+th[aria-sort] .sort-mark { opacity: 1; border: 0; width: 0; height: 0; border-left: 0.32rem solid transparent; border-right: 0.32rem solid transparent; }
+th[aria-sort="ascending"] .sort-mark { border-bottom: 0.45rem solid var(--primary); }
+th[aria-sort="descending"] .sort-mark { border-top: 0.45rem solid var(--primary); }
+
+/* Areas that scroll sideways show focus like any other control. */
+[data-scroll-region]:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+/* Targets of at least 24px (WCAG 2.2, 2.5.8) where links stand on their own. */
+.crumbs { align-items: center; }
+.crumbs a { display: inline-flex; align-items: center; min-height: 1.5rem; }
+.people-guardians { display: inline-flex; align-items: center; min-height: 1.5rem; }
+.table input[type="radio"], .table input[type="checkbox"] { min-width: 1.5rem; min-height: 1.5rem; }
+
+/* Contrast fixes found by the accessibility scan (4.5:1 for small text). */
+.join-panel .join-note { color: var(--brand-navy-soft); }
+.pg-gutter { color: #8b95ac; }
+.hl-comment { color: #8d97ad; }
+.list-count:empty { display: none; }
+/* People on phones: each person is a card-like row (name, then role and Manage side by side). */
+@media (max-width: 39.99rem) {
+  .people-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .people-table, .people-table tbody { display: block; width: 100%; }
+  .people-table tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--space-2) var(--space-3); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line); }
+  .people-table tr:last-child { border-bottom: 0; }
+  .people-table td { border: 0; padding: 0; }
+  .people-table td:first-child { grid-column: 1 / -1; }
+  .people-table td.num:empty { display: none; }
+  .people-table .row-actions { flex-wrap: nowrap; }
+  .people-table .row-actions select { flex: 1 1 auto; width: auto; }
+  .people-table td.num:has(details[open]) { grid-column: 1 / -1; }
+  .people-table td.num .confirm[open] { justify-items: stretch; padding: var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-m); background: var(--paper); }
+  .people-table td.num .confirm[open] > summary { justify-self: end; }
+}
+
+/* "Ready for learners?" on the school settings page: lit squares are done, hollow ones are still to do. */
+.launch { margin: 0 0 var(--space-6); padding: var(--space-4) var(--space-5); border: 1px solid var(--line); border-radius: var(--radius-l); background: var(--surface); }
+.launch-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-2) var(--space-4); margin-bottom: var(--space-3); }
+.launch-head h2 { margin: 0; font-size: var(--step-1); }
+.launch-count { margin: 0; color: var(--ink-soft); }
+.launch-list { margin: 0; padding: 0; list-style: none; }
+.launch-item { display: grid; grid-template-columns: 0.875rem minmax(0, 1fr) auto; align-items: start; gap: var(--space-1) var(--space-3); padding: var(--space-3) 0; border-top: 1px solid var(--line); }
+.launch-mark { width: 0.875rem; height: 0.875rem; margin-top: 0.3rem; border: 2px solid var(--ink-soft); }
+.launch-item.is-done .launch-mark { border-color: var(--lamp); background: var(--lamp); }
+.launch-text { display: grid; gap: 0.1rem; min-width: 0; }
+.launch-title { font-weight: 650; }
+.launch-item.is-done .launch-title { color: var(--ink-soft); font-weight: 500; }
+.launch-state { font-size: var(--step--1); color: var(--ink-soft); }
+.launch-action { align-self: center; font-size: var(--step--1); font-weight: 700; white-space: nowrap; display: inline-flex; align-items: center; min-height: 2.75rem; }
+@media (max-width: 29.99rem) {
+  .launch { padding: var(--space-3) var(--space-4); }
+  .launch-item { grid-template-columns: 0.875rem minmax(0, 1fr); }
+  .launch-action { grid-column: 2; min-height: 2rem; }
+}
+.option-row input[type=radio] { width: 1.5rem; height: 1.5rem; }
+.course-kicker { align-items: center; }
+.course-kicker a, .panel-link a, .ch-langs a { min-height: 1.5rem; display: inline-flex; align-items: center; }
+.ch-langs a { min-width: 1.75rem; justify-content: center; }

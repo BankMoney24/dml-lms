@@ -64,7 +64,7 @@ $behind = [];
     }) ?></p>
   <?php else: ?>
   <div class="table-wrap">
-    <table class="table progress-grid">
+    <table class="table progress-grid" data-sortable>
       <thead>
         <tr>
           <th scope="col">Learner</th>
@@ -97,7 +97,7 @@ $behind = [];
               <?php if ($late): ?><span class="pg-late">Past due</span><?php endif; ?>
             </td>
           <?php endforeach; ?>
-          <td><?= isset($matrix['last_active'][$l['user_id']]) ? $v->datetime($matrix['last_active'][$l['user_id']], 'j M') : '<span class="muted small">Not yet</span>' ?></td>
+          <td data-sort="<?= $v->e((string) ($matrix['last_active'][$l['user_id']] ?? '')) ?>"><?= isset($matrix['last_active'][$l['user_id']]) ? $v->datetime($matrix['last_active'][$l['user_id']], 'j M') : '<span class="muted small">Not yet</span>' ?></td>
         </tr>
       <?php endforeach; ?>
       </tbody>

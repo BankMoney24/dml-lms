@@ -71,6 +71,47 @@ final class PeopleAndAccountTest extends AppTestCase
         $this->assertStringContainsString('already a member', $again->body);
     }
 
+    public function testPeopleListFiltersByRoleFindsByNameAndPages(): void
+    {
+        $users = $this->app->get(\App\Modules\Identity\UserRepository::class);
+        $members = $this->app->get(\App\Modules\Tenancy\MembershipRepository::class);
+        $hash = \App\Modules\Identity\AuthService::hashPassword('correct-horse-battery');
+        for ($i = 1; $i <= 57; $i++) {
+            $u = $users->create(sprintf('learner%02d@school.test', $i), sprintf('Learner %02d', $i), $hash);
+            $members->add($this->tenant->id, $u->id, Role::Learner);
+        }
+        $this->makeUser($this->tenant, 'teacher@school.test', Role::Educator);
+        $this->signInAs('owner@school.test');
+
+        $page = $this->get(self::HOST, '/people')->body;
+        $this->assertStringContainsString('59 members', $page);
+        $this->assertStringContainsString('Showing 1–50 of 59', $page);
+        $this->assertStringContainsString('aria-label="People pages"', $page);
+        $this->assertSame(50, substr_count($page, '<tr id="person-'));
+
+        $two = $this->get(self::HOST, '/people?page=2')->body;
+        $this->assertSame(9, substr_count($two, '<tr id="person-'));
+        $this->assertStringContainsString('Showing 51–59 of 59', $two);
+        $this->assertSame(9, substr_count($this->get(self::HOST, '/people?page=99')->body, '<tr id="person-'), 'a page past the end shows the last one');
+
+        $educators = $this->get(self::HOST, '/people?role=educator')->body;
+        $this->assertSame(1, substr_count($educators, '<tr id="person-'));
+        $this->assertStringContainsString('teacher@school.test', $educators);
+        $this->assertStringContainsString('<option value="educator" selected>Educators (1)</option>', $educators);
+
+        $found = $this->get(self::HOST, '/people?find=learner07')->body;
+        $this->assertSame(1, substr_count($found, '<tr id="person-'));
+        $this->assertStringContainsString('Learner 07', $found);
+
+        $none = $this->get(self::HOST, '/people?find=' . rawurlencode('nobody_%'))->body;
+        $this->assertStringContainsString('No one matches “nobody_%”.', $none);
+        $this->assertStringNotContainsString('<table class="table people-table">', $none);
+
+        $newest = $this->get(self::HOST, '/people?sort=newest&role=learner')->body;
+        $this->assertLessThan(strpos($newest, 'Learner 56'), (int) strpos($newest, 'Learner 57'), 'newest first');
+        $this->assertStringContainsString('href="/people?role=learner&amp;sort=newest&amp;page=2"', $newest, 'page links keep the filters');
+    }
+
     public function testAdminCannotCreateOrManageOwners(): void
     {
         $this->makeUser($this->tenant, 'admin@school.test', Role::Admin);

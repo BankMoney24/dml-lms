@@ -30,6 +30,7 @@ final class SchoolController
         private readonly MembershipRepository $memberships,
         private readonly CourseRepository $courses,
         private readonly ?\App\Modules\Payments\PaymentAccountRepository $paymentAccounts = null,
+        private readonly ?\App\Modules\Tenancy\LaunchChecklist $checklist = null,
     ) {
     }
 
@@ -48,9 +49,10 @@ final class SchoolController
             'progress' => ['handled' => $handled, 'total' => count($steps)],
             'result' => is_array($result) ? $result : null,
             'domains' => $this->tenants->domains($tenant->id),
-            'memberCount' => count($this->memberships->listActive($tenant->id)),
+            'memberCount' => array_sum($this->memberships->countByRole($tenant->id)),
             'courseCount' => count($this->courses->titles($tenant->id)),
             'payments' => $this->paymentAccounts?->find($tenant->id),
+            'launch' => $this->checklist?->items($tenant) ?? [],
         ]));
     }
 

@@ -18,7 +18,7 @@ $completed = count(array_filter($rows, static fn ($r) => $r['status'] === 'compl
 <?php else: ?>
 <p class="lead"><?= $v->e($v->plural(count($rows), 'learner')) ?> enrolled, <?= $completed ?> completed</p>
 <div class="table-wrap">
-<table class="table">
+<table class="table" data-sortable>
   <thead>
     <tr>
       <th scope="col">Learner</th>
@@ -39,7 +39,7 @@ $completed = count(array_filter($rows, static fn ($r) => $r['status'] === 'compl
   <?php foreach ($rows as $r): ?>
     <tr>
       <td><?= $v->e($r['name']) ?><span class="small muted"><?= $v->e($r['email']) ?></span></td>
-      <td>
+      <td data-sort="<?= $r['status'] === 'completed' ? (int) $report['total'] + 1 : (int) $r['done'] ?>">
         <?php if ($r['status'] === 'completed'): ?>
           <?= $v->badge('Completed', 'done') ?>
         <?php else: ?>
@@ -48,7 +48,7 @@ $completed = count(array_filter($rows, static fn ($r) => $r['status'] === 'compl
         <?php endif; ?>
       </td>
       <?php foreach ($report['quizzes'] as $quiz): $best = $r['best'][$quiz['assessment_id']] ?? null; ?>
-        <td class="num hide-narrow">
+        <td class="num hide-narrow" data-sort="<?= $best ?? -1 ?>">
           <?php if ($best === null): ?><span class="muted">–</span>
           <?php elseif ($best >= $quiz['pass_threshold']): ?><?= $v->badge('✓ ' . $best . '%', 'ok') ?><span class="visually-hidden"> passed</span>
           <?php else: ?><?= $v->badge($best . '%', 'draft') ?><span class="visually-hidden"> not passed yet</span><?php endif; ?>
@@ -63,13 +63,13 @@ $completed = count(array_filter($rows, static fn ($r) => $r['status'] === 'compl
         </td>
       <?php endforeach; ?>
       <?php foreach ($report['labs'] ?? [] as $labCol): $lb = $r['labs'][$labCol['lesson_id']] ?? null; ?>
-        <td class="num hide-narrow">
+        <td class="num hide-narrow" data-sort="<?= $lb === null ? -1 : (int) $lb['score'] ?>">
           <?php if ($lb === null): ?><span class="muted">–</span>
           <?php elseif ($lb['passed']): ?><?= $v->badge('✓ ' . $lb['score'] . '%', 'ok') ?><span class="visually-hidden"> passed</span>
           <?php else: ?><?= $v->badge($lb['score'] . '%', 'draft') ?><span class="visually-hidden"> not passed yet</span><?php endif; ?>
         </td>
       <?php endforeach; ?>
-      <td class="hide-narrow"><?= $r['last_activity'] === null ? '<span class="muted">Not started</span>' : $v->datetime($r['last_activity']) ?></td>
+      <td class="hide-narrow" data-sort="<?= $v->e((string) ($r['last_activity'] ?? '')) ?>"><?= $r['last_activity'] === null ? '<span class="muted">Not started</span>' : $v->datetime($r['last_activity']) ?></td>
     </tr>
   <?php endforeach; ?>
   </tbody>

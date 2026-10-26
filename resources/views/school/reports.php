@@ -70,7 +70,7 @@ $figures = [
   <?php else: ?>
   <p class="report-key small" aria-hidden="true"><span class="key key-done"></span>Completed <span class="key key-going"></span>In progress <span class="key key-idle"></span>Not started</p>
   <div class="table-wrap">
-  <table class="table report-table">
+  <table class="table report-table" data-sortable>
     <thead><tr><th scope="col">Course</th><th scope="col" class="num">Enrolled</th><th scope="col">Learners</th><th scope="col" class="num">Completed</th><th scope="col" class="num">Average progress</th><th scope="col">Last activity</th></tr></thead>
     <tbody>
     <?php foreach ($courses as $c): $n = max(1, $c['enrolled']); ?>
@@ -86,9 +86,9 @@ $figures = [
           </svg>
           <?php else: ?><span class="muted small">Nobody yet</span><?php endif; ?>
         </td>
-        <td class="num" data-label="Completed"><?= $c['completed'] ?><?php if ($c['enrolled'] > 0): ?> <span class="muted small">(<?= $c['completion_rate'] ?>%)</span><?php endif; ?></td>
-        <td class="num" data-label="Average progress"><?= $c['enrolled'] > 0 ? $c['avg_done'] . '%' : '–' ?></td>
-        <td data-label="Last activity"><?= $v->e($when($c['last_activity'])) ?></td>
+        <td class="num" data-label="Completed" data-sort="<?= (int) $c['completed'] ?>"><?= $c['completed'] ?><?php if ($c['enrolled'] > 0): ?> <span class="muted small">(<?= $c['completion_rate'] ?>%)</span><?php endif; ?></td>
+        <td class="num" data-label="Average progress" data-sort="<?= $c['enrolled'] > 0 ? (int) $c['avg_done'] : -1 ?>"><?= $c['enrolled'] > 0 ? $c['avg_done'] . '%' : '–' ?></td>
+        <td data-label="Last activity" data-sort="<?= $v->e((string) ($c['last_activity'] ?? '')) ?>"><?= $v->e($when($c['last_activity'])) ?></td>
       </tr>
     <?php endforeach; ?>
     </tbody>
@@ -117,7 +117,7 @@ $figures = [
     <p class="muted"><?= $find !== '' || $group > 0 ? 'No learner matches.' : 'No learners yet.' ?></p>
   <?php else: ?>
   <div class="table-wrap">
-  <table class="table report-table">
+  <table class="table report-table" data-sortable>
     <thead><tr><th scope="col">Learner</th><th scope="col" class="num">Courses</th><th scope="col" class="num">Completed</th><th scope="col" class="num">Lessons done</th><th scope="col" class="num">Certificates</th><th scope="col">Last learned</th></tr></thead>
     <tbody>
     <?php foreach ($learners as $l): ?>
@@ -127,7 +127,7 @@ $figures = [
         <td class="num" data-label="Completed"><?= $l['completed'] ?></td>
         <td class="num" data-label="Lessons done"><?= $l['lessons_done'] ?></td>
         <td class="num" data-label="Certificates"><?= $l['certificates'] ?></td>
-        <td data-label="Last learned"><?= $v->e($when($l['last_activity'])) ?></td>
+        <td data-label="Last learned" data-sort="<?= $v->e((string) ($l['last_activity'] ?? '')) ?>"><?= $v->e($when($l['last_activity'])) ?></td>
       </tr>
     <?php endforeach; ?>
     </tbody>

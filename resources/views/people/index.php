@@ -5,10 +5,12 @@
 /** @var array<int, int> $guardianCounts learner id => linked guardians */
 /** @var array<string, string> $errors */
 /** @var array<string, string> $old */
-$counts = [];
-foreach ($members as $m) {
-    $counts[$m['role']->label()] = ($counts[$m['role']->label()] ?? 0) + 1;
-}
+/** @var \App\Core\View\Pager $pager */
+/** @var array<string, int> $roleCounts */
+/** @var ?\App\Modules\Identity\Role $roleFilter */
+/** @var string $sort */
+$everyone = array_sum($roleCounts);
+$filtered = $roleFilter !== null || ($find ?? '') !== '';
 ?>
 <header class="page-head">
   <h1>People</h1>
@@ -32,17 +34,38 @@ foreach ($members as $m) {
 </div>
 <?php endif; ?>
 
-<div class="teach-layout">
+<div class="teach-layout people-layout">
   <section aria-labelledby="members-h">
-    <h2 id="members-h"><?= $v->e($v->plural(count($members), 'member')) ?></h2>
-    <p class="muted small"><?php $parts = []; foreach ($counts as $label => $c) { $parts[] = $c . ' ' . strtolower($label) . ($c === 1 ? '' : 's'); } echo $v->e(implode(', ', $parts)); ?></p>
-    <?php if (count($members) > 8): ?>
-    <p class="filter-row">
-      <label for="people-find" hidden>Find a person</label>
-      <input type="search" id="people-find" data-filter="people-rows" placeholder="Name or email" autocomplete="off" value="<?= $v->e($find ?? '') ?>" hidden>
-      <span id="people-rows-count" class="small muted" role="status"></span>
-    </p>
-    <?php endif; ?>
+    <h2 id="members-h"><?= $v->e($v->plural($everyone, 'member')) ?></h2>
+    <form method="get" action="/people" class="list-tools" role="search" aria-label="Find people" data-autosubmit>
+      <div class="list-tool list-tool-find">
+        <label for="people-find">Find</label>
+        <input type="search" id="people-find" name="find" placeholder="Name or email" autocomplete="off" maxlength="120" value="<?= $v->e($find ?? '') ?>">
+      </div>
+      <div class="list-tool">
+        <label for="people-role">Role</label>
+        <select id="people-role" name="role">
+          <option value="">Everyone (<?= $everyone ?>)</option>
+          <?php foreach (\App\Modules\Identity\Role::cases() as $r): if (($roleCounts[$r->value] ?? 0) === 0 && $roleFilter !== $r) { continue; } ?>
+          <option value="<?= $v->e($r->value) ?>"<?= $roleFilter === $r ? ' selected' : '' ?>><?= $v->e($r->label()) ?>s (<?= (int) ($roleCounts[$r->value] ?? 0) ?>)</option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="list-tool">
+        <label for="people-sort">Order</label>
+        <select id="people-sort" name="sort">
+          <?php foreach (['role' => 'By role', 'name' => 'By name', 'newest' => 'Newest first'] as $key => $label): ?>
+          <option value="<?= $key === 'role' ? '' : $v->e($key) ?>"<?= $sort === $key ? ' selected' : '' ?>><?= $v->e($label) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="list-tool-actions">
+        <button type="submit" class="button button-small button-quiet">Show</button>
+        <?php if ($filtered || $sort !== 'role'): ?><a class="small" href="/people">Clear</a><?php endif; ?>
+      </div>
+    </form>
+    <p class="small muted list-count" role="status"><?php if ($pager->total === 0): ?>No one matches<?= ($find ?? '') !== '' ? ' “' . $v->e($find) . '”' : '' ?><?= $roleFilter !== null ? ' among ' . $v->e(strtolower($roleFilter->label())) . 's' : '' ?>.<?php elseif ($pager->pages > 1 || $filtered): ?>Showing <?= $pager->from() ?>–<?= $pager->to() ?> of <?= $pager->total ?><?= $filtered ? ' matching' : '' ?>.<?php endif; ?></p>
+    <?php if ($members !== []): ?>
     <div class="table-wrap">
     <table class="table people-table">
       <thead><tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
@@ -50,7 +73,7 @@ foreach ($members as $m) {
       <?php foreach ($members as $m):
         $isMe = $m['user_id'] === $meId;
         $locked = $isMe || ($m['role']->value === 'owner' && !$iAmOwner); ?>
-        <tr id="person-<?= $m['user_id'] ?>" data-filter-row="<?= $v->e($m['name'] . ' ' . $m['email']) ?>">
+        <tr id="person-<?= $m['user_id'] ?>">
           <td><?= $v->e($m['name']) ?><?= $isMe ? ' ' . $v->badge('You') : '' ?>
             <?= $m['pending'] ? ' ' . $v->badge('Not signed in yet', 'draft') : '' ?>
             <?= $m['two_step'] ? ' ' . $v->badge('Two-step on', 'ok') : '' ?>
@@ -106,6 +129,8 @@ foreach ($members as $m) {
       </tbody>
     </table>
     </div>
+    <?php endif; ?>
+    <?php $pagerLabel = 'People pages'; include __DIR__ . '/../partials/pager.php'; ?>
     <p class="small muted">Learners study courses. Educators build courses and see progress. Admins also manage people and see activity. Owners can do everything, including managing other owners.</p>
   </section>
 

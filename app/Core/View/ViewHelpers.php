@@ -185,6 +185,10 @@ final class ViewHelpers
             'select' => sprintf('<select%s>%s</select>', $attrHtml, $this->options($o['options'] ?? [], $value)),
             default => sprintf('<input type="%s"%s value="%s">', $this->e($type), $attrHtml, $type === 'password' ? '' : $this->e($value)),
         };
+        if ($type === 'password' && ($o['reveal'] ?? true)) {
+            // Show / Hide appears only with scripts (app.js); without them this is a plain password box.
+            $control = '<div class="reveal-row">' . $control . self::revealButton($id) . '</div>';
+        }
 
         $html = '<div class="field' . (isset($o['class']) ? ' ' . $this->e($o['class']) : '') . '">';
         $html .= sprintf(
@@ -202,6 +206,13 @@ final class ViewHelpers
         }
 
         return $html . '</div>';
+    }
+
+    /** The Show / Hide button that sits beside a password box (hidden until app.js wires it up). */
+    public static function revealButton(string $inputId): string
+    {
+        return '<button type="button" class="button button-quiet button-small reveal" data-reveal="' . htmlspecialchars($inputId, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+            . '" hidden><span data-reveal-word>Show</span><span class="visually-hidden"> password</span></button>';
     }
 
     /**

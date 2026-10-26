@@ -115,7 +115,17 @@ abstract class AppTestCase extends TestCase
 
     protected function get(string $host, string $path): Response
     {
-        return $this->send(new Request('GET', $path, $host));
+        // "/people?page=2" is sent as the path "/people" with the query values, as a browser would.
+        $query = [];
+        if (str_contains($path, '?')) {
+            [$path, $qs] = explode('?', $path, 2);
+            parse_str($qs, $parsed);
+            foreach ($parsed as $key => $value) {
+                $query[(string) $key] = $value;
+            }
+        }
+
+        return $this->send(new Request('GET', $path, $host, $query));
     }
 
     /** @param array<string, mixed> $data */

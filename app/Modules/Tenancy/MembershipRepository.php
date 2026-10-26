@@ -96,4 +96,63 @@ final class MembershipRepository
             'pending' => (bool) $r['must_change_password'],
         ], $rows);
     }
+
+    /**
+     * Active members by role, for counts on the People and school pages.
+     *
+     * @return array<string, int> role value => members
+     */
+    public function countByRole(int $tenantId): array
+    {
+        $out = [];
+        foreach ($this->db->fetchAll("SELECT role, COUNT(*) AS n FROM memberships WHERE tenant_id = ? AND status = 'active' GROUP BY role", [$tenantId]) as $r) {
+            $out[(string) $r['role']] = (int) $r['n'];
+        }
+
+        return $out;
+    }
+
+    /**
+     * One page of active members, optionally narrowed by role and by a name or email fragment.
+     *
+     * @return array{total: int, rows: list<array{user_id: int, name: string, email: string, role: Role, joined_at: string, two_step: bool, pending: bool}>}
+     */
+    public function page(int $tenantId, ?Role $role, string $find, string $sort, int $offset, int $limit): array
+    {
+        $where = "m.tenant_id = ? AND m.status = 'active'";
+        $params = [$tenantId];
+        if ($role !== null) {
+            $where .= ' AND m.role = ?';
+            $params[] = $role->value;
+        }
+        $find = trim($find);
+        if ($find !== '') {
+            $like = '%' . addcslashes($find, '%_\\') . '%';
+            $where .= ' AND (u.display_name LIKE ? OR u.email LIKE ?)';
+            $params[] = $like;
+            $params[] = $like;
+        }
+        $order = match ($sort) {
+            'name' => 'u.display_name, u.id',
+            'newest' => 'm.created_at DESC, u.id DESC',
+            default => "FIELD(m.role, 'owner', 'admin', 'educator', 'learner', 'guardian'), u.display_name, u.id",
+        };
+        $total = (int) $this->db->fetchValue("SELECT COUNT(*) FROM memberships m JOIN users u ON u.id = m.user_id WHERE $where", $params);
+        $rows = $this->db->fetchAll(
+            "SELECT m.user_id, m.role, m.created_at, u.display_name, u.email, u.totp_enabled_at, u.must_change_password
+             FROM memberships m JOIN users u ON u.id = m.user_id
+             WHERE $where ORDER BY $order LIMIT " . max(1, $limit) . ' OFFSET ' . max(0, $offset),
+            $params,
+        );
+
+        return ['total' => $total, 'rows' => array_map(static fn (array $r): array => [
+            'user_id' => (int) $r['user_id'],
+            'name' => (string) $r['display_name'],
+            'email' => (string) $r['email'],
+            'role' => Role::from((string) $r['role']),
+            'joined_at' => (string) $r['created_at'],
+            'two_step' => $r['totp_enabled_at'] !== null,
+            'pending' => (bool) $r['must_change_password'],
+        ], $rows)];
+    }
 }

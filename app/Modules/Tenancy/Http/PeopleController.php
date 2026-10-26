@@ -10,6 +10,7 @@ use App\Core\Http\Response;
 use App\Core\Mail\MailSettings;
 use App\Core\Session\Session;
 use App\Core\Validation\ValidationException;
+use App\Core\View\Pager;
 use App\Core\View\View;
 use App\Modules\Identity\AccountLinkService;
 use App\Modules\Identity\Role;
@@ -22,6 +23,7 @@ use App\Modules\Tenancy\MembershipRepository;
 final class PeopleController
 {
     private const NEW_MEMBER_FLASH = 'new_member';
+    private const PER_PAGE = 50;
 
     public function __construct(
         private readonly View $view,
@@ -154,11 +156,21 @@ final class PeopleController
             $newMember = is_array($decoded) ? $decoded : null;
         }
 
-        $members = $this->memberships->listActive($tenant->id);
+        $roleFilter = Role::tryFrom($request->query('role', '') ?? '');
+        $find = mb_substr(trim($request->query('find', '') ?? ''), 0, 120);
+        $sort = in_array($request->query('sort', ''), ['name', 'newest'], true) ? (string) $request->query('sort', '') : 'role';
+        $query = ['role' => $roleFilter->value ?? '', 'find' => $find, 'sort' => $sort === 'role' ? '' : $sort];
+        $first = $this->memberships->page($tenant->id, $roleFilter, $find, $sort, 0, 0);
+        $pager = new Pager(Pager::pageFrom($request->query('page')), self::PER_PAGE, $first['total'], '/people', $query);
+        $members = $this->memberships->page($tenant->id, $roleFilter, $find, $sort, $pager->offset(), self::PER_PAGE)['rows'];
 
         return Response::html($this->view->render('people/index', [
             'pageTitle' => 'People',
             'members' => $members,
+            'pager' => $pager,
+            'roleCounts' => $this->memberships->countByRole($tenant->id),
+            'roleFilter' => $roleFilter,
+            'sort' => $sort,
             'profiles' => $this->profiles?->many($tenant->id, array_map(static fn (array $m): int => (int) $m['user_id'], $members)) ?? [],
             'roles' => $this->members->assignableRoles($me),
             'meId' => $me->user->id,
@@ -166,7 +178,7 @@ final class PeopleController
             'emailing' => $this->mail->deliveryAvailable(),
             'newMember' => $newMember,
             'guardianCounts' => $this->guardians?->counts($tenant->id) ?? [],
-            'find' => mb_substr(trim($request->query('find', '') ?? ''), 0, 120),
+            'find' => $find,
             'errors' => $errors,
             'old' => $old + ['name' => '', 'email' => '', 'role' => 'learner'],
         ]), $status);

@@ -145,7 +145,7 @@ $manualErrors = array_intersect_key($errors, ['email' => 1, 'course_id' => 1, 'a
     <p class="muted"><?= $filter === '' ? 'No payments yet. When a learner pays for a course, or you record a payment below, it shows here.' : 'No payments in this list.' ?></p>
   <?php else: ?>
   <div class="table-wrap">
-    <table class="table pay-table">
+    <table class="table pay-table" data-sortable>
       <thead><tr><th scope="col">Learner</th><th scope="col">Course</th><th scope="col" class="num">Amount</th><th scope="col">Status</th><th scope="col">Date</th></tr></thead>
       <tbody>
       <?php foreach ($rows as $row): $p = $row['payment']; $label = $p->statusLabel($now); ?>
@@ -154,7 +154,7 @@ $manualErrors = array_intersect_key($errors, ['email' => 1, 'course_id' => 1, 'a
           <td data-label="Course"><?= $v->e($row['course']) ?><span class="small muted"><?= $v->e($p->methodLabel()) ?></span></td>
           <td data-label="Amount" class="num"><?= $v->e($p->amount()) ?></td>
           <td data-label="Status"><?= $v->badge($label, $tones[$label] ?? 'neutral') ?><?php if ($p->note !== null && $p->status !== 'pending'): ?><span class="small muted"><?= $v->e($p->note) ?></span><?php endif; ?></td>
-          <td data-label="Date"><?= $v->datetime($p->paidAt ?? $p->createdAt) ?><span class="small muted ref"><?= $v->e($p->reference) ?></span></td>
+          <td data-label="Date" data-sort="<?= $v->e((string) ($p->paidAt ?? $p->createdAt)) ?>"><?= $v->datetime($p->paidAt ?? $p->createdAt) ?><span class="small muted ref"><?= $v->e($p->reference) ?></span></td>
         </tr>
       <?php endforeach; ?>
       </tbody>

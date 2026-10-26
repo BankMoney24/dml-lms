@@ -792,6 +792,12 @@ final class Application
             $c->get(MembershipRepository::class),
             $c->get(CourseRepository::class),
             $c->get(PaymentAccountRepository::class),
+            $c->get(\App\Modules\Tenancy\LaunchChecklist::class),
+        ));
+        $c->set(\App\Modules\Tenancy\LaunchChecklist::class, static fn (Container $c) => new \App\Modules\Tenancy\LaunchChecklist(
+            $c->get(Connection::class),
+            $c->get(MailSettings::class),
+            $c->get(\App\Modules\Site\SitePageRepository::class),
         ));
         $c->set(PaymentController::class, static fn (Container $c) => new PaymentController(
             $c->get(View::class),

@@ -93,6 +93,30 @@ $none = '<span class="muted">Not set</span>';
 </div>
 <?php endif; ?>
 
+<?php $launch = $launch ?? []; $ready = count(array_filter($launch, static fn (array $i): bool => $i['done'])); ?>
+<?php if ($school->isSetUp() && $launch !== []): ?>
+<section class="launch" aria-labelledby="launch-h">
+  <div class="launch-head">
+    <h2 id="launch-h">Ready for learners?</h2>
+    <p class="launch-count"><strong><?= $ready ?> of <?= count($launch) ?></strong> ready</p>
+  </div>
+  <?php if ($ready === count($launch)): ?>
+    <p class="muted">Everything on this list is set up.</p>
+  <?php else: ?>
+  <ul class="launch-list">
+    <?php foreach ($launch as $item): ?>
+    <li class="launch-item<?= $item['done'] ? ' is-done' : '' ?>">
+      <span class="launch-mark" aria-hidden="true"></span>
+      <span class="launch-text"><span class="launch-title"><?= $v->e($item['title']) ?><span class="visually-hidden"><?= $item['done'] ? ': done' : ': not yet' ?></span></span>
+        <span class="launch-state"><?= $v->e($item['state']) ?></span></span>
+      <?php if (!$item['done'] && $item['action'] !== ''): ?><a class="launch-action" href="<?= $v->e($item['href']) ?>"><?= $v->e($item['action']) ?></a><?php endif; ?>
+    </li>
+    <?php endforeach; ?>
+  </ul>
+  <?php endif; ?>
+</section>
+<?php endif; ?>
+
 <div class="settings">
   <section class="settings-group" aria-labelledby="s-look">
     <div class="settings-head">

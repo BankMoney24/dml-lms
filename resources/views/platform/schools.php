@@ -32,7 +32,7 @@ $platformTab = 'schools';
 <?php endif; ?>
 
 <div class="table-wrap">
-<table class="table">
+<table class="table" data-sortable>
   <caption class="visually-hidden">Schools</caption>
   <thead><tr>
     <th scope="col">School</th>

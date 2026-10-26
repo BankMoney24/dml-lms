@@ -54,7 +54,7 @@ unset($errors['form']);
           <p class="hint" id="password-hint">At least 12 characters. A short sentence is easy to remember and hard to guess.</p>
           <div class="reveal-row">
             <input type="password" id="password" name="password" autocomplete="new-password" maxlength="200" aria-describedby="password-hint<?= isset($errors['password']) ? ' password-error' : '' ?>"<?= isset($errors['password']) ? ' aria-invalid="true"' : '' ?>>
-            <button type="button" class="button button-quiet button-small" data-reveal="password" aria-pressed="false" hidden>Show</button>
+            <?= \App\Core\View\ViewHelpers::revealButton('password') ?>
           </div>
           <?php if (isset($errors['password'])): ?><p class="field-error" id="password-error"><?= $v->e($errors['password']) ?></p><?php endif; ?>
         </div>
