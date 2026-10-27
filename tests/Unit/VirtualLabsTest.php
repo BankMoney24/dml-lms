@@ -61,6 +61,23 @@ final class VirtualLabsTest extends TestCase
                 'status' => (string) $sec['code'],
             ],
             'network-trace' => ['device' => (string) $sec['at'], 'fault' => (string) $sec['problem'], 'next_hop' => (string) $sec['hop'], 'server_network' => (string) $sec['server_net']],
+            'network-build' => ['topology' => json_encode(NetworkLabsTest::workingNetwork($pub, 2), JSON_THROW_ON_ERROR)],
+            'network-repair' => ['topology' => json_encode(NetworkLabsTest::workingNetwork($pub, 3), JSON_THROW_ON_ERROR)],
+            'firewall-rules' => ['rules' => json_encode(NetworkLabsTest::goodRules($pub), JSON_THROW_ON_ERROR)],
+            'dns-lookup' => [
+                'address' => (string) $sec['answer'], 'cname' => (string) $sec['cname'], 'ns' => (string) $sec['ns'][0], 'mx' => (string) $sec['mx'],
+                'log' => json_encode([['198.41.0.4'], ['192.0.2.53'], ['198.51.100.20'], ['203.0.113.9']], JSON_THROW_ON_ERROR),
+            ],
+            'pendulum' => [
+                'slope' => (string) round(4 * M_PI * M_PI / $pub['g'], 2),
+                'g' => (string) round($pub['g'], 2),
+                'period' => (string) round(2 * M_PI * sqrt($pub['lq'] / 100 / $pub['g']), 2),
+                'readings' => json_encode([[20, 18.0], [40, 25.4], [60, 31.1], [80, 35.9], [100, 40.1]], JSON_THROW_ON_ERROR),
+            ],
+            'osmosis' => [
+                'iso' => (string) $pub['iso'], 'strong' => 'lost', 'reason' => 'out',
+                'readings' => json_encode([[0.0, 2.5, 2.9], [0.2, 2.4, 2.5], [0.4, 2.6, 2.55], [0.6, 2.2, 2.0], [0.8, 2.7, 2.4]], JSON_THROW_ON_ERROR),
+            ],
             default => [],
         };
     }

@@ -47,6 +47,20 @@ final class UploadsTest extends TestCase
         $this->assertNull($policy->problemWith($file, 'txt'), 'UTF-8 text');
         file_put_contents($file, "\xff\xfe\x00b\x00a\x00d");
         $this->assertNotNull($policy->problemWith($file, 'txt'), 'not UTF-8 / binary');
+
+        // Packet Tracer files (ADR 0035): scrambled binary is accepted; anything libmagic recognises is not.
+        file_put_contents($file, random_bytes(4096));
+        $this->assertNull($policy->problemWith($file, 'pka'));
+        $this->assertNull($policy->problemWith($file, 'pkt'));
+        $zip = new \ZipArchive();
+        $zip->open($file, \ZipArchive::OVERWRITE);
+        $zip->addFromString('evil.exe', 'MZ');
+        $zip->close();
+        $this->assertNotNull($policy->problemWith($file, 'pka'), 'an archive renamed .pka is refused');
+        file_put_contents($file, "MZ\x90\x00\x03\x00\x00\x00\x04\x00\x00\x00\xff\xff\x00\x00" . str_repeat("\x00", 48) . 'PE');
+        $this->assertNotNull($policy->problemWith($file, 'pkt'), 'a Windows program renamed .pkt is refused');
+        $this->assertSame('application/octet-stream', \App\Modules\Files\UploadPolicy::servedType('pka'));
+        $this->assertFalse(\App\Modules\Files\UploadPolicy::opensInBrowser('pkt'), 'always a download');
         unlink($file);
     }
 

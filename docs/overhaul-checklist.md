@@ -63,6 +63,7 @@ Pending features (from the invoice's pending list):
 - [x] Everyday (informal) learning track, community school type, and a complete free course (update 33)
 - [x] Developers page, accessibility statement and security.txt (update 33)
 - [x] Blog, programmes page (formal and informal learning), FAQ and careers pages, footer columns (update 34, ADR 0034)
+- [x] Network builder (Packet Tracer style) with build and repair labs; firewall, DNS, pendulum and osmosis labs; Packet Tracer files; Networking Foundations course (update 35, ADR 0035)
 
 - [x] Refunds and discount codes (update 32, ADR 0032)
 - [ ] Instalments
@@ -74,6 +75,7 @@ Pending features (from the invoice's pending list):
 - [ ] SMS / WhatsApp: needs a provider account and a consent review first
 - [ ] Recording and YouTube streaming: needs a separate Jibri server (more memory than the current server can spare)
 - [ ] Real-machine labs: needs isolated lab servers
+- [ ] Network builder next steps: VLANs, DHCP and dynamic routing (OSPF) in the simulator
 
 Server and account tasks (done by the school on the server; instructions in each release note):
 

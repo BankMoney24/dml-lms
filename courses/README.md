@@ -28,7 +28,8 @@ Lesson text uses the platform's Markdown subset: `##` headings, lists, `**bold**
 | Folder | Course | Level |
 |---|---|---|
 | `linux-server-administration` | Linux Server Administration: 8 modules, 21 readings, 7 module quizzes, 3 reviewed assignments, a 20-question final exam | Advanced, about 40 hours |
-| `ss2-science-practicals` | SS2 Science Practicals: Ohm's law, titration and straight-line graphs; 3 readings, 3 labs, 3 quizzes | School subject, about 6 hours |
+| `ss2-science-practicals` | SS2 Science Practicals: Ohm's law, the simple pendulum, titration, osmosis and straight-line graphs; 5 readings, 5 labs, 5 quizzes | School subject, about 9 hours |
+| `networking-foundations` | Networking Foundations: devices, addressing, static routes, DNS, firewall rules and troubleshooting; 7 readings, 5 labs (network builder, DNS, firewall and more), 5 quizzes, optional Cisco Packet Tracer assignment | Skills, about 12 hours |
 | `practical-tech-skills` | Practical Tech Skills: subnetting, a first JavaScript function and phishing; 3 readings, 3 labs, 3 quizzes | Skills, about 6 hours |
 | `everyday-digital-skills` | Everyday Digital Skills: your phone, money on your phone, selling on WhatsApp and Google Maps, email and account safety; 10 readings, 1 lab, 4 quizzes, 2 optional assignments; free and open to everyone | Everyday learning, about 6 hours |
 

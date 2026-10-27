@@ -1,0 +1,391 @@
+{
+ "title": "Networking Foundations: Build, Address and Route",
+ "summary": "Build real-looking networks in your browser: cable PCs, switches and routers, give them addresses, add static routes and prove it with ping. Then follow a DNS lookup from the root, write firewall rules for a school server and repair a broken office network. Five labs with new numbers every time, and an optional path into Cisco Packet Tracer.",
+ "track": "skills",
+ "level": "intermediate",
+ "duration_hours": 12,
+ "outcomes": [
+  "Explain what PCs, switches and routers do and cable them correctly",
+  "Plan and set IPv4 addresses, masks and default gateways, including /30 router links",
+  "Configure router interfaces and static routes from forms or a Cisco-style command line",
+  "Test a network with ping, tracert and step-by-step packet simulation, there and back",
+  "Follow a DNS lookup through referrals and read A, NS, CNAME and MX records",
+  "Write least-privilege firewall rules and troubleshoot a network from the bottom up"
+ ],
+ "prerequisites": "Comfort using a computer or phone browser. The Practical Tech Skills course (subnetting) helps but is not required.",
+ "modules": [
+  {
+   "title": "Devices, ports and cables",
+   "lessons": [
+    {
+     "type": "text",
+     "title": "Switches, routers and the cables between them",
+     "file": "lessons/01-devices-and-cables.md"
+    },
+    {
+     "type": "quiz",
+     "title": "Check: devices and cables",
+     "pass_threshold": 70,
+     "intro": "Four questions. Try again as often as you like.",
+     "questions": [
+      {
+       "prompt": "Which device joins two different IP networks?",
+       "options": [
+        "A switch",
+        "A router",
+        "A network cable",
+        "A laptop"
+       ],
+       "correct": 1,
+       "explanation": "Routers forward packets between networks; switches join devices on the same network."
+      },
+      {
+       "prompt": "What does a switch use to decide which port to send a frame out of?",
+       "options": [
+        "The destination IP address",
+        "The destination MAC (hardware) address",
+        "The port number of the service",
+        "The cable colour"
+       ],
+       "correct": 1,
+       "explanation": "Switches learn which MAC address is on which port."
+      },
+      {
+       "prompt": "A new router interface has the right address but no traffic passes. What is the most likely cause?",
+       "options": [
+        "The mask is /24",
+        "It is still administratively down: it needs no shutdown",
+        "Routers need two cables per port",
+        "The PC is a laptop"
+       ],
+       "correct": 1,
+       "explanation": "Router interfaces stay shut down until turned on with no shutdown."
+      },
+      {
+       "prompt": "What is a PC's default gateway?",
+       "options": [
+        "The server it wants to reach",
+        "The router's address on the PC's own network",
+        "The switch's port number",
+        "Any address on the internet"
+       ],
+       "correct": 1,
+       "explanation": "The gateway is the router interface on the PC's network: the way out of it."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Addresses, masks and gateways",
+   "lessons": [
+    {
+     "type": "text",
+     "title": "Addresses, masks and the default gateway",
+     "file": "lessons/02-addresses-masks-gateways.md"
+    },
+    {
+     "type": "lab",
+     "title": "Lab: subnetting",
+     "lab": "subnetting",
+     "intro": "Work out where a network starts and ends, and whether two devices share it."
+    },
+    {
+     "type": "quiz",
+     "title": "Check: addressing",
+     "pass_threshold": 70,
+     "intro": "Four questions on masks and gateways.",
+     "questions": [
+      {
+       "prompt": "How many usable host addresses does a /30 network have?",
+       "options": [
+        "4",
+        "2",
+        "30",
+        "254"
+       ],
+       "correct": 1,
+       "explanation": "A /30 has 4 addresses; the network and broadcast addresses are not usable, leaving 2."
+      },
+      {
+       "prompt": "Which address can be given to a PC on 192.168.10.0/24?",
+       "options": [
+        "192.168.10.0",
+        "192.168.10.255",
+        "192.168.10.77",
+        "192.168.11.5"
+       ],
+       "correct": 2,
+       "explanation": ".0 is the network address, .255 the broadcast, and 192.168.11.5 is on another network."
+      },
+      {
+       "prompt": "A PC has 192.168.10.200 with mask 255.255.255.240 and gateway 192.168.10.1. Why can it not leave its network?",
+       "options": [
+        "The address is too high",
+        "With that mask the gateway is on a different network from the PC",
+        "Gateways must end in .254",
+        "Masks cannot end in 240"
+       ],
+       "correct": 1,
+       "explanation": "A /28 around .200 covers .192–.207, so .1 is outside the PC's own network."
+      },
+      {
+       "prompt": "A PC sends to an address on its own network. Where does the packet go?",
+       "options": [
+        "To the default gateway",
+        "Straight to the receiver, found with ARP",
+        "To the DNS server",
+        "To the switch's IP address"
+       ],
+       "correct": 1,
+       "explanation": "Only traffic for other networks goes to the gateway."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Routing between networks",
+   "lessons": [
+    {
+     "type": "text",
+     "title": "Static routes, there and back",
+     "file": "lessons/03-static-routes.md"
+    },
+    {
+     "type": "lab",
+     "title": "Lab: build a routed network",
+     "lab": "network-build",
+     "intro": "Start with an empty workspace. Place and cable the devices, address them from the plan, add a static route on each router and ping the server from every PC. Use Simulation if a ping fails."
+    },
+    {
+     "type": "quiz",
+     "title": "Check: routing",
+     "pass_threshold": 70,
+     "intro": "Four questions on routes.",
+     "questions": [
+      {
+       "prompt": "R1 and R2 share the link 172.16.0.0/30; R1 is .1 and R2 is .2. What next hop should R1 use for networks behind R2?",
+       "options": [
+        "172.16.0.1",
+        "172.16.0.2",
+        "R2's address on the server's network",
+        "0.0.0.0"
+       ],
+       "correct": 1,
+       "explanation": "The next hop is the other router's address on the network you share."
+      },
+      {
+       "prompt": "A ping from a PC reaches the server, but the PC says Request timed out. What is the most likely cause?",
+       "options": [
+        "The server is switched off",
+        "The route back to the PC's network is missing",
+        "The PC's cable is unplugged",
+        "The mask is /24"
+       ],
+       "correct": 1,
+       "explanation": "The request arrived, so the way there works; the reply has no way back."
+      },
+      {
+       "prompt": "Which route does a router use when several match?",
+       "options": [
+        "The first one typed",
+        "The one with the longest prefix (most specific)",
+        "The default route",
+        "A random one"
+       ],
+       "correct": 1,
+       "explanation": "Longest prefix match: the most specific route wins."
+      },
+      {
+       "prompt": "What does the route ip route 0.0.0.0 0.0.0.0 172.16.0.2 do?",
+       "options": [
+        "Blocks all traffic",
+        "Sends anything without a more specific route to 172.16.0.2",
+        "Sends only local traffic to 172.16.0.2",
+        "Deletes all routes"
+       ],
+       "correct": 1,
+       "explanation": "It is a default route: used only when nothing more specific matches."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Names: DNS",
+   "lessons": [
+    {
+     "type": "text",
+     "title": "How DNS finds a server",
+     "file": "lessons/04-dns.md"
+    },
+    {
+     "type": "lab",
+     "title": "Lab: follow a DNS lookup",
+     "lab": "dns-lookup",
+     "intro": "You are the resolver. Start at the root, follow each referral, follow the CNAME, and find where the school's email goes."
+    },
+    {
+     "type": "quiz",
+     "title": "Check: DNS",
+     "pass_threshold": 70,
+     "intro": "Four questions on DNS.",
+     "questions": [
+      {
+       "prompt": "A server replies with NS records in the AUTHORITY section and no answer. What is it doing?",
+       "options": [
+        "Refusing the query",
+        "Referring you to servers closer to the name",
+        "Saying the name does not exist",
+        "Giving the final answer"
+       ],
+       "correct": 1,
+       "explanation": "That is a referral: ask the servers it names next."
+      },
+      {
+       "prompt": "Two MX records exist: 10 mail1 and 20 mail2. Which is tried first?",
+       "options": [
+        "mail2",
+        "mail1",
+        "Both at once",
+        "Whichever is nearer"
+       ],
+       "correct": 1,
+       "explanation": "The lowest preference number is tried first."
+      },
+      {
+       "prompt": "The answer for portal.myschool is a CNAME. What next?",
+       "options": [
+        "Stop: CNAME is the address",
+        "Look up the name the CNAME points to",
+        "Ask the root to delete it",
+        "Use the MX record instead"
+       ],
+       "correct": 1,
+       "explanation": "A CNAME is an alias: resolve the target name to get the address."
+      },
+      {
+       "prompt": "Why do most lookups never reach a root server?",
+       "options": [
+        "Root servers are switched off at night",
+        "Resolvers cache answers for their TTL",
+        "Computers know every address already",
+        "Routers answer DNS"
+       ],
+       "correct": 1,
+       "explanation": "Caching for the TTL means repeated lookups are answered from memory."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Security and troubleshooting",
+   "lessons": [
+    {
+     "type": "text",
+     "title": "Firewalls: allow only what is needed",
+     "file": "lessons/05-firewalls.md"
+    },
+    {
+     "type": "lab",
+     "title": "Lab: firewall rules for the school server",
+     "lab": "firewall-rules",
+     "intro": "Turn the policy into rules. Remember: the first match decides, and everything you do not allow is blocked."
+    },
+    {
+     "type": "text",
+     "title": "Troubleshooting from the bottom up",
+     "file": "lessons/06-troubleshooting.md"
+    },
+    {
+     "type": "lab",
+     "title": "Lab: repair the office network",
+     "lab": "network-repair",
+     "intro": "Three faults are hidden in a working-looking network. Test, find and fix them one at a time."
+    },
+    {
+     "type": "quiz",
+     "title": "Final check",
+     "pass_threshold": 70,
+     "intro": "Five questions across the course.",
+     "questions": [
+      {
+       "prompt": "A firewall has: 1 allow tcp any any, 2 allow tcp 192.168.20.0/24 port 22, then block everything. Who can use SSH?",
+       "options": [
+        "Only the admin network",
+        "Anyone, because rule 1 matches first",
+        "Nobody",
+        "Only the server itself"
+       ],
+       "correct": 1,
+       "explanation": "Rule 1 matches every TCP packet, so rule 2 never runs."
+      },
+      {
+       "prompt": "Which source is right for a database that only the app server 10.1.1.20 may use?",
+       "options": [
+        "any",
+        "10.1.1.0/24",
+        "10.1.1.20/32",
+        "0.0.0.0/0"
+       ],
+       "correct": 2,
+       "explanation": "/32 means exactly one address: least privilege."
+      },
+      {
+       "prompt": "Your PC says Destination host unreachable, from its own address. Where do you look first?",
+       "options": [
+        "The server's firewall",
+        "The PC's own settings and its gateway",
+        "The DNS server",
+        "The far router's routes"
+       ],
+       "correct": 1,
+       "explanation": "The PC could not reach its gateway: start with the PC, its cable and its settings."
+      },
+      {
+       "prompt": "tracert shows the same two routers repeating until TTL expires. What is wrong?",
+       "options": [
+        "A routing loop between those routers",
+        "The cable is unplugged",
+        "DNS is down",
+        "The PC's mask is wrong"
+       ],
+       "correct": 0,
+       "explanation": "Packets going round between two routers is a routing loop."
+      },
+      {
+       "prompt": "Why change one thing at a time while troubleshooting?",
+       "options": [
+        "It is faster",
+        "So you know which change fixed or broke something",
+        "Routers only accept one change",
+        "It saves electricity"
+       ],
+       "correct": 1,
+       "explanation": "One change, one test: you learn what actually mattered."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Going further: Cisco Packet Tracer (optional)",
+   "lessons": [
+    {
+     "type": "text",
+     "title": "Practise in Cisco Packet Tracer",
+     "file": "lessons/07-packet-tracer.md",
+     "required": false
+    },
+    {
+     "type": "assignment",
+     "title": "Optional: build the routed network in Packet Tracer",
+     "required": false,
+     "body": "Build the network from the *Build a routed network* lab in Cisco Packet Tracer: two PCs on a switch, two routers joined by a /30 link, and a server. Use the same kind of addressing plan, add static routes both ways, and check that every PC can ping the server.\n\nSave your work and hand in the **.pkt** file, with two or three sentences on anything that behaved differently from the network builder."
+    }
+   ]
+  }
+ ]
+}

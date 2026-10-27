@@ -16,6 +16,9 @@ $removeUrl ??= null;
     <span class="file-main">
       <a href="/files/<?= $f->id ?>"<?= $opens ? '' : ' download' ?>><?= $v->e($f->originalName) ?></a>
       <span class="small muted"><?= $v->e($f->kindLabel()) ?>, <?= $v->e($f->humanSize()) ?><?php if ($opens): ?>. <a href="/files/<?= $f->id ?>?download=1" download>Download<span class="visually-hidden"> <?= $v->e($f->originalName) ?></span></a><?php endif; ?></span>
+      <?php if (\App\Modules\Files\UploadPolicy::isPacketTracer($f->extension)): ?>
+        <span class="small file-note">Opens in Cisco Packet Tracer, a free program for Windows, macOS and Ubuntu from <a href="https://www.netacad.com" rel="noopener">Cisco Networking Academy</a> (free account needed). It does not run on Chromebooks.</span>
+      <?php endif; ?>
     </span>
     <?php if ($removeUrl !== null): ?>
     <form method="post" action="<?= $v->e($removeUrl($f)) ?>" class="inline">

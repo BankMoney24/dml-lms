@@ -30,6 +30,12 @@ final class LabCatalogue
             new Labs\PacketCaptureLab(),
             new Labs\NetworkTraceLab(),
             new Labs\PyLeapLab(),
+            new Labs\NetworkBuildLab(),
+            new Labs\NetworkRepairLab(),
+            new Labs\FirewallLab(),
+            new Labs\DnsLab(),
+            new Labs\PendulumLab(),
+            new Labs\OsmosisLab(),
         ]);
     }
 

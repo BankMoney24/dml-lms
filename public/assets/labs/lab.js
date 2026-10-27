@@ -87,6 +87,10 @@
     }
     try {
       mount(root, params, document.getElementById('lab-answers'));
+      // Scrolling tables built by the simulation must be reachable by keyboard (app.js ran before they existed).
+      Array.prototype.forEach.call(root.querySelectorAll('.table-wrap, .sim-table, .nb-events-wrap, .nb-canvas'), function (box) {
+        if (!box.hasAttribute('tabindex')) { box.setAttribute('tabindex', '0'); }
+      });
     } catch (e) {
       el('p', { class: 'notice notice-err' }, 'The simulation stopped with an error. Reload the page to try again.', root);
     }

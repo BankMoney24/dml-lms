@@ -41,6 +41,10 @@ final class UploadPolicy
         'odt' => ['Document', ['application/vnd.oasis.opendocument.text', 'application/zip'], 'application/vnd.oasis.opendocument.text', false],
         'ods' => ['Spreadsheet', ['application/vnd.oasis.opendocument.spreadsheet', 'application/zip'], 'application/vnd.oasis.opendocument.spreadsheet', false],
         'odp' => ['Slides', ['application/vnd.oasis.opendocument.presentation', 'application/zip'], 'application/vnd.oasis.opendocument.presentation', false],
+        // Cisco Packet Tracer networks (.pkt) and activities (.pka), ADR 0035. Their contents are
+        // scrambled, so libmagic sees unknown binary; anything it recognises (a program, an archive) is refused.
+        'pkt' => ['Packet Tracer network', ['application/octet-stream'], 'application/octet-stream', false],
+        'pka' => ['Packet Tracer activity', ['application/octet-stream'], 'application/octet-stream', false],
         'txt' => ['Text', [self::TEXT], 'text/plain', true],
         'md' => ['Text', [self::TEXT], 'text/plain', true],
         'log' => ['Log', [self::TEXT], 'text/plain', true],
@@ -189,7 +193,7 @@ final class UploadPolicy
     /** "PDF, images, Office and OpenDocument files, zip, and text or code files". */
     public static function summary(): string
     {
-        return 'PDF, images, Word/Excel/PowerPoint and OpenDocument files, zip archives, text or code files, video (MP4, WebM) and audio (MP3, M4A, OGG, WAV)';
+        return 'PDF, images, Word/Excel/PowerPoint and OpenDocument files, zip archives, text or code files, Cisco Packet Tracer files (.pkt, .pka), video (MP4, WebM) and audio (MP3, M4A, OGG, WAV)';
     }
 
     /**
@@ -227,6 +231,12 @@ final class UploadPolicy
         $type = self::KINDS[$extension][2] ?? 'application/octet-stream';
 
         return $type === 'text/plain' ? 'text/plain; charset=utf-8' : $type;
+    }
+
+    /** Files that open in Cisco Packet Tracer, which learners install themselves. */
+    public static function isPacketTracer(string $extension): bool
+    {
+        return $extension === 'pkt' || $extension === 'pka';
     }
 
     public static function opensInBrowser(string $extension): bool

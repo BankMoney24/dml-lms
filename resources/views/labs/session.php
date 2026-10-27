@@ -144,7 +144,9 @@ $trail = $preview !== null
           ]) ?>
         <?php endif; ?>
       <?php endforeach; ?>
-      <button type="submit" class="button" data-lab-submit>Check my answers</button>
+      <?php $workOnly = array_filter($fields, static fn ($f): bool => $f->type !== 'hidden') === []; ?>
+      <?php if ($workOnly): ?><p>Your work in the simulation is sent with this button. Test it there first: it is tested again, the same way, when it is marked.</p><?php endif; ?>
+      <button type="submit" class="button" data-lab-submit><?= $workOnly ? 'Check my work' : 'Check my answers' ?></button>
       <p class="small muted">Checking ends this attempt. You can start again with new numbers as often as you like.</p>
     </form>
   </section>

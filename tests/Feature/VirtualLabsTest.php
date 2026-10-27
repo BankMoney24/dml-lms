@@ -244,17 +244,59 @@ final class VirtualLabsTest extends AppTestCase
     public function testShippedLabCoursesImportAndShowUnderTheirTrack(): void
     {
         $importer = $this->app->get(CoursePackageImporter::class);
-        foreach (['ss2-science-practicals', 'practical-tech-skills'] as $package) {
+        foreach (['ss2-science-practicals' => 5, 'practical-tech-skills' => 3, 'networking-foundations' => 6] as $package => $modules) {
             $result = $importer->import($this->tenant->id, $this->author(), dirname(__DIR__, 2) . '/courses/' . $package, true);
-            $this->assertSame(3, $result['modules']);
+            $this->assertSame($modules, $result['modules'], $package);
         }
-        $this->assertSame(6, (int) $this->db()->fetchValue("SELECT COUNT(*) FROM lessons WHERE type = 'lab' AND lab_key IS NOT NULL") - 1);
-        $this->assertEquals(['school' => 1, 'skills' => 1], $this->app->get(CourseRepository::class)->publishedTrackCounts($this->tenant->id));
+        $this->assertSame(13, (int) $this->db()->fetchValue("SELECT COUNT(*) FROM lessons WHERE type = 'lab' AND lab_key IS NOT NULL") - 1);
+        $this->assertEquals(['school' => 1, 'skills' => 2], $this->app->get(CourseRepository::class)->publishedTrackCounts($this->tenant->id));
+        // The Packet Tracer path is optional, so the course can be finished without installing anything.
+        $this->assertSame(2, (int) $this->db()->fetchValue('SELECT COUNT(*) FROM lessons WHERE is_mandatory = 0'));
 
         $school = $this->send(new \App\Core\Http\Request('GET', '/courses', self::HOST, ['track' => 'school']))->body;
         $this->assertStringContainsString('SS2 Science Practicals', $school);
         $this->assertStringNotContainsString('Practical Tech Skills', $school);
-        $this->assertStringContainsString('3 labs', $school);
+        $this->assertStringContainsString('5 labs', $school);
         $this->assertStringContainsString('School subjects', $this->get(self::HOST, '/courses')->body);
+    }
+
+    public function testANetworkBuiltInTheBrowserIsRebuiltAndTestedOnTheServer(): void
+    {
+        $authoring = $this->app->get(CourseAuthoring::class);
+        $author = $this->author();
+        $course = $authoring->createCourse($this->tenant->id, $author, 'Networks', 'Build one');
+        $module = $authoring->addModule($course, $author, 'Module');
+        $lessonId = $authoring->addLesson($course, $author, $module, ['type' => 'lab', 'title' => '', 'body' => '', 'lab_key' => 'network-build']);
+        $authoring->publish($course, $author);
+
+        $this->signIn('learner@school.test');
+        $this->post(self::HOST, '/courses/networks/enrol');
+        $start = $this->post(self::HOST, '/courses/networks/lessons/' . $lessonId . '/lab');
+        $this->assertSame(1, preg_match('#^/labs/(\d+)$#', (string) $start->header('Location'), $m));
+        $id = (int) ($m[1] ?? 0);
+        $page = $this->get(self::HOST, '/labs/' . $id)->body;
+        $this->assertStringContainsString('/assets/labs/network-builder.js', $page, 'the shared engine');
+        $this->assertStringContainsString('Check my work', $page);
+        $this->assertStringContainsString('name="answers[topology]"', $page);
+
+        $seed = (string) $this->db()->fetchValue('SELECT seed FROM lab_sessions WHERE id = ?', [$id]);
+        $lab = LabCatalogue::builtIn()->find('network-build') ?? throw new \LogicException();
+        $net = \Tests\Unit\NetworkLabsTest::workingNetwork($lab->params(new Seed($seed))['public'], 2);
+        // The browser's own claims count for nothing: an unrouted copy fails however it is labelled.
+        $unrouted = $net;
+        $unrouted['d'][4]['rt'] = [];
+        $unrouted['ok'] = true;
+        $this->post(self::HOST, '/labs/' . $id . '/submit', ['answers' => ['topology' => json_encode($unrouted, JSON_THROW_ON_ERROR)]]);
+        $this->assertStringContainsString('Not passed yet', $this->get(self::HOST, '/labs/' . $id)->body);
+
+        $again = $this->post(self::HOST, '/courses/networks/lessons/' . $lessonId . '/lab');
+        preg_match('#^/labs/(\d+)$#', (string) $again->header('Location'), $m2);
+        $second = (int) ($m2[1] ?? 0);
+        $seed2 = (string) $this->db()->fetchValue('SELECT seed FROM lab_sessions WHERE id = ?', [$second]);
+        $net2 = \Tests\Unit\NetworkLabsTest::workingNetwork($lab->params(new Seed($seed2))['public'], 2);
+        $this->post(self::HOST, '/labs/' . $second . '/submit', ['answers' => ['topology' => json_encode($net2, JSON_THROW_ON_ERROR)]]);
+        $this->assertStringContainsString('Passed: 100%', $this->get(self::HOST, '/labs/' . $second)->body);
+        $evidence = (string) $this->db()->fetchValue('SELECT evidence FROM lab_sessions WHERE id = ?', [$second]);
+        $this->assertStringContainsString('SRV1', $evidence, 'the network is kept for the teacher to look at');
     }
 }

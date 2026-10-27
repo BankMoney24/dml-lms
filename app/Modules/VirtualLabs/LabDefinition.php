@@ -29,6 +29,8 @@ final class LabDefinition
         public readonly int $minutes,
         public readonly int $passMark = 70,
         public readonly bool $runsLearnerCode = false,
+        /** Simulation script name when several labs share one (public/assets/labs/<engine>.js). */
+        public readonly ?string $engine = null,
     ) {
     }
 
@@ -40,6 +42,6 @@ final class LabDefinition
     /** The browser simulation: public/assets/labs/<key>.js. */
     public function script(): string
     {
-        return 'labs/' . $this->key . '.js';
+        return 'labs/' . ($this->engine ?? $this->key) . '.js';
     }
 }

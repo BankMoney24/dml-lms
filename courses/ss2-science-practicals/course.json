@@ -1,242 +1,380 @@
 {
-  "title": "SS2 Science Practicals",
-  "summary": "Hands-on practicals for senior secondary Physics, Chemistry and Mathematics, done in virtual labs: find a hidden resistance with Ohm's law, titrate an acid of unknown strength, and find the equation of a straight line. Each topic has a short reading, a lab with your own numbers, and a quiz.",
-  "track": "school",
-  "level": "beginner",
-  "duration_hours": 6,
-  "outcomes": [
-    "Use an ammeter and a voltmeter correctly and apply V = IR to find an unknown resistance",
-    "Carry out an acid–base titration, obtain concordant titres and calculate a concentration",
-    "Find the gradient and intercept of a straight line and use y = mx + c",
-    "Record readings in a table and check them for mistakes before drawing conclusions"
-  ],
-  "prerequisites": "Senior secondary Physics, Chemistry and Mathematics up to SS1, and a calculator. The labs work on a phone, but a tablet or computer gives you more room.",
-  "modules": [
+ "title": "SS2 Science Practicals",
+ "summary": "Hands-on practicals for senior secondary Physics, Chemistry, Biology and Mathematics, done in virtual labs: find a hidden resistance with Ohm's law, measure g with a pendulum, titrate an acid of unknown strength, find the concentration of potato cell sap by osmosis, and find the equation of a straight line. Each topic has a short reading, a lab with your own numbers, and a quiz.",
+ "track": "school",
+ "level": "beginner",
+ "duration_hours": 9,
+ "outcomes": [
+  "Use an ammeter and a voltmeter correctly and apply V = IR to find an unknown resistance",
+  "Time oscillations accurately and find g from the slope of a T² against l graph",
+  "Carry out an acid–base titration, obtain concordant titres and calculate a concentration",
+  "Explain osmosis and find an isotonic concentration from percentage change in mass",
+  "Find the gradient and intercept of a straight line and use y = mx + c",
+  "Record readings in a table and check them for mistakes before drawing conclusions"
+ ],
+ "prerequisites": "Senior secondary Physics, Chemistry, Biology and Mathematics up to SS1, and a calculator. The labs work on a phone, but a tablet or computer gives you more room.",
+ "modules": [
+  {
+   "title": "Physics: current electricity",
+   "lessons": [
     {
-      "title": "Physics: current electricity",
-      "lessons": [
-        {
-          "type": "text",
-          "title": "Ohm's law and measuring it",
-          "file": "lessons/01-ohms-law.md"
-        },
-        {
-          "type": "lab",
-          "title": "Lab: the hidden resistor",
-          "lab": "ohms-law",
-          "intro": "Your resistor is sealed in a box. Record at least three readings, then work out its resistance. You need 70% to pass, and you can try again with new numbers as often as you like."
-        },
-        {
-          "type": "quiz",
-          "title": "Current electricity quiz",
-          "pass_threshold": 70,
-          "intro": "Five questions on Ohm's law and meters.",
-          "questions": [
-            {
-              "prompt": "How is an ammeter connected to measure the current through a resistor?",
-              "options": [
-                "In parallel with the resistor",
-                "In series with the resistor",
-                "Across the cell only",
-                "It does not matter"
-              ],
-              "correct": 1,
-              "explanation": "The same current must flow through the ammeter and the resistor, so it goes in series."
-            },
-            {
-              "prompt": "A resistor has 6.0 V across it and 0.30 A through it. What is its resistance?",
-              "options": [
-                "1.8 Ω",
-                "0.05 Ω",
-                "6.3 Ω",
-                "20 Ω"
-              ],
-              "correct": 3,
-              "explanation": "R = V ÷ I = 6.0 ÷ 0.30 = 20 Ω."
-            },
-            {
-              "prompt": "What is 45 mA in amperes?",
-              "options": [
-                "0.045 A",
-                "0.45 A",
-                "4.5 A",
-                "45 000 A"
-              ],
-              "correct": 0,
-              "explanation": "Divide milliamperes by 1000: 45 ÷ 1000 = 0.045 A."
-            },
-            {
-              "prompt": "Why is the voltmeter reading across the resistor a little less than the cell's setting?",
-              "options": [
-                "The voltmeter is in series",
-                "Current is used up in the resistor",
-                "The cell has internal resistance",
-                "The ammeter adds voltage"
-              ],
-              "correct": 2,
-              "explanation": "Some of the voltage is 'lost' across the cell's own internal resistance, so less is left across the resistor."
-            },
-            {
-              "prompt": "On a graph of current against voltage for a resistor obeying Ohm's law, the line is…",
-              "options": [
-                "curved upwards",
-                "straight and through the origin",
-                "horizontal",
-                "straight but cuts the current axis above zero"
-              ],
-              "correct": 1,
-              "explanation": "Current is proportional to voltage, so the graph is a straight line through (0, 0)."
-            }
-          ]
-        }
-      ]
+     "type": "text",
+     "title": "Ohm's law and measuring it",
+     "file": "lessons/01-ohms-law.md"
     },
     {
-      "title": "Chemistry: acid–base titration",
-      "lessons": [
-        {
-          "type": "text",
-          "title": "Titration step by step",
-          "file": "lessons/02-titration.md"
-        },
-        {
-          "type": "lab",
-          "title": "Lab: how strong is the acid?",
-          "lab": "titration",
-          "intro": "Do a rough run first, then accurate runs adding one drop at a time near the end point. Record your titres as you go."
-        },
-        {
-          "type": "quiz",
-          "title": "Titration quiz",
-          "pass_threshold": 70,
-          "intro": "Five questions on titration technique and calculations.",
-          "questions": [
-            {
-              "prompt": "Phenolphthalein in the flask turns from colourless to pink when…",
-              "options": [
-                "the solution becomes alkaline",
-                "the solution becomes acidic",
-                "the acid is first added",
-                "the burette is refilled"
-              ],
-              "correct": 0,
-              "explanation": "Phenolphthalein is colourless in acid and pink in alkali, so pink appears once alkali is in excess."
-            },
-            {
-              "prompt": "Initial burette reading 1.10 cm³, final reading 23.45 cm³. What is the titre?",
-              "options": [
-                "24.55 cm³",
-                "23.45 cm³",
-                "22.35 cm³",
-                "21.35 cm³"
-              ],
-              "correct": 2,
-              "explanation": "Titre = final − initial = 23.45 − 1.10 = 22.35 cm³."
-            },
-            {
-              "prompt": "Which titres are concordant?",
-              "options": [
-                "21.30 and 21.80 cm³",
-                "20.90 and 21.40 cm³",
-                "Only the rough titre",
-                "21.30 and 21.40 cm³"
-              ],
-              "correct": 3,
-              "explanation": "Concordant titres agree within 0.20 cm³. 21.30 and 21.40 differ by 0.10 cm³."
-            },
-            {
-              "prompt": "22.00 cm³ of 0.100 mol/dm³ NaOH neutralises 25.0 cm³ of HCl. What is the HCl concentration?",
-              "options": [
-                "0.114 mol/dm³",
-                "0.0880 mol/dm³",
-                "0.0220 mol/dm³",
-                "0.880 mol/dm³"
-              ],
-              "correct": 1,
-              "explanation": "Moles NaOH = 0.100 × 22.00 ÷ 1000 = 0.00220. Ratio 1 : 1, so [HCl] = 0.00220 ÷ 0.0250 = 0.0880 mol/dm³."
-            },
-            {
-              "prompt": "Why do you add the alkali one drop at a time near the end point?",
-              "options": [
-                "To make the reaction faster",
-                "Because drops are more concentrated",
-                "To keep the burette full",
-                "So you do not overshoot the end point"
-              ],
-              "correct": 3,
-              "explanation": "A single drop can change the colour. Adding slowly lets you stop at the first permanent pink."
-            }
-          ]
-        }
-      ]
+     "type": "lab",
+     "title": "Lab: the hidden resistor",
+     "lab": "ohms-law",
+     "intro": "Your resistor is sealed in a box. Record at least three readings, then work out its resistance. You need 70% to pass, and you can try again with new numbers as often as you like."
     },
     {
-      "title": "Mathematics: straight-line graphs",
-      "lessons": [
-        {
-          "type": "text",
-          "title": "y = mx + c",
-          "file": "lessons/03-straight-lines.md"
-        },
-        {
-          "type": "lab",
-          "title": "Lab: find the equation",
-          "lab": "straight-line",
-          "intro": "Work out the gradient and intercept from the plotted points first, then use the sliders to check that your line passes through all of them."
-        },
-        {
-          "type": "quiz",
-          "title": "Straight lines quiz",
-          "pass_threshold": 70,
-          "intro": "Four quick questions.",
-          "questions": [
-            {
-              "prompt": "What is the gradient of the line through (2, 3) and (6, 11)?",
-              "options": [
-                "2",
-                "4",
-                "8",
-                "0.5"
-              ],
-              "correct": 0,
-              "explanation": "m = (11 − 3) ÷ (6 − 2) = 8 ÷ 4 = 2."
-            },
-            {
-              "prompt": "The line y = −3x + 4 crosses the y-axis at…",
-              "options": [
-                "(4, 0)",
-                "(0, −3)",
-                "(0, 4)",
-                "(−3, 4)"
-              ],
-              "correct": 2,
-              "explanation": "At the y-axis x = 0, so y = 4."
-            },
-            {
-              "prompt": "A line has gradient 0.5 and passes through (4, 1). What is c?",
-              "options": [
-                "1",
-                "−1",
-                "3",
-                "−3"
-              ],
-              "correct": 1,
-              "explanation": "1 = 0.5 × 4 + c, so c = 1 − 2 = −1."
-            },
-            {
-              "prompt": "Which line goes down from left to right?",
-              "options": [
-                "y = −2x + 5",
-                "y = 2x − 5",
-                "y = 0.5x",
-                "y = x + 10"
-              ],
-              "correct": 0,
-              "explanation": "A negative gradient means y decreases as x increases."
-            }
-          ]
-        }
-      ]
+     "type": "quiz",
+     "title": "Current electricity quiz",
+     "pass_threshold": 70,
+     "intro": "Five questions on Ohm's law and meters.",
+     "questions": [
+      {
+       "prompt": "How is an ammeter connected to measure the current through a resistor?",
+       "options": [
+        "In parallel with the resistor",
+        "In series with the resistor",
+        "Across the cell only",
+        "It does not matter"
+       ],
+       "correct": 1,
+       "explanation": "The same current must flow through the ammeter and the resistor, so it goes in series."
+      },
+      {
+       "prompt": "A resistor has 6.0 V across it and 0.30 A through it. What is its resistance?",
+       "options": [
+        "1.8 Ω",
+        "0.05 Ω",
+        "6.3 Ω",
+        "20 Ω"
+       ],
+       "correct": 3,
+       "explanation": "R = V ÷ I = 6.0 ÷ 0.30 = 20 Ω."
+      },
+      {
+       "prompt": "What is 45 mA in amperes?",
+       "options": [
+        "0.045 A",
+        "0.45 A",
+        "4.5 A",
+        "45 000 A"
+       ],
+       "correct": 0,
+       "explanation": "Divide milliamperes by 1000: 45 ÷ 1000 = 0.045 A."
+      },
+      {
+       "prompt": "Why is the voltmeter reading across the resistor a little less than the cell's setting?",
+       "options": [
+        "The voltmeter is in series",
+        "Current is used up in the resistor",
+        "The cell has internal resistance",
+        "The ammeter adds voltage"
+       ],
+       "correct": 2,
+       "explanation": "Some of the voltage is 'lost' across the cell's own internal resistance, so less is left across the resistor."
+      },
+      {
+       "prompt": "On a graph of current against voltage for a resistor obeying Ohm's law, the line is…",
+       "options": [
+        "curved upwards",
+        "straight and through the origin",
+        "horizontal",
+        "straight but cuts the current axis above zero"
+       ],
+       "correct": 1,
+       "explanation": "Current is proportional to voltage, so the graph is a straight line through (0, 0)."
+      }
+     ]
     }
-  ]
+   ]
+  },
+  {
+   "title": "Physics: the simple pendulum",
+   "lessons": [
+    {
+     "type": "text",
+     "title": "The simple pendulum and g",
+     "file": "lessons/04-pendulum.md"
+    },
+    {
+     "type": "lab",
+     "title": "Lab: measure g",
+     "lab": "pendulum",
+     "intro": "Time 20 oscillations at five or more lengths, plot T² against l and work out g from the slope."
+    },
+    {
+     "type": "quiz",
+     "title": "Pendulum quiz",
+     "pass_threshold": 70,
+     "intro": "Four questions on the pendulum.",
+     "questions": [
+      {
+       "prompt": "Why time 20 oscillations instead of one?",
+       "options": [
+        "It looks better",
+        "Reaction-time error is shared over 20 swings, so it matters less",
+        "The pendulum speeds up",
+        "One swing cannot be timed"
+       ],
+       "correct": 1,
+       "explanation": "A 0.2 s reaction error on 36 s is far smaller than on 1.8 s."
+      },
+      {
+       "prompt": "Which graph gives a straight line through the origin?",
+       "options": [
+        "T against l",
+        "T² against l",
+        "T against l²",
+        "l against 1/T"
+       ],
+       "correct": 1,
+       "explanation": "T² = (4π²/g) l, so T² against l is a straight line through the origin."
+      },
+      {
+       "prompt": "The slope of T² against l is 4.00 s²/m. What is g?",
+       "options": [
+        "4.00 m/s²",
+        "9.87 m/s²",
+        "39.5 m/s²",
+        "2.00 m/s²"
+       ],
+       "correct": 1,
+       "explanation": "g = 4π² ÷ slope = 39.48 ÷ 4.00 ≈ 9.87 m/s²."
+      },
+      {
+       "prompt": "Doubling the mass of the bob makes the period…",
+       "options": [
+        "double",
+        "halve",
+        "stay the same",
+        "four times as long"
+       ],
+       "correct": 2,
+       "explanation": "The period of a simple pendulum does not depend on the mass."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Chemistry: acid–base titration",
+   "lessons": [
+    {
+     "type": "text",
+     "title": "Titration step by step",
+     "file": "lessons/02-titration.md"
+    },
+    {
+     "type": "lab",
+     "title": "Lab: how strong is the acid?",
+     "lab": "titration",
+     "intro": "Do a rough run first, then accurate runs adding one drop at a time near the end point. Record your titres as you go."
+    },
+    {
+     "type": "quiz",
+     "title": "Titration quiz",
+     "pass_threshold": 70,
+     "intro": "Five questions on titration technique and calculations.",
+     "questions": [
+      {
+       "prompt": "Phenolphthalein in the flask turns from colourless to pink when…",
+       "options": [
+        "the solution becomes alkaline",
+        "the solution becomes acidic",
+        "the acid is first added",
+        "the burette is refilled"
+       ],
+       "correct": 0,
+       "explanation": "Phenolphthalein is colourless in acid and pink in alkali, so pink appears once alkali is in excess."
+      },
+      {
+       "prompt": "Initial burette reading 1.10 cm³, final reading 23.45 cm³. What is the titre?",
+       "options": [
+        "24.55 cm³",
+        "23.45 cm³",
+        "22.35 cm³",
+        "21.35 cm³"
+       ],
+       "correct": 2,
+       "explanation": "Titre = final − initial = 23.45 − 1.10 = 22.35 cm³."
+      },
+      {
+       "prompt": "Which titres are concordant?",
+       "options": [
+        "21.30 and 21.80 cm³",
+        "20.90 and 21.40 cm³",
+        "Only the rough titre",
+        "21.30 and 21.40 cm³"
+       ],
+       "correct": 3,
+       "explanation": "Concordant titres agree within 0.20 cm³. 21.30 and 21.40 differ by 0.10 cm³."
+      },
+      {
+       "prompt": "22.00 cm³ of 0.100 mol/dm³ NaOH neutralises 25.0 cm³ of HCl. What is the HCl concentration?",
+       "options": [
+        "0.114 mol/dm³",
+        "0.0880 mol/dm³",
+        "0.0220 mol/dm³",
+        "0.880 mol/dm³"
+       ],
+       "correct": 1,
+       "explanation": "Moles NaOH = 0.100 × 22.00 ÷ 1000 = 0.00220. Ratio 1 : 1, so [HCl] = 0.00220 ÷ 0.0250 = 0.0880 mol/dm³."
+      },
+      {
+       "prompt": "Why do you add the alkali one drop at a time near the end point?",
+       "options": [
+        "To make the reaction faster",
+        "Because drops are more concentrated",
+        "To keep the burette full",
+        "So you do not overshoot the end point"
+       ],
+       "correct": 3,
+       "explanation": "A single drop can change the colour. Adding slowly lets you stop at the first permanent pink."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Biology: osmosis",
+   "lessons": [
+    {
+     "type": "text",
+     "title": "Osmosis and potato strips",
+     "file": "lessons/05-osmosis.md"
+    },
+    {
+     "type": "lab",
+     "title": "Lab: osmosis in potato strips",
+     "lab": "osmosis",
+     "intro": "Test at least five sucrose concentrations, then read the isotonic point from your graph."
+    },
+    {
+     "type": "quiz",
+     "title": "Osmosis quiz",
+     "pass_threshold": 70,
+     "intro": "Four questions on osmosis.",
+     "questions": [
+      {
+       "prompt": "In osmosis, what moves through the membrane?",
+       "options": [
+        "Sugar",
+        "Water",
+        "Salt",
+        "Air"
+       ],
+       "correct": 1,
+       "explanation": "Osmosis is the movement of water through a partially permeable membrane."
+      },
+      {
+       "prompt": "A potato strip lost mass in a sucrose solution. The solution was…",
+       "options": [
+        "hypotonic to the cell sap",
+        "isotonic",
+        "hypertonic to the cell sap",
+        "pure water"
+       ],
+       "correct": 2,
+       "explanation": "Water left the cells into the more concentrated (hypertonic) solution."
+      },
+      {
+       "prompt": "Why is percentage change in mass used rather than change in grams?",
+       "options": [
+        "It is always positive",
+        "The strips started with different masses",
+        "It is easier to weigh",
+        "Grams cannot be negative"
+       ],
+       "correct": 1,
+       "explanation": "Percentage change lets strips of different starting mass be compared fairly."
+      },
+      {
+       "prompt": "On the graph of % change against concentration, the isotonic point is where…",
+       "options": [
+        "the line is steepest",
+        "the line crosses zero change",
+        "the change is largest",
+        "the concentration is 1.0 M"
+       ],
+       "correct": 1,
+       "explanation": "Zero change means no net water movement: the solution matches the cell sap."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Mathematics: straight-line graphs",
+   "lessons": [
+    {
+     "type": "text",
+     "title": "y = mx + c",
+     "file": "lessons/03-straight-lines.md"
+    },
+    {
+     "type": "lab",
+     "title": "Lab: find the equation",
+     "lab": "straight-line",
+     "intro": "Work out the gradient and intercept from the plotted points first, then use the sliders to check that your line passes through all of them."
+    },
+    {
+     "type": "quiz",
+     "title": "Straight lines quiz",
+     "pass_threshold": 70,
+     "intro": "Four quick questions.",
+     "questions": [
+      {
+       "prompt": "What is the gradient of the line through (2, 3) and (6, 11)?",
+       "options": [
+        "2",
+        "4",
+        "8",
+        "0.5"
+       ],
+       "correct": 0,
+       "explanation": "m = (11 − 3) ÷ (6 − 2) = 8 ÷ 4 = 2."
+      },
+      {
+       "prompt": "The line y = −3x + 4 crosses the y-axis at…",
+       "options": [
+        "(4, 0)",
+        "(0, −3)",
+        "(0, 4)",
+        "(−3, 4)"
+       ],
+       "correct": 2,
+       "explanation": "At the y-axis x = 0, so y = 4."
+      },
+      {
+       "prompt": "A line has gradient 0.5 and passes through (4, 1). What is c?",
+       "options": [
+        "1",
+        "−1",
+        "3",
+        "−3"
+       ],
+       "correct": 1,
+       "explanation": "1 = 0.5 × 4 + c, so c = 1 − 2 = −1."
+      },
+      {
+       "prompt": "Which line goes down from left to right?",
+       "options": [
+        "y = −2x + 5",
+        "y = 2x − 5",
+        "y = 0.5x",
+        "y = x + 10"
+       ],
+       "correct": 0,
+       "explanation": "A negative gradient means y decreases as x increases."
+      }
+     ]
+    }
+   ]
+  }
+ ]
 }
