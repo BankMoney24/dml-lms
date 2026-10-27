@@ -65,7 +65,8 @@ Personal data kinds: **Account** (who someone is), **Learning record** (what the
 | Security | [`rate_limits`](#rate-limits) | Counters for other limited actions (discount codes, emails, uploads). | Security |
 | Setup | [`wizard_runs`](#wizard-runs) | Answers saved part-way through a guided setup, until they are applied or discarded. | None |
 | System | [`schema_migrations`](#schema-migrations) | Which database migrations have been applied, with checksums. | None |
-| Website | [`site_pages`](#site-pages) | The school's own public pages (about, admissions, privacy, terms, refunds, safeguarding). | None |
+| Website | [`blog_posts`](#blog-posts) | Blog posts: title, summary, text, kind (news, event, story, guide), draft or published, the staff member who wrote it. | None |
+| Website | [`site_pages`](#site-pages) | The school's own public pages (about, admissions, contact, questions and answers, careers, privacy, terms, refunds, safeguarding). | None |
 
 ## account_tokens
 
@@ -144,6 +145,25 @@ Who did what and when (sign-ins, role changes, payments, refunds); field values 
 | `metadata` | longtext | yes | `NULL` |  |
 | `ip_hash` | char(64) | yes | `NULL` |  |
 | `created_at` | datetime |  |  |  |
+
+## blog_posts
+
+Blog posts: title, summary, text, kind (news, event, story, guide), draft or published, the staff member who wrote it.
+
+| Column | Type | Null | Default | Key |
+|---|---|---|---|---|
+| `id` | bigint(20) unsigned |  |  | primary |
+| `tenant_id` | bigint(20) unsigned |  |  | index |
+| `slug` | varchar(120) |  |  |  |
+| `title` | varchar(160) |  |  |  |
+| `summary` | varchar(300) |  | `''` |  |
+| `body` | mediumtext |  |  |  |
+| `category` | varchar(20) |  | `'news'` |  |
+| `status` | varchar(12) |  | `'draft'` |  |
+| `author_id` | bigint(20) unsigned |  |  | index |
+| `published_at` | datetime | yes | `NULL` |  |
+| `created_at` | datetime |  |  |  |
+| `updated_at` | datetime |  |  |  |
 
 ## certificates
 
@@ -944,7 +964,7 @@ Which database migrations have been applied, with checksums.
 
 ## site_pages
 
-The school's own public pages (about, admissions, privacy, terms, refunds, safeguarding).
+The school's own public pages (about, admissions, contact, questions and answers, careers, privacy, terms, refunds, safeguarding).
 
 | Column | Type | Null | Default | Key |
 |---|---|---|---|---|

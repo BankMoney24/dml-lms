@@ -29,7 +29,7 @@ final class FullDrafts
     }
 
     /** Pages that have a full draft. */
-    public const PAGES = ['admissions', 'contact', 'privacy', 'terms', 'refunds', 'safeguarding'];
+    public const PAGES = ['admissions', 'contact', 'faq', 'careers', 'privacy', 'terms', 'refunds', 'safeguarding'];
 
     /**
      * The policy choices each draft makes, to read before publishing.
@@ -40,6 +40,11 @@ final class FullDrafts
     {
         return match ($slug) {
             'contact' => ['Replies within two working days.'],
+            'faq' => ['Help requests are answered within two working days, as on the contact page.'],
+            'careers' => [
+                'Says there are no advertised vacancies at present and that applications are kept for when places open. Edit this if you are hiring now.',
+                'Asks for practical experience in the subject, and a background check before anyone works with learners under 18.',
+            ],
             'admissions' => ['Self-paced courses can be started at any time; dates for classes are announced to the people in them.'],
             'privacy' => [
                 'Lawful bases: contract, legitimate interests, legal obligation and consent, as the Nigeria Data Protection Act 2023 sets out.',
@@ -88,6 +93,40 @@ final class FullDrafts
                 See [Admissions](/admissions) for who can join and how. Each course page shows its price and what it includes.
 
                 MD . ($tenant->parentRequests ? "\n\n## Parents and guardians\n\nIf your child learns with us, you can ask to follow their progress from the [parent page](/join/parent). The school checks who you are before linking you." : ''),
+            ],
+            'faq' => [
+                'title' => 'Questions and answers',
+                'summary' => 'Answers to the questions people ask most about learning at ' . $name . ': joining, costs, phones and data, certificates and help.',
+                'body' => $this->faq($tenant, $online),
+            ],
+            'careers' => [
+                'title' => 'Careers and teaching',
+                'summary' => 'Teaching and working with ' . $name . ', what teachers do on the platform, and how to apply.',
+                'body' => <<<MD
+                {$name} is built around teachers who know their subject from practice and can explain it plainly. If that is you, we would like to hear from you.
+
+                ## Open roles
+
+                There are no advertised vacancies at present. We keep every application and contact people when a place opens that suits them.
+
+                ## What teachers do here
+
+                - Write and improve courses: lessons, quizzes with explained answers, and hands-on labs.
+                - Review the work learners hand in and give feedback they can act on.
+                - Answer learners' questions under each lesson.
+                - Run live classes and meetings online, and take the register.
+                - Follow each learner's progress and see who needs help.
+
+                ## Who we look for
+
+                - Practical experience in the subject you want to teach.
+                - Clear, patient explanations, for beginners as well as advanced learners.
+                - A background check before working with learners under 18, as our [safeguarding policy](/safeguarding) requires.
+
+                ## How to apply
+
+                If you already have an account here, sign in and ask to teach from the [teaching application page](/join/teach); tell us what you would teach and your experience. Otherwise, write to us {$reach} with the same details.
+                MD,
             ],
             'admissions' => [
                 'title' => 'Admissions',
@@ -263,6 +302,47 @@ final class FullDrafts
 
         return $parts === [] ? 'through **Get help** after you sign in' : implode(', or ', $parts);
     }
+
+    // phpcs:disable Generic.Files.LineLength -- answers are single Markdown paragraphs.
+    private function faq(Tenant $tenant, bool $online): string
+    {
+        $join = match (true) {
+            $tenant->registration === 'open' => 'Choose **Join** at the top of any page and make a free account with your email address. Then choose a course.',
+            $tenant->registration === 'code' && $tenant->joinCode !== null => 'Choose **Join** and type the joining code the school gave you. If you do not have one, ask the school ' . $this->reach($tenant) . '.',
+            default => 'The school makes accounts for its learners. Ask the school ' . $this->reach($tenant) . '.',
+        };
+        $paid = $this->courses->listPaid($tenant->id) !== [];
+        $cost = !$paid
+            ? 'Our courses are free at the moment. Each course page says so.'
+            : 'Each course page shows its price, or that it is free. ' . ($online ? 'You can pay online by card, bank transfer or USSD through Paystack, or pay the school directly.' : 'You pay the school directly, using the details on the course\'s payment page.')
+              . ' If you have a discount code, type it before you pay. See our [Refund policy](/refunds) for refunds.';
+        $everyday = $this->courses->browse($tenant->id, ['track' => 'everyday'], 1) !== [];
+        $qa = [
+            'How do I join?' => $join,
+            'What does it cost?' => $cost,
+            'Can I learn on my phone?' => 'Yes. Every page works on a phone, and each course remembers where you stopped, so you can carry on from any device.',
+            'Can I learn without data?' => 'After you sign in, choose **Save for offline** on a lesson, or save a whole course from its page. Saved lessons open without a connection on that phone or computer. Lessons you finish offline are sent when you reconnect. Signing out removes them from the device.',
+        ];
+        if ($everyday) {
+            $qa['I am not in school. Is there something for me?'] = 'Yes. Our [everyday learning courses](/programmes#everyday) are short and practical: using your phone, money online, selling and staying safe. Learn at your own pace; no teacher or timetable needed.';
+        }
+        if ($tenant->certificatesEnabled) {
+            $qa['Do I get a certificate?'] = 'Yes, when you complete a course. Each certificate has a code that anyone can check on our [certificate check page](/verify).';
+        }
+        if ($tenant->parentRequests) {
+            $qa['Can parents follow their child\'s progress?'] = 'Yes. A parent or guardian can ask from the [parent page](/join/parent). The school checks who you are before linking you, and you see what the school allows, including a report sheet you can print.';
+        }
+        $qa['I forgot my password'] = 'Choose **Forgotten your password?** on the sign-in page and we will email you a link to choose a new one.';
+        $qa['How do I get help?'] = 'Sign in and choose **Get help**. Your message goes to the school\'s administrators and we usually reply within two working days. You can also reach us ' . $this->reach($tenant) . '.';
+
+        $out = [];
+        foreach ($qa as $q => $a) {
+            $out[] = '## ' . $q . "\n\n" . $a;
+        }
+
+        return implode("\n\n", $out);
+    }
+    // phpcs:enable
 
     private function admissions(Tenant $tenant, bool $online): string
     {

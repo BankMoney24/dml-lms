@@ -68,6 +68,7 @@ return static function (Router $r): void {
     $r->get('/share/site.png', [ShareController::class, 'site'], [Kernel::BARE, 'host-tenant', 'tenant']);
     $r->get('/share/courses/{slug}.png', [ShareController::class, 'course'], [Kernel::BARE, 'host-tenant', 'tenant']);
     $r->get('/share/pages/{page}.png', [ShareController::class, 'page'], [Kernel::BARE, 'host-tenant', 'tenant']);
+    $r->get('/share/posts/{slug}.png', [ShareController::class, 'post'], [Kernel::BARE, 'host-tenant', 'tenant']);
 
     $r->get('/', [HomeController::class, 'index']);
 
@@ -95,6 +96,11 @@ return static function (Router $r): void {
     foreach (array_keys(\App\Modules\Site\SitePages::PAGES) as $sitePage) {
         $r->get('/' . $sitePage, [SiteController::class, 'show'], ['tenant']);
     }
+    // The school's blog (ADR 0034): published posts only; the feed is cookie-free.
+    $r->get('/blog', [\App\Modules\Blog\Http\BlogController::class, 'index'], ['tenant']);
+    $r->get('/blog/feed.xml', [\App\Modules\Blog\Http\BlogController::class, 'feed'], [Kernel::BARE, 'host-tenant', 'tenant']);
+    $r->get('/blog/{slug}', [\App\Modules\Blog\Http\BlogController::class, 'show'], ['tenant']);
+    $r->get('/programmes', [\App\Modules\Platform\Http\ProgrammesController::class, 'index'], ['tenant']);
     $r->get('/courses', [CatalogueController::class, 'index'], ['tenant']);
     $r->get('/courses/{slug}', [CatalogueController::class, 'show'], ['tenant']);
     // Free preview lessons (CRS-003): open to anyone who may see the course page.
@@ -337,6 +343,16 @@ return static function (Router $r): void {
     $r->post('/school/website/{page}/publish', [SiteController::class, 'publish'], $school);
     $r->post('/school/website/{page}/full-draft', [SiteController::class, 'fullDraft'], $school);
     $r->post('/school/website/{page}/unpublish', [SiteController::class, 'unpublish'], $school);
+    $r->get('/school/blog', [\App\Modules\Blog\Http\BlogAdminController::class, 'index'], $school);
+    $r->get('/school/blog/new', [\App\Modules\Blog\Http\BlogAdminController::class, 'create'], $school);
+    $r->post('/school/blog', [\App\Modules\Blog\Http\BlogAdminController::class, 'store'], $school);
+    $r->post('/school/blog/starters', [\App\Modules\Blog\Http\BlogAdminController::class, 'starters'], $school);
+    $r->get('/school/blog/{post:int}', [\App\Modules\Blog\Http\BlogAdminController::class, 'edit'], $school);
+    $r->post('/school/blog/{post:int}', [\App\Modules\Blog\Http\BlogAdminController::class, 'update'], $school);
+    $r->get('/school/blog/{post:int}/preview', [\App\Modules\Blog\Http\BlogAdminController::class, 'preview'], $school);
+    $r->post('/school/blog/{post:int}/publish', [\App\Modules\Blog\Http\BlogAdminController::class, 'publish'], $school);
+    $r->post('/school/blog/{post:int}/unpublish', [\App\Modules\Blog\Http\BlogAdminController::class, 'unpublish'], $school);
+    $r->post('/school/blog/{post:int}/delete', [\App\Modules\Blog\Http\BlogAdminController::class, 'delete'], $school);
 
     // Wizard engine; each wizard checks who may run it.
     $r->get('/setup/{wizard}', [WizardController::class, 'resume'], $signedIn);

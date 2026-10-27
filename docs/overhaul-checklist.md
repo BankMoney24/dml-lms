@@ -62,6 +62,7 @@ Pending features (from the invoice's pending list):
 
 - [x] Everyday (informal) learning track, community school type, and a complete free course (update 33)
 - [x] Developers page, accessibility statement and security.txt (update 33)
+- [x] Blog, programmes page (formal and informal learning), FAQ and careers pages, footer columns (update 34, ADR 0034)
 
 - [x] Refunds and discount codes (update 32, ADR 0032)
 - [ ] Instalments
@@ -81,6 +82,7 @@ Server and account tasks (done by the school on the server; instructions in each
 - [ ] Email provider, SPF and DKIM; Google Search Console
 - [ ] Paystack live key
 - [ ] Publish the website pages: full drafts can now be saved in one step (School → Website, or `site:full-drafts`), then read and publish
+- [ ] Read and publish the starter blog posts (School → Website → Blog, or `blog:starter-posts`)
 - [ ] Staging copy
 
 ## How to repeat the checks

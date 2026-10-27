@@ -66,6 +66,7 @@ final class ConsoleApplication
                 'schema:dictionary' => $this->schemaDictionary(),
                 'files:scan-test' => $this->scanTest(),
                 'site:full-drafts' => $this->siteFullDrafts($args),
+                'blog:starter-posts' => $this->blogStarterPosts($args),
                 default => $this->help(),
             };
         } catch (Throwable $e) {
@@ -117,6 +118,7 @@ final class ConsoleApplication
           schema:dictionary                         Print the data dictionary (Markdown) from the live schema
           files:scan-test                           Check the upload virus scanner (ClamAV) with the EICAR test text
           site:full-drafts <tenant-slug> [--publish] Save complete drafts of the website pages not yet published
+          blog:starter-posts <tenant-slug>           Add the starter blog posts as drafts (never published)
                                             (admissions, contact, privacy, terms, refunds, safeguarding);
                                             with --publish, also publish them. Read them first.
           school:brand <tenant-slug> [--logo=<png>] [--theme=<key>] [--tagline="<text>"]
@@ -186,6 +188,29 @@ final class ConsoleApplication
             }
         }
         echo $publish ? "Done. The pages are on the website and in the footer.\n" : "Done. Read them under School → Website, then publish each one (or run again with --publish).\n";
+
+        return 0;
+    }
+
+    /** @param list<string> $args */
+    private function blogStarterPosts(array $args): int
+    {
+        [$positional] = self::options($args);
+        [$slug] = $this->requireArgs($positional, 1, 'blog:starter-posts <tenant-slug>');
+        $tenant = $this->container->get(TenantRepository::class)->findBySlug($slug) ?? throw new \RuntimeException('No tenant with that slug.');
+        $owner = (int) $this->container->get(Connection::class)->fetchValue(
+            "SELECT user_id FROM memberships WHERE tenant_id = ? AND role = 'owner' AND status = 'active' ORDER BY user_id LIMIT 1",
+            [$tenant->id],
+        );
+        if ($owner === 0) {
+            throw new \RuntimeException('The school has no owner to record as the author.');
+        }
+        $added = $this->container->get(\App\Modules\Blog\Blog::class)->saveStarters($tenant, $owner);
+        echo "Added {$added} draft " . ($added === 1 ? 'post' : 'posts') . ". They decide:\n";
+        foreach (\App\Modules\Blog\StarterPosts::choices() as $choice) {
+            echo "  - {$choice}\n";
+        }
+        echo "Read them under School → Website → Blog, then publish the ones you want.\n";
 
         return 0;
     }

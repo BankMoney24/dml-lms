@@ -67,6 +67,7 @@ $shell = $tenant !== null && $user !== null;
 <?php endforeach; ?>
 <meta name="application-name" content="<?= $v->e($siteName) ?>">
 <meta name="theme-color" content="<?= $v->e(\App\Modules\Tenancy\SchoolTheme::colour($themeKey)) ?>">
+<?php if ($v->shared('has_blog', false) === true): ?><link rel="alternate" type="application/rss+xml" title="<?= $v->e($siteName) ?> blog" href="/blog/feed.xml"><?php endif; ?>
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/assets/brand/favicon-32.png" type="image/png" sizes="32x32">
@@ -209,6 +210,8 @@ $shell = $tenant !== null && $user !== null;
         <?php if ($tenant->contactEmail !== ''): ?><li><a href="mailto:<?= $v->e($tenant->contactEmail) ?>"><?= $v->e($tenant->contactEmail) ?></a></li><?php endif; ?>
         <?php if ($tenant->contactPhone !== ''): ?><li><a href="tel:<?= $v->e((string) preg_replace('/[^0-9+]/', '', $tenant->contactPhone)) ?>"><?= $v->e($tenant->contactPhone) ?></a></li><?php endif; ?>
         <li><a href="/help">Get help</a></li>
+        <?php if ($v->shared('has_courses', false) === true): ?><li><a href="/programmes">Programmes</a></li><?php endif; ?>
+        <?php if ($v->shared('has_blog', false) === true): ?><li><a href="/blog">Blog</a></li><?php endif; ?>
         <li><a href="/verify">Check a certificate</a></li>
         <?php foreach ($sitePages as $pagePath => $pageName): ?><li><a href="<?= $v->e($pagePath) ?>"><?= $v->e($pageName) ?></a></li><?php endforeach; ?>
         <li><a href="/accessibility">Accessibility</a></li>
@@ -261,7 +264,10 @@ $shell = $tenant !== null && $user !== null;
         </form>
       </div>
       <?php else: ?>
-      <nav class="nav" aria-label="Main"><?php if ($tenant->publicCatalogue || $v->shared('open_courses', false) === true): ?><?= $v->navLink('/courses', 'Courses') ?><?php endif; ?><?php
+      <nav class="nav" aria-label="Main"><?php if ($tenant->publicCatalogue || $v->shared('open_courses', false) === true): ?><?= $v->navLink('/courses', 'Courses') ?><?php endif; ?><?php if ($tenant->publicCatalogue ? $v->shared('has_courses', false) === true : $v->shared('open_courses', false) === true): ?><?= $v->navLink('/programmes', 'Programmes') ?><?php endif; ?><?php
+        if ($v->shared('has_blog', false) === true) {
+            echo $v->navLink('/blog', 'Blog');
+        }
         foreach (['/about' => 'About', '/admissions' => 'Admissions', '/contact' => 'Contact'] as $navPath => $navLabel) {
             if (isset($sitePages[$navPath])) {
                 echo $v->navLink($navPath, $navLabel);
@@ -284,23 +290,35 @@ $shell = $tenant !== null && $user !== null;
 <footer class="footer">
   <div class="wrap footer-inner">
     <p class="footer-name"><?= $v->e($siteName) ?><?php if (($tenant?->tagline ?? '') !== ''): ?> <span class="footer-tagline"><?= $v->e($tenant->tagline) ?></span><?php endif; ?></p>
-    <?php if ($tenant !== null): ?>
-    <ul class="footer-links">
-      <?php if ($tenant->contactEmail !== ''): ?><li><a href="mailto:<?= $v->e($tenant->contactEmail) ?>"><?= $v->e($tenant->contactEmail) ?></a></li><?php endif; ?>
-      <?php if ($tenant->contactPhone !== ''): ?><li><a href="tel:<?= $v->e((string) preg_replace('/[^0-9+]/', '', $tenant->contactPhone)) ?>"><?= $v->e($tenant->contactPhone) ?></a></li><?php endif; ?>
-      <?php if ($tenant->website !== ''): ?><li><a href="<?= $v->e($tenant->website) ?>" rel="noopener"><?= $v->e((string) preg_replace('#^https?://(www\.)?#', '', rtrim($tenant->website, '/'))) ?></a></li><?php endif; ?>
-      <?php if ($user !== null): ?><li><a href="/help">Get help</a></li><?php endif; ?>
-      <li><a href="/verify">Check a certificate</a></li>
-      <li><a href="/accessibility">Accessibility</a></li>
-      <li><a href="/developers">Developers</a></li>
-    </ul>
-    <?php if ($sitePages !== []): ?>
-    <nav class="footer-pages" aria-label="About the school">
-      <ul class="footer-links">
-        <?php foreach ($sitePages as $pagePath => $pageName): ?><li><a href="<?= $v->e($pagePath) ?>"><?= $v->e($pageName) ?></a></li><?php endforeach; ?>
-      </ul>
-    </nav>
-    <?php endif; ?>
+    <?php if ($tenant !== null):
+        $policyPaths = ['/privacy', '/terms', '/refunds', '/safeguarding'];
+        $coursesPublic = $tenant->publicCatalogue || $user !== null ? $v->shared('has_courses', false) === true : $v->shared('open_courses', false) === true;
+        $footerCols = [
+            'Learn' => array_filter([
+                '/courses' => $coursesPublic ? 'Courses' : null,
+                '/programmes' => $coursesPublic ? 'Programmes' : null,
+                '/blog' => $v->shared('has_blog', false) === true ? 'Blog' : null,
+                '/verify' => 'Check a certificate',
+                '/help' => $user !== null ? 'Get help' : null,
+            ]),
+            'School' => array_diff_key($sitePages, array_flip($policyPaths)) + array_filter([
+                'mailto:' . $tenant->contactEmail => $tenant->contactEmail !== '' ? $tenant->contactEmail : null,
+                'tel:' . preg_replace('/[^0-9+]/', '', $tenant->contactPhone) => $tenant->contactPhone !== '' ? $tenant->contactPhone : null,
+                $tenant->website => $tenant->website !== '' ? (string) preg_replace('#^https?://(www\.)?#', '', rtrim($tenant->website, '/')) : null,
+            ]),
+            'Policies' => array_intersect_key($sitePages, array_flip($policyPaths)) + ['/accessibility' => 'Accessibility'],
+            'Platform' => ['/developers' => 'Developers', '/developers#security' => 'Report a security problem'],
+        ]; ?>
+    <div class="footer-cols">
+      <?php foreach ($footerCols as $colName => $colLinks): if ($colLinks === []) { continue; } ?>
+      <nav class="footer-col" aria-label="<?= $v->e($colName) ?>">
+        <h2 class="footer-h"><?= $v->e($colName) ?></h2>
+        <ul>
+          <?php foreach ($colLinks as $linkPath => $linkName): ?><li><a href="<?= $v->e((string) $linkPath) ?>"><?= $v->e((string) $linkName) ?></a></li><?php endforeach; ?>
+        </ul>
+      </nav>
+      <?php endforeach; ?>
+    </div>
     <?php else: ?>
     <p class="footer-links">Learn. Build. Grow.</p>
     <?php endif; ?>

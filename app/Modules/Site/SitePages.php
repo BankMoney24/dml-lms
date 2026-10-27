@@ -30,6 +30,8 @@ final class SitePages
         'terms' => ['Terms of use', 'WebPage', 'The rules for using the school\'s website and learning platform.'],
         'refunds' => ['Refund policy', 'WebPage', 'When and how fees paid online are refunded.'],
         'safeguarding' => ['Safeguarding and child protection', 'WebPage', 'How the school keeps children safe and how to report a concern.'],
+        'faq' => ['Questions and answers', 'FAQPage', 'The questions learners and parents ask most, answered.'],
+        'careers' => ['Careers and teaching', 'WebPage', 'Teaching and working with the school, and how to apply.'],
     ];
 
     public const SOCIAL = [
@@ -348,6 +350,46 @@ final class SitePages
             [[Link to or summarise your full safeguarding policy, and when it is reviewed.]]
 
             *Last updated: [[date]].*
+            MD,
+            'faq' => <<<MD
+            ## How do I join?
+
+            [[How people get an account: they sign up on this website, use a joining code from the school, or the school adds them.]]
+
+            ## Can I learn on my phone?
+
+            Yes. Every page works on a phone, and the course remembers where you stopped. After you sign in, you can save lessons to read later without data.
+
+            ## What does it cost?
+
+            Each course page shows its price, or that it is free. [[Anything else about fees, or delete this sentence.]]
+
+            ## Do I get a certificate?
+
+            [[Say whether you give certificates and what a learner must finish to earn one.]]
+
+            ## I forgot my password
+
+            Choose **Forgotten your password?** on the sign-in page and we will email you a link to choose a new one.
+
+            ## How do I get help?
+
+            Sign in and choose **Get help**. [[How long you usually take to reply.]]
+            MD,
+            'careers' => <<<MD
+            [[One or two sentences on why people teach or work at {$name}.]]
+
+            ## Open roles
+
+            [[The roles you are hiring for now, with what each involves and how to apply; or say that there are no vacancies at present.]]
+
+            ## Teaching on this platform
+
+            Teachers write courses with lessons, quizzes and hands-on labs, review the work learners hand in, answer their questions and can run live classes online.
+
+            ## How to apply
+
+            If you already have an account here, you can ask to teach from [the teaching application page](/join/teach). [[Otherwise, who to write to and what to send.]]
             MD,
             default => '',
         };

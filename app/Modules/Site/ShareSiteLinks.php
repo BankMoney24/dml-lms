@@ -18,6 +18,7 @@ final class ShareSiteLinks implements Middleware
         private readonly View $view,
         private readonly ?\App\Modules\Tenancy\LogoStore $logos = null,
         private readonly ?\App\Modules\Courses\CourseRepository $courses = null,
+        private readonly ?\App\Modules\Blog\BlogRepository $posts = null,
     ) {
     }
 
@@ -30,6 +31,9 @@ final class ShareSiteLinks implements Middleware
                 $links[$page->path()] = $page->title;
             }
             $this->view->share('site_pages', $links);
+            // The blog is in the menu and footer once a post is published (ADR 0034).
+            $this->view->share('has_blog', $this->posts?->hasPublished($tenant->id) ?? false);
+            $this->view->share('has_courses', $this->courses?->hasPublished($tenant->id) ?? false);
             // A members-only course list still has a public "Courses" link when some courses are open to everyone.
             if (!$tenant->publicCatalogue) {
                 $this->view->share('open_courses', $this->courses?->hasOpen($tenant->id) ?? false);

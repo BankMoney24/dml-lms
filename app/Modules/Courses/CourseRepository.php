@@ -307,6 +307,11 @@ final class CourseRepository
     }
 
     /** Whether the school has at least one published open course (they are visible even when its course list is for members only). */
+    public function hasPublished(int $tenantId): bool
+    {
+        return $this->db->fetchValue("SELECT 1 FROM courses c WHERE c.tenant_id = ? AND c.status = 'published' LIMIT 1", [$tenantId]) !== null;
+    }
+
     public function hasOpen(int $tenantId): bool
     {
         return $this->db->fetchValue(

@@ -79,7 +79,7 @@ final class CourseSchema
     public static function webPage(string $type, string $name, string $description, string $url, string $baseUrl, ?string $modified = null): array
     {
         $data = [
-            '@type' => in_array($type, ['WebPage', 'AboutPage', 'ContactPage', 'CollectionPage'], true) ? $type : 'WebPage',
+            '@type' => in_array($type, ['WebPage', 'AboutPage', 'ContactPage', 'CollectionPage', 'FAQPage'], true) ? $type : 'WebPage',
             '@id' => $url . '#webpage',
             'url' => $url,
             'name' => $name,
@@ -92,6 +92,30 @@ final class CourseSchema
         }
 
         return $data;
+    }
+
+    /**
+     * Questions and answers for an FAQPage, from Markdown where each "## heading" is a
+     * question and the text under it the answer (ADR 0034). Formatting is reduced to plain text.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function faqEntities(string $markdown): array
+    {
+        $out = [];
+        $parts = preg_split('/^##[ \t]+/m', "\n" . str_replace("\r\n", "\n", $markdown)) ?: [];
+        foreach (array_slice($parts, 1) as $part) {
+            [$question, $answer] = array_pad(explode("\n", $part, 2), 2, '');
+            $answer = (string) preg_replace(['/\[([^\]]+)\]\([^)]*\)/', '/[*_`]+/', '/^\s*[-*]\s+/m', '/^#+\s*/m', '/\s+/'], ['$1', '', '', '', ' '], $answer);
+            $question = trim(str_replace(['*', '_', '`'], '', $question));
+            $answer = trim($answer);
+            if ($question === '' || $answer === '' || str_contains($question . $answer, '[[')) {
+                continue;
+            }
+            $out[] = ['@type' => 'Question', 'name' => $question, 'acceptedAnswer' => ['@type' => 'Answer', 'text' => $answer]];
+        }
+
+        return $out;
     }
 
     /** @return array<string, mixed> */

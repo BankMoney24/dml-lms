@@ -96,6 +96,7 @@ final class SeoController
             if ($courses !== []) {
                 $latest = max(array_map(static fn (array $c): string => (string) $c['updated_at'], $courses));
                 $urls[] = [$base . '/courses', $latest];
+                $urls[] = [$base . '/programmes', $latest];
                 foreach ($courses as $c) {
                     $urls[] = [$base . '/courses/' . rawurlencode((string) $c['slug']), (string) $c['updated_at']];
                 }
@@ -109,6 +110,17 @@ final class SeoController
                 );
                 foreach ($readable as $p) {
                     $urls[] = [$base . '/courses/' . rawurlencode((string) $p['slug']) . '/preview/' . (int) $p['id'], (string) $p['updated_at']];
+                }
+            }
+            // The blog (ADR 0034).
+            $posts = $this->db->fetchAll(
+                "SELECT slug, updated_at FROM blog_posts WHERE tenant_id = ? AND status = 'published' ORDER BY published_at DESC LIMIT 5000",
+                [$tenant->id],
+            );
+            if ($posts !== []) {
+                $urls[] = [$base . '/blog', (string) $posts[0]['updated_at']];
+                foreach ($posts as $p) {
+                    $urls[] = [$base . '/blog/' . rawurlencode((string) $p['slug']), (string) $p['updated_at']];
                 }
             }
             if ($tenant->publicCatalogue) {

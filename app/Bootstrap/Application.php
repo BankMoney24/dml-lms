@@ -972,6 +972,10 @@ final class Application
             $c->get(View::class),
             $config->get('SECURITY_CONTACT', '') ?? '',
         ));
+        $c->set(\App\Modules\Platform\Http\ProgrammesController::class, static fn (Container $c) => new \App\Modules\Platform\Http\ProgrammesController(
+            $c->get(View::class),
+            $c->get(CourseRepository::class),
+        ));
         $c->set(SeoController::class, static fn (Container $c) => new SeoController(
             $c->get(Connection::class),
             $c->get(\App\Modules\Tenancy\CanonicalUrl::class),
@@ -983,6 +987,7 @@ final class Application
             $c->get(View::class),
             $c->get(LogoStore::class),
             $c->get(CourseRepository::class),
+            $c->get(\App\Modules\Blog\BlogRepository::class),
         ));
         $c->set(\App\Modules\Site\SitePages::class, static fn (Container $c) => new \App\Modules\Site\SitePages(
             $c->get(\App\Modules\Site\SitePageRepository::class),
@@ -996,6 +1001,23 @@ final class Application
             $c->get(\App\Modules\Site\SitePageRepository::class),
             $c->get(\App\Modules\Site\FullDrafts::class),
         ));
+        $c->set(\App\Modules\Blog\BlogRepository::class, static fn (Container $c) => new \App\Modules\Blog\BlogRepository($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(\App\Modules\Blog\Blog::class, static fn (Container $c) => new \App\Modules\Blog\Blog(
+            $c->get(\App\Modules\Blog\BlogRepository::class),
+            $c->get(AuditLog::class),
+            new \App\Modules\Blog\StarterPosts($c->get(CourseRepository::class)),
+        ));
+        $c->set(\App\Modules\Blog\Http\BlogController::class, static fn (Container $c) => new \App\Modules\Blog\Http\BlogController(
+            $c->get(View::class),
+            $c->get(\App\Modules\Blog\BlogRepository::class),
+        ));
+        $c->set(\App\Modules\Blog\Http\BlogAdminController::class, static fn (Container $c) => new \App\Modules\Blog\Http\BlogAdminController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(\App\Modules\Blog\Blog::class),
+            $c->get(\App\Modules\Blog\BlogRepository::class),
+            $c->get(\App\Modules\Blog\Http\BlogController::class),
+        ));
         $c->set(\App\Modules\Site\FullDrafts::class, static fn (Container $c) => new \App\Modules\Site\FullDrafts(
             $c->get(CourseRepository::class),
             $c->get(PaymentAccountRepository::class),
@@ -1006,6 +1028,7 @@ final class Application
             $c->get(\App\Modules\Site\SitePageRepository::class),
             $c->get(LogoStore::class),
             self::basePath('public/assets/brand/og-image.jpg'),
+            $c->get(\App\Modules\Blog\BlogRepository::class),
         ));
         $c->set(NotificationController::class, static fn (Container $c) => new NotificationController(
             $c->get(View::class),

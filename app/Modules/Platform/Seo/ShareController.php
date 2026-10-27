@@ -26,6 +26,7 @@ final class ShareController
         private readonly SitePageRepository $pages,
         private readonly LogoStore $logos,
         private readonly string $fallback,
+        private readonly ?\App\Modules\Blog\BlogRepository $posts = null,
     ) {
     }
 
@@ -57,6 +58,17 @@ final class ShareController
         }
 
         return $this->send($this->cards->render($tenant, $this->logo($tenant), 'page-' . $slug, $page->title, $tenant->name, 'page-' . $slug, $page->updatedAt));
+    }
+
+    public function post(Request $request): Response
+    {
+        $tenant = $this->tenant($request);
+        $post = $this->posts?->findBySlug($tenant->id, $request->routeParam('slug'));
+        if ($post === null || !$post->isPublished()) {
+            throw HttpException::notFound();
+        }
+
+        return $this->send($this->cards->render($tenant, $this->logo($tenant), 'post-' . $post->id, $post->title, $post->categoryLabel(), 'post-' . $post->slug, $post->updatedAt));
     }
 
     private function tenant(Request $request): Tenant

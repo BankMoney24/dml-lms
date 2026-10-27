@@ -149,6 +149,10 @@ final class SiteController
         $base = RequestContext::baseUrl($request);
         $url = $base . $page->path();
         $type = SitePages::PAGES[$page->slug][1] ?? 'WebPage';
+        $jsonLd = CourseSchema::webPage($type, $page->title, $page->summary, $url, $base, $page->updatedAt !== '' ? str_replace(' ', 'T', $page->updatedAt) . 'Z' : null);
+        if ($type === 'FAQPage') {
+            $jsonLd['mainEntity'] = CourseSchema::faqEntities($page->body);
+        }
 
         return Response::html($this->view->render('site/page', [
             'pageTitle' => $page->title,
@@ -163,7 +167,7 @@ final class SiteController
             'ogImage' => '/share/pages/' . $page->slug . '.png?v=' . substr(hash('sha256', $page->updatedAt . $page->title), 0, 10),
             'ogImageAlt' => $page->title . ', ' . $tenant->name,
             'ogImageSize' => [\App\Modules\Platform\Seo\ShareCard::WIDTH, \App\Modules\Platform\Seo\ShareCard::HEIGHT],
-            'jsonLd' => $preview ? null : CourseSchema::webPage($type, $page->title, $page->summary, $url, $base, $page->updatedAt !== '' ? str_replace(' ', 'T', $page->updatedAt) . 'Z' : null),
+            'jsonLd' => $preview ? null : $jsonLd,
         ]));
     }
 

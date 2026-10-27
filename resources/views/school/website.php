@@ -32,6 +32,13 @@ $live = count(array_filter($pages, static fn ($p): bool => $p->isPublished()));
       </li>
       <?php endforeach; ?>
     </ul>
+
+    <h2 id="blog-h" class="site-blog-h">Blog</h2>
+    <ul class="site-page-list" aria-labelledby="blog-h">
+      <li>
+        <a href="/school/blog"><span class="site-page-title">News, events, stories and guides</span><span class="small muted">Posts appear at /blog and in the website menu once the first one is published.</span></a>
+      </li>
+    </ul>
   </section>
 
   <aside>
