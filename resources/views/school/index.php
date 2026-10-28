@@ -183,6 +183,7 @@ $none = '<span class="muted">Not set</span>';
       </dd>
       <dt>Members</dt><dd><?php if ($v->can('members.manage')): ?><a href="/people"><?= $v->e($v->plural($memberCount, 'person', 'people')) ?></a><?php else: ?><?= $v->e($v->plural($memberCount, 'person', 'people')) ?><?php endif; ?></dd>
       <?php if ($school->setupCompletedAt !== null): ?><dt>Set up</dt><dd><?= $v->datetime($school->setupCompletedAt, 'j M Y') ?></dd><?php endif; ?>
+      <?php if ($v->can('school.manage')): ?><dt>Other systems</dt><dd><a href="/school/api">API keys</a> <span class="small muted">let your school's own systems, such as PrimeERP, read courses, learners, progress and payments.</span></dd><?php endif; ?>
     </dl>
   </section>
 </div>

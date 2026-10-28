@@ -26,6 +26,7 @@ use App\Modules\Payments\TransferPayments;
 final class PaymentAdminController
 {
     private const FILTERS = ['paid' => Payment::PAID, 'waiting' => Payment::PENDING, 'failed' => Payment::FAILED, 'refunded' => Payment::REFUNDED];
+    private const PER_PAGE = 25;
 
     public function __construct(
         private readonly View $view,
@@ -153,7 +154,8 @@ final class PaymentAdminController
             throw new \RuntimeException('Could not build the export.');
         }
         fputcsv($out, ['Date', 'Learner', 'Email', 'Course', 'Amount', 'Currency', 'Status', 'Method', 'Reference', 'Paid at', 'Note'], ',', '"', '');
-        foreach ($this->payments->listForSchool($tenant->id, null, 5000) as $row) {
+        // The spreadsheet has what the list shows: the same status, course and words.
+        foreach ($this->payments->pageForSchool($tenant->id, $this->filters($request)['where'], 0, 5000)['rows'] as $row) {
             $p = $row['payment'];
             fputcsv($out, array_map(self::cell(...), [
                 $p->createdAt,
@@ -244,6 +246,22 @@ final class PaymentAdminController
         ]), $status);
     }
 
+    /**
+     * The history's filters from the query string: ?status=paid&course=12&q=ada.
+     *
+     * @return array{filter: string, course: ?int, q: string, where: array{status: ?string, course: ?int, q: string}}
+     */
+    private function filters(Request $request): array
+    {
+        $filter = (string) ($request->query('status') ?? '');
+        $filter = isset(self::FILTERS[$filter]) ? $filter : '';
+        $course = (string) ($request->query('course') ?? '');
+        $course = ctype_digit($course) && strlen($course) < 10 ? (int) $course : null;
+        $q = mb_substr(trim((string) ($request->query('q') ?? '')), 0, 80);
+
+        return ['filter' => $filter, 'course' => $course, 'q' => $q, 'where' => ['status' => $filter === '' ? null : self::FILTERS[$filter], 'course' => $course, 'q' => $q]];
+    }
+
     /** A cell starting with = + - @ or a control character is prefixed with a quote so it is shown, not run. */
     public static function cell(string $value): string
     {
@@ -257,11 +275,13 @@ final class PaymentAdminController
     private function render(Request $request, array $errors = [], array $old = [], int $status = 200): Response
     {
         $tenant = RequestContext::tenant($request);
-        $filter = (string) ($request->query('status') ?? '');
-        $filter = isset(self::FILTERS[$filter]) ? $filter : '';
+        $filters = $this->filters($request);
         $paidCourses = $this->courses->listPaid($tenant->id);
         $account = $this->accounts->find($tenant->id);
-        $rows = $this->payments->listForSchool($tenant->id, $filter === '' ? null : self::FILTERS[$filter]);
+        $query = ['status' => $filters['filter'], 'course' => $filters['course'] === null ? '' : (string) $filters['course'], 'q' => $filters['q']];
+        $first = $this->payments->pageForSchool($tenant->id, $filters['where'], 0, 1);
+        $pager = new \App\Core\View\Pager(\App\Core\View\Pager::pageFrom($request->query('page')), self::PER_PAGE, $first['total'], '/school/payments', $query);
+        $rows = $this->payments->pageForSchool($tenant->id, $filters['where'], $pager->offset(), self::PER_PAGE)['rows'];
         $refundRows = $this->refundRows?->forPayments($tenant->id, array_map(static fn (array $r): int => $r['payment']->id, $rows)) ?? [];
         $refundable = [];
         foreach ($rows as $r) {
@@ -274,10 +294,15 @@ final class PaymentAdminController
             'webhookUrl' => RequestContext::baseUrl($request) . '/webhooks/paystack',
             'callbackUrl' => RequestContext::baseUrl($request) . '/payments/paystack/callback',
             'rows' => $rows,
+            'pager' => $pager,
+            'q' => $filters['q'],
+            'courseFilter' => $filters['course'],
+            'paymentCourses' => $this->payments->coursesWithPayments($tenant->id),
+            'statusCounts' => $this->payments->statusCounts($tenant->id, $filters['where']),
             'refundRows' => $refundRows,
             'refundable' => $refundable,
             'refundTotals' => $this->refundRows?->totalsSince($tenant->id, $this->clock->now()->modify('-30 days')->format('Y-m-d H:i:s')) ?? ['count' => 0, 'minor' => 0],
-            'filter' => $filter,
+            'filter' => $filters['filter'],
             'totals' => $this->payments->totals($tenant->id, $this->clock->now()->modify('-30 days')->format('Y-m-d H:i:s')),
             'paidCourses' => $paidCourses,
             'currencies' => array_map(static fn (array $c): string => $c[1] . ' (' . $c[0] . ')', Money::CURRENCIES),

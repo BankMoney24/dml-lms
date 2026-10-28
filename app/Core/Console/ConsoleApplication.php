@@ -118,9 +118,10 @@ final class ConsoleApplication
           schema:dictionary                         Print the data dictionary (Markdown) from the live schema
           files:scan-test                           Check the upload virus scanner (ClamAV) with the EICAR test text
           site:full-drafts <tenant-slug> [--publish] Save complete drafts of the website pages not yet published
+                                            (admissions, contact, questions and answers, careers, privacy,
+                                            terms, refunds, safeguarding); with --publish, also publish
+                                            them. Read them first.
           blog:starter-posts <tenant-slug>           Add the starter blog posts as drafts (never published)
-                                            (admissions, contact, privacy, terms, refunds, safeguarding);
-                                            with --publish, also publish them. Read them first.
           school:brand <tenant-slug> [--logo=<png>] [--theme=<key>] [--tagline="<text>"]
                                                     Set a school's logo, colour theme and tagline in one go.
                                                     The DML logo ships in public/assets/brand/dml-mark.png

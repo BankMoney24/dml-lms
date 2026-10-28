@@ -20,6 +20,7 @@ final class ActivityController
         private readonly View $view,
         private readonly AuditLog $audit,
         private readonly ActivityDescriber $describer,
+        private readonly ?\App\Core\Clock $clock = null,
     ) {
     }
 
@@ -29,7 +30,11 @@ final class ActivityController
         $before = $request->query('before');
         $beforeId = $before !== null && ctype_digit($before) ? (int) $before : null;
 
-        $events = $this->audit->page($tenant->id, $beforeId, self::PER_PAGE + 1);
+        $kind = (string) ($request->query('kind') ?? '');
+        $kind = isset(ActivityDescriber::KINDS[$kind]) ? $kind : '';
+        $who = mb_substr(trim((string) ($request->query('who') ?? '')), 0, 80);
+
+        $events = $this->audit->page($tenant->id, $beforeId, self::PER_PAGE + 1, $kind === '' ? [] : ActivityDescriber::KINDS[$kind][1], $who);
         $hasMore = count($events) > self::PER_PAGE;
         $events = array_slice($events, 0, self::PER_PAGE);
 
@@ -40,6 +45,11 @@ final class ActivityController
             'rows' => $rows,
             'nextBefore' => $hasMore && $events !== [] ? $events[count($events) - 1]['id'] : null,
             'isFirstPage' => $beforeId === null,
+            'kind' => $kind,
+            'who' => $who,
+            'today' => $today = ($this->clock?->now() ?? new \DateTimeImmutable())->setTimezone(new \DateTimeZone($tenant->timezone ?: 'UTC')),
+            'todayKey' => $today->format('Y-m-d'),
+            'yesterdayKey' => $today->modify('-1 day')->format('Y-m-d'),
         ]));
     }
 }

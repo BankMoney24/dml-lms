@@ -126,6 +126,93 @@ final class PaymentRepository
         ));
     }
 
+    /**
+     * One page of the school's payments, newest first, with filters (update 36): status, course,
+     * and words matched against the learner's name or email and the payment reference.
+     *
+     * @param array{status?: ?string, course?: ?int, q?: string} $f
+     * @return array{total: int, rows: list<array{payment: Payment, learner: string, email: string, course: string}>}
+     */
+    public function pageForSchool(int $tenantId, array $f, int $offset, int $limit): array
+    {
+        [$where, $params] = $this->filterWhere($tenantId, $f);
+        $total = (int) $this->db->fetchValue(
+            'SELECT COUNT(*) FROM payments p JOIN users u ON u.id = p.user_id WHERE ' . $where,
+            $params,
+        );
+        $rows = $this->db->fetchAll(
+            'SELECT p.*, u.display_name, u.email, c.title AS course_title
+             FROM payments p JOIN users u ON u.id = p.user_id JOIN courses c ON c.tenant_id = p.tenant_id AND c.id = p.course_id
+             WHERE ' . $where . ' ORDER BY p.id DESC LIMIT ' . max(1, min($limit, 5000)) . ' OFFSET ' . max(0, $offset),
+            $params,
+        );
+
+        return ['total' => $total, 'rows' => array_map(static fn (array $r): array => [
+            'payment' => Payment::fromRow($r),
+            'learner' => (string) $r['display_name'],
+            'email' => (string) $r['email'],
+            'course' => (string) $r['course_title'],
+        ], $rows)];
+    }
+
+    /**
+     * How many payments each status has, with the same course and word filters.
+     *
+     * @param array{course?: ?int, q?: string} $f
+     * @return array<string, int> status => count
+     */
+    public function statusCounts(int $tenantId, array $f): array
+    {
+        [$where, $params] = $this->filterWhere($tenantId, ['course' => $f['course'] ?? null, 'q' => $f['q'] ?? '']);
+        $out = [];
+        foreach ($this->db->fetchAll('SELECT p.status, COUNT(*) AS n FROM payments p JOIN users u ON u.id = p.user_id WHERE ' . $where . ' GROUP BY p.status', $params) as $r) {
+            $out[(string) $r['status']] = (int) $r['n'];
+        }
+
+        return $out;
+    }
+
+    /** @return array<int, string> course id => title, for courses that have any payments */
+    public function coursesWithPayments(int $tenantId): array
+    {
+        $out = [];
+        $rows = $this->db->fetchAll(
+            'SELECT DISTINCT c.id, c.title FROM payments p JOIN courses c ON c.tenant_id = p.tenant_id AND c.id = p.course_id WHERE p.tenant_id = ? ORDER BY c.title',
+            [$tenantId],
+        );
+        foreach ($rows as $r) {
+            $out[(int) $r['id']] = (string) $r['title'];
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param array{status?: ?string, course?: ?int, q?: string} $f
+     * @return array{0: string, 1: list<int|string>}
+     */
+    private function filterWhere(int $tenantId, array $f): array
+    {
+        $where = ['p.tenant_id = ?'];
+        $params = [$tenantId];
+        if (($f['status'] ?? null) !== null) {
+            $where[] = 'p.status = ?';
+            $params[] = (string) $f['status'];
+        }
+        if (($f['course'] ?? null) !== null) {
+            $where[] = 'p.course_id = ?';
+            $params[] = (int) $f['course'];
+        }
+        $words = array_slice(array_values(array_filter(preg_split('/\s+/u', mb_strtolower(trim($f['q'] ?? ''))) ?: [], static fn (string $w): bool => $w !== '')), 0, 5);
+        foreach ($words as $word) {
+            $like = '%' . addcslashes(mb_substr($word, 0, 60), '%_\\') . '%';
+            $where[] = '(LOWER(u.display_name) LIKE ? OR LOWER(u.email) LIKE ? OR LOWER(p.reference) LIKE ?)';
+            array_push($params, $like, $like, $like);
+        }
+
+        return [implode(' AND ', $where), $params];
+    }
+
     /** @return ?array{payment: Payment, learner: string, email: string, course: string} one payment with who paid and for what */
     public function findForSchool(int $tenantId, int $id): ?array
     {

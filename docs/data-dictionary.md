@@ -58,6 +58,7 @@ Personal data kinds: **Account** (who someone is), **Learning record** (what the
 | People | [`memberships`](#memberships) | Who belongs to which school and with which role (owner, admin, educator, learner, guardian). | Account |
 | People | [`recovery_codes`](#recovery-codes) | Two-step sign-in recovery codes, stored as hashes. | Security |
 | People | [`users`](#users) | Accounts: name, email, password hash, two-step secret (encrypted), appearance. One account can belong to several schools. | Account |
+| School | [`api_keys`](#api-keys) | Keys the school made for its own systems to read data through API v1: name, prefix, a hash of the key (never the key), who made it, last use. | Security |
 | Schools | [`tenants`](#tenants) | One row per school: name, branding, time zone, settings chosen in setup. | None |
 | Schools | [`tenant_domains`](#tenant-domains) | Web addresses that open a school; one is the primary address. | None |
 | Security | [`audit_events`](#audit-events) | Who did what and when (sign-ins, role changes, payments, refunds); field values are not stored. | Account |
@@ -95,6 +96,22 @@ Badges a learner has earned.
 | `code` | varchar(40) |  |  | primary |
 | `earned_at` | datetime |  |  |  |
 | `recorded_at` | datetime |  |  |  |
+
+## api_keys
+
+Keys the school made for its own systems to read data through API v1: name, prefix, a hash of the key (never the key), who made it, last use.
+
+| Column | Type | Null | Default | Key |
+|---|---|---|---|---|
+| `id` | bigint(20) unsigned |  |  | primary |
+| `tenant_id` | bigint(20) unsigned |  |  | index |
+| `name` | varchar(80) |  |  |  |
+| `prefix` | char(8) |  |  |  |
+| `key_hash` | char(64) |  |  | unique |
+| `created_by` | bigint(20) unsigned |  |  | index |
+| `created_at` | datetime |  |  |  |
+| `last_used_at` | datetime | yes | `NULL` |  |
+| `revoked_at` | datetime | yes | `NULL` |  |
 
 ## assessments
 

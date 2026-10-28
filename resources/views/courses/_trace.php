@@ -47,7 +47,7 @@ $n = 0;
           <?php else: ?>
             <?= $v->e($lesson->title) ?>
           <?php endif; ?>
-          <span class="trace-meta"><?= $v->e($lesson->typeLabel()) ?><?= $done ? ', done' : '' ?><?php if (!$linkLessons && !$openCourse && $lesson->isOpenPreview()): ?> <span class="tag tag-preview">Free preview</span><?php elseif (!$linkLessons && $openCourse && !$course->lessonIsReadable($lesson)): ?> <span class="tag tag-locked">Join to do this</span><?php endif; ?><?php if (in_array($lesson->id, $savedIds, true)): ?> <span class="tag tag-saved">Saved</span><?php endif; ?></span>
+          <span class="trace-meta"><?= $v->e($lesson->typeLabel()) ?><?= $done ? ', done' : '' ?><?php if (!$lesson->mandatory): ?> <span class="tag tag-optional">Optional</span><?php endif; ?><?php if (!$linkLessons && !$openCourse && $lesson->isOpenPreview()): ?> <span class="tag tag-preview">Free preview</span><?php elseif (!$linkLessons && $openCourse && !$course->lessonIsReadable($lesson)): ?> <span class="tag tag-locked">Join to do this</span><?php endif; ?><?php if (in_array($lesson->id, $savedIds, true)): ?> <span class="tag tag-saved">Saved</span><?php endif; ?></span>
         </span>
       </li>
       <?php endforeach; ?>

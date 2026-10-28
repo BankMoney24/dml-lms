@@ -99,7 +99,9 @@ $levelChoices = array_filter(Course::LEVELS, static fn (string $label, string $k
   <?php elseif ($active !== []): ?>
     <?= $v->emptyState('No courses match', $filters['q'] !== '' ? 'Nothing matches "' . $filters['q'] . '" with these filters. Try fewer words or clear the filters.' : 'No published course fits all of these filters.', '/courses', 'See all courses') ?>
   <?php else: ?>
-    <?= $v->emptyState('No courses yet', 'Nothing has been published yet. Check back soon, or ask your teacher which course to join.') ?>
+    <?= $v->can('course.manage')
+        ? $v->emptyState('No courses yet', 'Published courses appear here for learners. Build one from scratch, or import a ready-made course with lessons, quizzes and labs.', '/teach', 'Go to Your courses')
+        : $v->emptyState('No courses yet', 'Nothing has been published yet. Check back soon, or ask your teacher which course to join.') ?>
   <?php endif; ?>
 <?php else: ?>
   <?php $cardHeading = 'h2'; include __DIR__ . '/_list.php'; ?>

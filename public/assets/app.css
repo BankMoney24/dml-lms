@@ -405,7 +405,13 @@ details.panel[open] > summary { margin-bottom: var(--space-4); }
 .choice.is-correct { background: var(--primary-soft); }
 fieldset[disabled] .choice { cursor: default; }
 .activity { list-style: none; padding: 0; margin: 0; max-width: 48rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); }
-.activity li { display: flex; justify-content: space-between; gap: var(--space-4); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.activity li { display: grid; grid-template-columns: 3.25rem minmax(0, 1fr); gap: var(--space-3); align-items: baseline; padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--line); }
+.activity li.is-warning { border-left: 4px solid var(--warn); padding-left: calc(var(--space-4) - 4px); background: var(--warn-soft); }
+.activity-time { font-variant-numeric: tabular-nums; color: var(--ink-soft); font-size: var(--step--1); }
+.activity-text { overflow-wrap: anywhere; }
+.activity-days { display: grid; gap: var(--space-5); max-width: 48rem; }
+.activity-day-h { font-size: var(--step-0); margin: 0 0 var(--space-2); }
+.activity-days + .pager { max-width: 48rem; }
 .activity li:last-child { border-bottom: 0; }
 .tag { display: inline-block; font-size: 0.75rem; font-weight: 700; padding: 0.1rem 0.5rem; border-radius: 999px; background: var(--primary-soft); color: var(--primary); margin-right: var(--space-2); }
 .q-builder { margin-top: var(--space-2); background: var(--surface); border: 1px dashed var(--line); border-radius: var(--radius-m); padding: var(--space-2) var(--space-4); }
@@ -3011,3 +3017,35 @@ th[aria-sort="descending"] .sort-mark { border-top: 0.45rem solid var(--primary)
 .file-note { margin-top: var(--space-1); color: var(--ink-soft); }
 .nb > *, .nb-brief, .nb-plan, .nb-work > * { min-width: 0; }
 .sim-dns .mono, .sim-dns li { overflow-wrap: anywhere; }
+
+/* Payments page (update 36): what happened first, settings last. */
+.pay-glance { display: grid; gap: var(--space-4) var(--space-6); grid-template-columns: minmax(0, 1fr); align-items: end; padding: var(--space-4) var(--space-5); margin: 0 0 var(--space-5); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); }
+@media (min-width: 52rem) { .pay-glance { grid-template-columns: minmax(0, 1.2fr) minmax(0, 2fr); } }
+.pay-figure-label { margin: 0 0 var(--space-1); font-weight: 700; font-size: var(--step--1); color: var(--ink-soft); }
+.pay-figure .small { margin: 0; }
+.pay-total-none { color: var(--ink-soft); }
+.pay-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: var(--space-3); margin: 0; }
+.pay-facts div { border-left: 3px solid var(--line); padding-left: var(--space-3); }
+.pay-facts dt { font-size: var(--step--1); color: var(--ink-soft); font-weight: 650; }
+.pay-facts dd { margin: 0; font-weight: 700; }
+.pay-setup { margin-bottom: var(--space-5); }
+.pay-claims { margin: var(--space-5) 0; }
+.pay-table td:nth-child(2) { min-width: 11rem; }
+.pay-table td:nth-child(4) { max-width: 18rem; }
+.pay-table td:nth-child(4) .small, .pay-table td:nth-child(5) .small { overflow-wrap: anywhere; }
+.pay-table .table-stack-action { white-space: nowrap; }
+.pay-count { margin: var(--space-2) 0 0; }
+.pay-more-h { font-size: var(--step-1); margin: var(--space-6) 0 var(--space-3); }
+.pay-more-h ~ details.panel { margin-bottom: var(--space-3); }
+.tag-optional { background: var(--surface); color: var(--ink-soft); border: 1px solid var(--line-strong); }
+
+/* API keys (ADR 0036) */
+.api-new { margin-bottom: var(--space-5); }
+.api-new h2 { margin-top: 0; }
+.api-keys, .api-how { max-width: 56rem; margin-bottom: var(--space-5); }
+.api-keys td:nth-child(3) { white-space: nowrap; }
+.api-keys td:nth-child(3) .small { display: block; white-space: normal; }
+.api-make { max-width: 36rem; margin-bottom: var(--space-6); }
+.api-warning { margin: var(--space-3) 0 0; padding: var(--space-2) var(--space-3); border-left: 3px solid var(--warn); background: var(--warn-soft); border-radius: 0 var(--radius-s) var(--radius-s) 0; }
+tr.is-muted th, tr.is-muted td { color: var(--ink-soft); }
+.api-make h2 { margin-top: 0; }

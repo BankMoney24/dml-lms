@@ -7,7 +7,7 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 | Item | Status | Notes |
 |---|---|---|
 | Repository, layout, coding standards | Built | PSR-12 (phpcs), PHPStan level 8, strict types |
-| Architecture overview, ADRs | Built | `docs/architecture.md`, `docs/adr/0001–0035`; design system in `docs/design-system.md`; interface audit and checklist in `docs/overhaul-checklist.md` |
+| Architecture overview, ADRs | Built | `docs/architecture.md`, `docs/adr/0001–0036`; design system in `docs/design-system.md`; interface audit and checklist in `docs/overhaul-checklist.md` |
 | ERD / data dictionary | Built | Schema diagram in architecture.md; `docs/data-dictionary.md` generated from the live schema (`bin/console schema:dictionary`) with what each table holds and its kind of personal data; a test keeps it complete |
 | Threat model | Built | `docs/threat-model.md`: assets, trust boundaries, STRIDE threats with the controls that answer them, and the top remaining risks |
 | CI (lint, analysis, tests, secret scan, asset budget) | Built | `.github/workflows/ci.yml`, PHP 8.3 / 8.4 / 8.5 matrix on MySQL 8.4 |
@@ -75,7 +75,7 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 | NTF-003 | Next | SMS/WhatsApp after consent review |
 | Blog, programmes and company pages | Built | School → Website → Blog: news, events, stories and guides; drafts, preview, publish, fixed addresses once live, BlogPosting data, share images, RSS feed, sitemap; honest starter drafts (button or `blog:starter-posts`). `/programmes`: formal school subjects, skills for work and everyday (informal) learning, with facts from the school's settings and every course. Full drafts for Questions and answers and Careers. Footer in Learn / School / Policies / Platform columns. ADR 0034 |
 | §8 offline | Built | Offline banner; lessons and whole courses saved on the device for offline reading (removed at sign-out); finished lessons kept in an outbox and sent on reconnection; quiz drafts on device until the server confirms; clear message for anything else that needs a connection; offline page lists saved lessons. ADR 0033 |
-| §9 public API v1 | Next | |
+| §9 public API v1 | Built | Read-only JSON API for the school's own systems (courses, learners, enrolments with progress, payments, certificates), per-school keys shown once and stored hashed, revocable, 120 requests/minute, paged; `docs/api.md`. ADR 0036 |
 | §12 accessibility | Partial | Semantic HTML, labels, error association, focus styles, reduced motion, 44px main targets and 24px minimum (WCAG 2.2). axe-core scan of 110 page/role views at eight widths in light and dark mode: no violations (update 31, `docs/overhaul-checklist.md`). Not yet audited with assistive technology |
 
 ## Security controls in place

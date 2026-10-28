@@ -51,11 +51,12 @@ Notes on the raw results:
 
 Interface:
 
-- [ ] Same list tools (find, filter, pages) on payments, reports learners list (now capped at 500 with CSV for the rest), help desk, applications and activity
+- [x] List tools on payments (find, course, status counts, pages, matching export) and activity (kind, person, days) (update 36)
+- [ ] List tools on the help desk and applications (low volume so far)
 - [ ] Unsaved-changes warning on the setup wizard steps (they save on Continue; leaving mid-step loses only that step)
 - [ ] Screen-reader passes: NVDA with Firefox, VoiceOver on iPhone, TalkBack on Android, for sign-in, a lesson, a quiz, the classroom and a payment
 - [ ] Real-device checks on a low-end Android phone on 3G for the lesson, quiz and classroom pages
-- [ ] Empty states reviewed for every list for a brand-new school
+- [x] Empty states reviewed for a brand-new school (update 36)
 - [ ] Terminology setting ("student" or "learner", "class" or "cohort")
 
 Pending features (from the invoice's pending list):
@@ -69,7 +70,7 @@ Pending features (from the invoice's pending list):
 - [ ] Instalments
 - [x] Per-course completion rules (update 32)
 - [x] Learner report sheets for parents and staff, printable (update 32)
-- [ ] Public API v1 (for PrimeERP and others) with per-school keys
+- [x] Public API v1 (for PrimeERP and others) with per-school keys (update 36, ADR 0036)
 - [x] Offline lessons: save a lesson or whole course, outbox for finished lessons (update 33)
 - [x] Threat model (`docs/threat-model.md`) and data dictionary (`docs/data-dictionary.md`) (update 32)
 - [ ] SMS / WhatsApp: needs a provider account and a consent review first

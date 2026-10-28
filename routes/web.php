@@ -64,6 +64,12 @@ return static function (Router $r): void {
     $r->get('/developers', [\App\Modules\Platform\Http\PlatformPagesController::class, 'developers'], ['tenant']);
     $r->get('/accessibility', [\App\Modules\Platform\Http\PlatformPagesController::class, 'accessibility'], ['tenant']);
     $r->get('/health/ready', [HealthController::class, 'ready'], [Kernel::BARE]);
+    // API v1 for the school's own systems (ADR 0036): read-only, key per school, no cookies.
+    $api = [Kernel::BARE, 'host-tenant', 'api'];
+    $r->get('/api/v1', [\App\Modules\Api\Http\ApiController::class, 'index'], $api);
+    foreach (['courses', 'learners', 'enrolments', 'payments', 'certificates'] as $apiList) {
+        $r->get('/api/v1/' . $apiList, [\App\Modules\Api\Http\ApiController::class, $apiList], $api);
+    }
     // Link-preview images for social networks (ADR 0019): public, cookie-free, cached.
     $r->get('/share/site.png', [ShareController::class, 'site'], [Kernel::BARE, 'host-tenant', 'tenant']);
     $r->get('/share/courses/{slug}.png', [ShareController::class, 'course'], [Kernel::BARE, 'host-tenant', 'tenant']);
@@ -343,6 +349,9 @@ return static function (Router $r): void {
     $r->post('/school/website/{page}/publish', [SiteController::class, 'publish'], $school);
     $r->post('/school/website/{page}/full-draft', [SiteController::class, 'fullDraft'], $school);
     $r->post('/school/website/{page}/unpublish', [SiteController::class, 'unpublish'], $school);
+    $r->get('/school/api', [\App\Modules\Api\Http\ApiKeyController::class, 'index'], $school);
+    $r->post('/school/api', [\App\Modules\Api\Http\ApiKeyController::class, 'store'], $school);
+    $r->post('/school/api/{key:int}/revoke', [\App\Modules\Api\Http\ApiKeyController::class, 'revoke'], $school);
     $r->get('/school/blog', [\App\Modules\Blog\Http\BlogAdminController::class, 'index'], $school);
     $r->get('/school/blog/new', [\App\Modules\Blog\Http\BlogAdminController::class, 'create'], $school);
     $r->post('/school/blog', [\App\Modules\Blog\Http\BlogAdminController::class, 'store'], $school);

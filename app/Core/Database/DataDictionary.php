@@ -36,6 +36,7 @@ final class DataDictionary
         'guardian_links' => ['Families', 'Which parent or guardian follows which learner, what they may see, and who checked their identity.', self::CHILD],
         'wizard_runs' => ['Setup', 'Answers saved part-way through a guided setup, until they are applied or discarded.', self::NONE],
         'site_pages' => ['Website', 'The school\'s own public pages (about, admissions, contact, questions and answers, careers, privacy, terms, refunds, safeguarding).', self::NONE],
+        'api_keys' => ['School', 'Keys the school made for its own systems to read data through API v1: name, prefix, a hash of the key (never the key), who made it, last use.', self::SECURITY],
         'blog_posts' => ['Website', 'Blog posts: title, summary, text, kind (news, event, story, guide), draft or published, the staff member who wrote it.', self::NONE],
         'courses' => ['Courses', 'Courses: title, summary, level, price, who can read and join, completion rule.', self::NONE],
         'course_modules' => ['Courses', 'Sections of a course, in order.', self::NONE],

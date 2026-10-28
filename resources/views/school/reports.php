@@ -66,7 +66,7 @@ $figures = [
 <section class="section" aria-labelledby="courses-h">
   <h2 id="courses-h">Courses</h2>
   <?php if ($courses === []): ?>
-    <p class="muted">No courses yet.</p>
+    <p class="muted">No courses yet. <?php if ($v->can('course.manage')): ?><a href="/teach">Build or import one</a>; its progress shows here as learners start.<?php endif; ?></p>
   <?php else: ?>
   <p class="report-key small" aria-hidden="true"><span class="key key-done"></span>Completed <span class="key key-going"></span>In progress <span class="key key-idle"></span>Not started</p>
   <div class="table-wrap">
@@ -114,7 +114,7 @@ $figures = [
     <?php if ($find !== '' || $group > 0): ?><a class="small" href="/school/reports#learners-h">Clear</a><?php endif; ?>
   </form>
   <?php if ($learners === []): ?>
-    <p class="muted"><?= $find !== '' || $group > 0 ? 'No learner matches.' : 'No learners yet.' ?></p>
+    <p class="muted"><?= $find !== '' || $group > 0 ? 'No learner matches.' : 'No learners yet.' ?><?php if ($find === '' && $group === 0 && $v->can('members.manage')): ?> <a href="/people">Add people</a> or <a href="/school/joining">let learners join</a>.<?php endif; ?></p>
   <?php else: ?>
   <div class="table-wrap">
   <table class="table report-table" data-sortable>

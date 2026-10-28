@@ -43,7 +43,7 @@ $securityLabel = str_starts_with($securityContact, 'mailto:') ? substr($security
       <li><strong>Each school separate:</strong> every school has its own web address, people and records, and no school can see another's.</li>
       <li><strong>Private by design:</strong> one cookie to keep you signed in, no advertising trackers, passwords and keys stored protected.</li>
       <li><strong>Accessible:</strong> built to WCAG 2.2 AA. See the <a href="/accessibility">accessibility statement</a>.</li>
-      <li><strong>Open standards:</strong> certificates anyone can check, calendar links for any calendar app, spreadsheets for every report.</li>
+      <li><strong>Open standards:</strong> certificates anyone can check, calendar links for any calendar app, spreadsheets for every report, and a read-only API (version 1) a school can give its own systems, such as an ERP, with keys it controls.</li>
     </ul>
   </section>
 

@@ -1001,6 +1001,22 @@ final class Application
             $c->get(\App\Modules\Site\SitePageRepository::class),
             $c->get(\App\Modules\Site\FullDrafts::class),
         ));
+        $c->set(\App\Modules\Api\ApiKeyRepository::class, static fn (Container $c) => new \App\Modules\Api\ApiKeyRepository($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(\App\Modules\Api\ApiKeys::class, static fn (Container $c) => new \App\Modules\Api\ApiKeys(
+            $c->get(\App\Modules\Api\ApiKeyRepository::class),
+            $c->get(AuditLog::class),
+        ));
+        $c->set(\App\Modules\Api\Http\ApiAuth::class, static fn (Container $c) => new \App\Modules\Api\Http\ApiAuth(
+            $c->get(\App\Modules\Api\ApiKeys::class),
+            $c->get(\App\Core\Security\RateLimiter::class),
+        ));
+        $c->set(\App\Modules\Api\Http\ApiController::class, static fn (Container $c) => new \App\Modules\Api\Http\ApiController($c->get(Connection::class)));
+        $c->set(\App\Modules\Api\Http\ApiKeyController::class, static fn (Container $c) => new \App\Modules\Api\Http\ApiKeyController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(\App\Modules\Api\ApiKeys::class),
+            $c->get(\App\Modules\Api\ApiKeyRepository::class),
+        ));
         $c->set(\App\Modules\Blog\BlogRepository::class, static fn (Container $c) => new \App\Modules\Blog\BlogRepository($c->get(Connection::class), $c->get(Clock::class)));
         $c->set(\App\Modules\Blog\Blog::class, static fn (Container $c) => new \App\Modules\Blog\Blog(
             $c->get(\App\Modules\Blog\BlogRepository::class),
@@ -1090,6 +1106,7 @@ final class Application
             $c->get(View::class),
             $c->get(AuditLog::class),
             new ActivityDescriber(),
+            $c->get(Clock::class),
         ));
 
         $c->set(Router::class, static function (): Router {
@@ -1139,6 +1156,10 @@ final class Application
         }
         if ($spec === 'tenant') {
             return new RequireTenant($c->get(TenantContext::class));
+        }
+        if ($spec === 'api') {
+            // API v1 (ADR 0036): a key for this school, JSON errors, no session.
+            return $c->get(\App\Modules\Api\Http\ApiAuth::class);
         }
         if ($spec === 'auth') {
             return new RequireAuthentication($c->get(Session::class));

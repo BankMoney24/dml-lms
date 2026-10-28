@@ -19,7 +19,9 @@ $unread = array_filter($items, static fn ($n): bool => !$n->isRead());
 </header>
 
 <?php if ($items === []): ?>
-  <?= $v->emptyState('Nothing here yet', 'When a teacher reviews your work, sets a course or posts an announcement, it shows up here.') ?>
+  <?= $v->can('course.manage') || $v->can('school.manage')
+      ? $v->emptyState('Nothing here yet', 'Work to review, questions under lessons, applications, help requests and payments to confirm show up here as they arrive.')
+      : $v->emptyState('Nothing here yet', 'When a teacher reviews your work, sets a course or posts an announcement, it shows up here.') ?>
 <?php else: ?>
 <ol class="notice-list">
   <?php foreach ($items as $n): ?>

@@ -49,6 +49,7 @@ The method is simple: what we protect, who might attack it and how (grouped by S
 | Malicious uploads | Type checked by content, size limits, stored outside the web root with random names, served with a sandbox CSP and `nosniff`; ClamAV scan when `CLAMD_HOST` is set (ADR 0008) | Without ClamAV configured, files are not virus-scanned (the System page says which) |
 | Script injection (XSS) | Output escaped by default (`$v->e`), Markdown renderer without raw HTML, strict CSP with no inline script or style | |
 | Learner code attacking the site | Runs in a sandboxed iframe (`allow-scripts` only) inside a Web Worker on a separate empty page | |
+| A leaked or misused API key reading learner data | Keys made only by `school.manage`, shown once, stored as SHA-256 hashes; read-only; bound to one school and checked against the host; 120 requests/minute; revocable at once; making and revoking audited; last use shown (ADR 0036) | A key copied into an insecure system exposes learner names, emails, progress and payments until revoked |
 
 ### Repudiation (denying what they did)
 
