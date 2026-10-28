@@ -1,9 +1,9 @@
 {
  "title": "Networking Foundations: Build, Address and Route",
- "summary": "Build real-looking networks in your browser: cable PCs, switches and routers, give them addresses, add static routes and prove it with ping. Then follow a DNS lookup from the root, write firewall rules for a school server and repair a broken office network. Five labs with new numbers every time, and an optional path into Cisco Packet Tracer.",
+ "summary": "Build real-looking networks in your browser: cable PCs, switches and routers, give them addresses, add static routes and prove it with ping. Then follow a DNS lookup from the root, write firewall rules for a school server and repair a broken office network. Split a switch into VLANs and hand out addresses with DHCP. Six labs with new numbers every time, and an optional path into Cisco Packet Tracer.",
  "track": "skills",
  "level": "intermediate",
- "duration_hours": 12,
+ "duration_hours": 14,
  "outcomes": [
   "Explain what PCs, switches and routers do and cable them correctly",
   "Plan and set IPv4 addresses, masks and default gateways, including /30 router links",
@@ -365,6 +365,74 @@
        ],
        "correct": 1,
        "explanation": "One change, one test: you learn what actually mattered."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "VLANs and DHCP",
+   "lessons": [
+    {
+     "type": "text",
+     "title": "VLANs, a router on a stick, and DHCP",
+     "file": "lessons/08-vlans-and-dhcp.md"
+    },
+    {
+     "type": "lab",
+     "title": "Lab: VLANs, a router on a stick and DHCP",
+     "lab": "network-vlan",
+     "intro": "The devices are placed and cabled. Put the staff and student ports in their VLANs, make the router port a trunk, add R1's subinterfaces, turn on DHCP on SRV1 with a relay for the students, set every PC to DHCP and ping the server. Use the forms or the command lines; check with show vlan brief and ipconfig."
+    },
+    {
+     "type": "quiz",
+     "title": "Check: VLANs and DHCP",
+     "pass_threshold": 70,
+     "intro": "Four questions on VLANs and DHCP.",
+     "questions": [
+      {
+       "prompt": "Which switch port carries several VLANs, each frame tagged with its VLAN number?",
+       "options": [
+        "An access port",
+        "A trunk port",
+        "Any port in VLAN 1",
+        "A port that is shut down"
+       ],
+       "correct": 1,
+       "explanation": "Trunks carry many VLANs with 802.1Q tags; an access port carries one VLAN untagged."
+      },
+      {
+       "prompt": "Two PCs on the same switch are in VLAN 10 and VLAN 20. What do they need to talk to each other?",
+       "options": [
+        "Nothing: they share a switch",
+        "A router (or a subinterface for each VLAN)",
+        "The same subnet mask",
+        "A longer cable"
+       ],
+       "correct": 1,
+       "explanation": "Each VLAN is a separate network, so traffic between them must be routed."
+      },
+      {
+       "prompt": "A student laptop shows 169.254.12.40 in ipconfig. What does it mean?",
+       "options": [
+        "It has a good address",
+        "It got no answer from a DHCP server",
+        "It is in VLAN 169",
+        "The gateway is 169.254.0.1"
+       ],
+       "correct": 1,
+       "explanation": "Windows uses a 169.254 address when DHCP fails."
+      },
+      {
+       "prompt": "The DHCP server is in the staff VLAN. What lets students in another VLAN get addresses from it?",
+       "options": [
+        "switchport mode access on the server's port",
+        "ip helper-address with the server's address on the students' router interface",
+        "A static route on the laptops",
+        "Putting the laptops in VLAN 1"
+       ],
+       "correct": 1,
+       "explanation": "The relay forwards the students' DHCP broadcast to the server, which uses the pool for their network."
       }
      ]
     }

@@ -210,7 +210,9 @@ final class SampleSchool
         for ($i = 0; $i < $learnerCount; $i++) {
             // More people join as the term goes on; a few joined this week.
             $day = (int) round(88 - 87 * (mt_rand(0, 1000) / 1000) ** 1.4);
-            $this->clock->at($start->modify('+' . $day . ' days')->setTime(mt_rand(7, 21), mt_rand(0, 59)));
+            $joined = $start->modify('+' . $day . ' days')->setTime(mt_rand(7, 21), mt_rand(0, 59));
+            // Someone who "joined today" never joins later than now.
+            $this->clock->at($joined < $this->today() ? $joined : $this->today()->modify('-' . mt_rand(20, 240) . ' minutes'));
             [$f, $l] = $this->name();
             $learner = $this->person(strtolower($f . '.' . $l), $f, $l, Role::Learner);
             $this->profile($learner);
@@ -668,6 +670,9 @@ final class SampleSchool
                 'assignment' => $this->assignment($enrolment, $lesson, $teachers),
                 default => $learning->completeTextLesson($enrolment, $lesson) || true,
             };
+            if ($this->clock->now() > $this->today()) {
+                break; // the quiz, lab or assignment ran past today
+            }
             if (!$asked && mt_rand(1, 100) <= 12) {
                 $asked = true;
                 $this->ask($learner, $course, $lesson, $teachers);

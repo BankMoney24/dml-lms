@@ -32,6 +32,7 @@ final class LabCatalogue
             new Labs\PyLeapLab(),
             new Labs\NetworkBuildLab(),
             new Labs\NetworkRepairLab(),
+            new Labs\NetworkVlanLab(),
             new Labs\FirewallLab(),
             new Labs\DnsLab(),
             new Labs\PendulumLab(),

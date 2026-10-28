@@ -76,7 +76,8 @@ Pending features (from the invoice's pending list):
 - [ ] SMS / WhatsApp: needs a provider account and a consent review first
 - [ ] Recording and YouTube streaming: needs a separate Jibri server (more memory than the current server can spare)
 - [ ] Real-machine labs: needs isolated lab servers
-- [ ] Network builder next steps: VLANs, DHCP and dynamic routing (OSPF) in the simulator
+- [x] Network builder: VLANs, trunks, router on a stick and DHCP with relay, and a lab (update 38, ADR 0038)
+- [ ] Network builder: dynamic routing (OSPF)
 
 Server and account tasks (done by the school on the server; instructions in each release note):
 

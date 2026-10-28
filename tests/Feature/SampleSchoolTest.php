@@ -33,7 +33,8 @@ final class SampleSchoolTest extends AppTestCase
             'certificates' => 'issued_at', 'lab_sessions' => 'started_at', 'audit_events' => 'created_at',
         ];
         foreach ($dated as $table => $column) {
-            $this->assertSame(0, (int) $this->db()->fetchValue("SELECT COUNT(*) FROM {$table} WHERE tenant_id = ? AND {$column} > ?", [$tid, $soon]), $table . ' has nothing in the future');
+            $future = $this->db()->fetchAll("SELECT * FROM {$table} WHERE tenant_id = ? AND {$column} > ? LIMIT 3", [$tid, $soon]);
+            $this->assertSame([], $future, $table . ' has nothing in the future');
         }
         $this->assertGreaterThan(30, (int) $this->db()->fetchValue('SELECT DATEDIFF(MAX(enrolled_at), MIN(enrolled_at)) FROM enrolments WHERE tenant_id = ?', [$tid]), 'activity is spread over weeks');
         $pendingNotes = (int) $this->db()->fetchValue("SELECT COUNT(*) FROM payment_claims WHERE tenant_id = ? AND status = 'pending'", [$tid]);
