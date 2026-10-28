@@ -262,6 +262,8 @@ final class Application
             $c->get(PaymentRepository::class),
             $c->get(\App\Modules\Applications\ApplicationRepository::class),
             $c->get(CourseRepository::class),
+            $c->get(\App\Modules\Payments\Plans\PaymentPlanRepository::class),
+            $c->get(Clock::class),
         ));
         $c->set(
             \App\Modules\Applications\ApplicationRepository::class,
@@ -286,6 +288,10 @@ final class Application
             $c->get(Clock::class),
         ));
         $c->set(PaymentRepository::class, static fn (Container $c) => new PaymentRepository($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(
+            \App\Modules\Payments\Plans\PaymentPlanRepository::class,
+            static fn (Container $c) => new \App\Modules\Payments\Plans\PaymentPlanRepository($c->get(Connection::class), $c->get(Clock::class)),
+        );
         $c->set(PaymentAccountRepository::class, static fn (Container $c) => new PaymentAccountRepository($c->get(Connection::class), $c->get(Clock::class), new SecretBox($appKey)));
         $c->set(PaystackApi::class, static fn () => new HttpPaystackApi());
         $c->set(PaymentService::class, static fn (Container $c) => new PaymentService(
@@ -303,6 +309,7 @@ final class Application
             $c->get(Notifier::class),
             $c->get(\App\Modules\Payments\Coupons\Coupons::class),
             $c->get(\App\Modules\Payments\Refunds\Refunds::class),
+            $c->get(\App\Modules\Payments\Plans\PaymentPlanRepository::class),
         ));
         $c->set(\App\Modules\Payments\Coupons\CouponRepository::class, static fn (Container $c) => new \App\Modules\Payments\Coupons\CouponRepository(
             $c->get(Connection::class),
@@ -848,6 +855,7 @@ final class Application
             $c->get(\App\Modules\Payments\TransferPayments::class),
             $c->get(\App\Modules\Payments\Refunds\Refunds::class),
             $c->get(\App\Modules\Payments\Refunds\RefundRepository::class),
+            $c->get(\App\Modules\Payments\Plans\PaymentPlans::class),
         ));
         $c->set(\App\Modules\Payments\Http\CouponController::class, static fn (Container $c) => new \App\Modules\Payments\Http\CouponController(
             $c->get(View::class),
@@ -869,6 +877,21 @@ final class Application
             $c->get(AuditLog::class),
             $c->get(Clock::class),
             $c->get(Notifier::class),
+            $c->get(\App\Modules\Payments\Plans\PaymentPlanRepository::class),
+        ));
+        $c->set(\App\Modules\Payments\Plans\PaymentPlans::class, static fn (Container $c) => new \App\Modules\Payments\Plans\PaymentPlans(
+            $c->get(Connection::class),
+            $c->get(\App\Modules\Payments\Plans\PaymentPlanRepository::class),
+            $c->get(PaymentService::class),
+            $c->get(CourseRepository::class),
+            $c->get(UserRepository::class),
+            $c->get(TenantRepository::class),
+            $c->get(AuditLog::class),
+            $c->get(Clock::class),
+            $c->get(Notifier::class),
+            $c->get(MailOutbox::class),
+            $c->get(EmailComposer::class),
+            $c->get(MailSettings::class),
         ));
         $c->set(\App\Modules\Subscriptions\Http\SubscribeController::class, static fn (Container $c) => new \App\Modules\Subscriptions\Http\SubscribeController(
             $c->get(View::class),
@@ -883,6 +906,7 @@ final class Application
             $c->get(\App\Modules\Applications\ApplicationRepository::class),
             $c->get(\App\Modules\Payments\Coupons\Coupons::class),
             $c->get(\App\Core\Security\RateLimiter::class),
+            $c->get(\App\Modules\Payments\Plans\PaymentPlans::class),
         ));
         $c->set(GroupController::class, static fn (Container $c) => new GroupController(
             $c->get(View::class),

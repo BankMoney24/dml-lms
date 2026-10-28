@@ -153,6 +153,16 @@ sudo -u dmldeploy -H php /var/www/dml-lms/current/bin/console course:import dml 
 
 Without `--publish` it arrives as a draft for teachers to review first. A course imported before its package had files gets them with `course:sync-files dml linux-server-administration linux-server-administration` (it skips files already there). Revoke a certificate issued by mistake with `bin/console certificate:revoke ABCD-EFGH-JKLM "reason"`; the reason is shown on the public `/verify` page.
 
+### Payment plans (update 37)
+
+Paying a course in monthly parts (ADR 0037) adds one daily cron line that sends reminders and pauses overdue plans. **After this release, reinstall the cron file once:**
+
+```bash
+install -m 644 /var/www/dml-lms/current/deploy/cron/dml-lms /etc/cron.d/dml-lms
+```
+
+To offer parts on a course: Teaching → the course → Price → "Paying in parts". To try the reminders by hand: `sudo -u dmllms php /var/www/dml-lms/current/bin/console payments:plan-reminders` (it only sends what is due, once).
+
 ### Virtual labs
 
 Labs are a lesson type. Teachers add them from **Teaching → a course → Add a lesson → Lab**, and try every lab first at **Teaching → Lab catalogue** (practice runs are not saved). This release has six: Ohm's law, titration and straight-line graphs (school subjects), and subnetting, a JavaScript function and phishing (skills). `bin/console lab:list` lists them.

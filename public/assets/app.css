@@ -2221,6 +2221,59 @@ kbd { font: 700 0.8125rem/1 var(--font-body); padding: 0.15rem 0.4rem; border: 1
 .sub-ticket-list li::marker { content: "■  "; color: var(--lamp); font-size: 0.7em; }
 .sub-ticket-foot { margin: 0; padding: var(--space-2) var(--space-5) var(--space-4); font-size: var(--step--1); }
 
+/* Paying in parts (ADR 0037): the parts read like the subscribe steps, a track that fills as parts are paid. */
+.sub-ticket-parts { display: block; margin-top: var(--space-1); font-size: var(--step--1); }
+.course-parts { margin: calc(-1 * var(--space-2)) 0 var(--space-3); color: var(--ink-soft); }
+.sub-pay-choice { flex-direction: column; align-items: stretch; }
+.sub-pay-choice .pick-list { margin: 0; }
+.sub-pay-choice .pick-list legend { font-weight: 700; margin-bottom: var(--space-2); }
+.sub-pay-choice .button { align-self: flex-start; }
+.plan-panel { border-left: 5px solid var(--primary); }
+.plan-panel.is-paused { border-left-color: var(--danger); background: linear-gradient(var(--danger-soft), var(--surface) 7rem); }
+.plan-lead { margin: 0 0 var(--space-4); }
+.plan-parts { list-style: none; margin: 0 0 var(--space-3); padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr)); gap: var(--space-3) 0; }
+.plan-part { position: relative; display: flex; flex-direction: column; gap: 2px; padding-right: var(--space-3); font-size: var(--step--1); color: var(--ink-soft); }
+.plan-part::before { content: ""; position: absolute; top: 0.9rem; left: 2.25rem; right: 0.25rem; height: 2px; background: var(--line); }
+.plan-part:last-child::before { display: none; }
+.plan-part.is-paid::before { background: var(--lamp); }
+.plan-part-mark { position: relative; z-index: 1; display: inline-grid; place-items: center; width: 1.875rem; height: 1.875rem; margin-bottom: var(--space-2); border-radius: 4px; border: 2px solid var(--line-strong); background: var(--surface); font-weight: 700; font-variant-numeric: tabular-nums; }
+.plan-part-mark .icon { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 3; }
+.plan-part-name { font-weight: 600; color: var(--ink); }
+.plan-part-amount { font-family: var(--font-head); font-size: var(--step-1); font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.plan-part.is-paid .plan-part-mark { border-color: var(--lamp); background: var(--lamp); color: var(--lamp-ink); }
+.plan-part.is-next .plan-part-mark { border-color: var(--primary); background: var(--primary); color: var(--primary-ink); box-shadow: 0 0 0 4px var(--primary-soft); }
+.plan-part.is-late .plan-part-mark { border-color: var(--danger); background: var(--danger-soft); color: var(--danger); }
+.plan-part.is-late .plan-part-when { color: var(--danger); font-weight: 600; }
+.plan-part.is-later .plan-part-amount { color: var(--ink-soft); }
+@media (max-width: 30rem) {
+  .plan-parts { grid-template-columns: 1fr; gap: 0; }
+  .plan-part { display: grid; grid-template-columns: 2.5rem minmax(0, 1fr) auto; grid-template-areas: "mark name amount" "mark when amount"; align-items: center; padding: var(--space-2) 0; }
+  .plan-part::before { top: 2.4rem; bottom: -0.6rem; left: 0.9rem; right: auto; width: 2px; height: auto; }
+  .plan-part-mark { grid-area: mark; margin: 0; }
+  .plan-part-name { grid-area: name; }
+  .plan-part-when { grid-area: when; }
+  .plan-part-amount { grid-area: amount; font-size: var(--step-0); }
+}
+.plan-total { margin: 0 0 var(--space-2); }
+.plan-direct { margin-top: var(--space-4); }
+.plan-direct > summary { cursor: pointer; font-weight: 600; color: var(--primary); }
+.plan-direct .sub-claim { margin-top: var(--space-3); padding-top: var(--space-3); }
+
+/* School: payment plans */
+.plan-table .plan-owed { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.plan-progress { display: flex; gap: 3px; margin-top: var(--space-1); }
+.plan-progress span { width: 1.1rem; height: 0.4rem; border-radius: 2px; background: var(--line-strong); }
+.plan-progress span.is-paid { background: var(--lamp); }
+.pay-plans { margin: var(--space-6) 0; }
+.pay-plans > .small { max-width: 70ch; }
+.plan-table th .small, .plan-table td .small { display: block; }
+tr.is-late > * { background: var(--danger-soft); }
+.plan-close { margin-top: var(--space-5); padding-top: var(--space-4); border-top: 1px solid var(--line); }
+.plan-close > summary { cursor: pointer; font-weight: 600; color: var(--danger); }
+.plan-admin-grid .facts { margin-top: var(--space-4); }
+.plan-admin-grid { display: grid; gap: var(--space-5); align-items: start; }
+@media (min-width: 60rem) { .plan-admin-grid { grid-template-columns: minmax(0, 1fr) 22rem; } }
+
 /* My subscriptions */
 .subs-section { margin-bottom: var(--space-6); max-width: 52rem; }
 .subs-section h2 { font-size: var(--step-1); margin-bottom: var(--space-3); }

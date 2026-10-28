@@ -31,6 +31,9 @@ final class Payment
         /** The discount code used, and the price before it (ADR 0032). */
         public readonly ?int $couponId = null,
         public readonly ?int $listPriceMinor = null,
+        /** The payment plan and the part this pays, when paying in parts (ADR 0037). */
+        public readonly ?int $planId = null,
+        public readonly ?int $planPart = null,
     ) {
     }
 
@@ -55,6 +58,8 @@ final class Payment
             $row['paid_at'] === null ? null : (string) $row['paid_at'],
             isset($row['coupon_id']) ? (int) $row['coupon_id'] : null,
             isset($row['list_price_minor']) ? (int) $row['list_price_minor'] : null,
+            isset($row['plan_id']) ? (int) $row['plan_id'] : null,
+            isset($row['plan_part']) ? (int) $row['plan_part'] : null,
         );
     }
 

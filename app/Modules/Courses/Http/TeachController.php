@@ -95,15 +95,17 @@ final class TeachController
     public function updatePrice(Request $request): Response
     {
         $course = $this->course($request);
-        $old = ['price' => $request->input('price', '') ?? '', 'currency' => $request->input('currency', '') ?? ''];
+        $old = ['price' => $request->input('price', '') ?? '', 'currency' => $request->input('currency', '') ?? '', 'instalments' => $request->input('instalments', '') ?? ''];
         try {
-            $this->authoring->setPrice($course, RequestContext::user($request), $old['price'], $old['currency']);
+            $this->authoring->setPrice($course, RequestContext::user($request), $old['price'], $old['currency'], $old['instalments']);
         } catch (ValidationException $e) {
             return $this->renderEdit($course, $e->errors, $old, 422);
         }
         $updated = $this->courses->findById($course->tenantId, $course->id);
         $this->session->flash('success', $updated !== null && $updated->isPaid()
-            ? sprintf('Price set to %s. Learners pay before they can start.', $updated->priceLabel())
+            ? sprintf('Price set to %s. %s', $updated->priceLabel(), $updated->instalments === null
+                ? 'Learners pay before they can start.'
+                : sprintf('Learners pay in full, or in %d monthly parts; the first part opens the course.', $updated->instalments))
             : 'This course is now free.');
 
         return Response::redirect('/teach/courses/' . $course->id);

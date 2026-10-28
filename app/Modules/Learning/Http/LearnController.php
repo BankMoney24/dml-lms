@@ -88,6 +88,10 @@ final class LearnController
 
             return Response::redirect('/courses/' . $course->slug . '#start');
         }
+        if ($this->learning->planHold($course, $user) !== null) {
+            // A part of the payment plan is more than a week late (ADR 0037): show why and how to carry on.
+            return Response::redirect('/courses/' . $course->slug . '/subscribe#plan');
+        }
 
         return $this->renderLesson($request, $course, $lesson);
     }

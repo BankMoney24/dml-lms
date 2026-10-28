@@ -19,7 +19,23 @@
  * @var string $code
  * @var ?array{coupon: \App\Modules\Payments\Coupons\Coupon, discount: int, price: int} $quote
  * @var ?string $codeError
+ * @var ?\App\Modules\Payments\Plans\PaymentPlan $plan the learner's payment plan, once its first part is paid (ADR 0037)
+ * @var ?int $planNext
+ * @var ?string $planStanding
+ * @var list<\App\Modules\Payments\Payment> $planPayments
+ * @var bool $payParts this learner may choose to pay in parts
+ * @var bool $onlineOn the school takes online payments
  */
+$plan ??= null;
+$planNext ??= null;
+$planStanding ??= null;
+$planPayments ??= [];
+$payParts ??= false;
+$onlineOn ??= false;
+$money = static fn (int $minor): string => \App\Modules\Payments\Money::format($minor, (string) $course->currency);
+$parts = $course->offersInstalments() ? (int) $course->instalments : 0;
+$partOne = $parts > 0 ? \App\Modules\Payments\Plans\PaymentPlan::split((int) $course->priceMinor, $parts, 1) : 0;
+$partRest = $parts > 0 ? \App\Modules\Payments\Plans\PaymentPlan::split((int) $course->priceMinor, $parts, 2) : 0;
 $codesOn ??= false;
 $code ??= '';
 $quote ??= null;
@@ -61,9 +77,9 @@ $claimRejected = $claim !== null && $claim->status === 'rejected';
 
 <header class="page-head sub-head">
   <h1>Subscribe to <?= $v->e($course->title) ?></h1>
-  <p class="lead"><?= $paid
-      ? 'Pay once for the whole course, then learn at your own pace.'
-      : 'This course is free. Subscribe to save your progress' . ($certificates ? ' and earn the certificate.' : '.') ?></p>
+  <p class="lead"><?= $state === 'subscribed' ? 'You have a place on this course.' : ($paid
+      ? ($parts > 0 ? 'Pay for the whole course at once or in ' . $parts . ' monthly parts, then learn at your own pace.' : 'Pay once for the whole course, then learn at your own pace.')
+      : 'This course is free. Subscribe to save your progress' . ($certificates ? ' and earn the certificate.' : '.')) ?></p>
 </header>
 
 <ol class="sub-steps" aria-label="Steps to subscribe">
@@ -78,6 +94,8 @@ $claimRejected = $claim !== null && $claim->status === 'rejected';
 <div class="sub-layout">
   <div class="sub-main">
   <?php if ($state === 'subscribed'): ?>
+    <?php $paused = $planStanding === 'paused'; ?>
+    <?php if (!$paused): ?>
     <section class="sub-panel sub-panel-done" aria-labelledby="sub-done-h">
       <h2 id="sub-done-h">You are subscribed</h2>
       <p><?= $v->e($course->title) ?> is in your courses. Your progress is saved as you go.</p>
@@ -86,6 +104,8 @@ $claimRejected = $claim !== null && $claim->status === 'rejected';
         <a class="button button-quiet" href="/account/subscriptions">My subscriptions</a>
       </p>
     </section>
+    <?php endif; ?>
+    <?php if ($plan !== null): include __DIR__ . '/_plan.php'; endif; ?>
 
   <?php elseif ($state === 'account'): ?>
     <section class="sub-panel" aria-labelledby="sub-acc-h">
@@ -169,11 +189,27 @@ $claimRejected = $claim !== null && $claim->status === 'rejected';
       <section class="sub-panel sub-option" aria-labelledby="sub-online-h">
         <h2 id="sub-online-h">Pay online</h2>
         <p>Card, bank transfer or USSD on Paystack's secure page. You come straight back here and the course opens as soon as the payment is confirmed.</p>
-        <form method="post" action="<?= $v->e($here) ?>" class="sub-actions">
+        <form method="post" action="<?= $v->e($here) ?>" class="sub-actions<?= $payParts ? ' sub-pay-choice' : '' ?>">
           <?= $v->csrfField() ?>
           <?php if ($quote !== null): ?><input type="hidden" name="code" value="<?= $v->e($quote['coupon']->code) ?>"><?php endif; ?>
+          <?php if ($payParts): ?>
+          <fieldset class="field pick-list">
+            <legend>How would you like to pay?</legend>
+            <label class="choice pick">
+              <input type="radio" name="plan" value="full" checked>
+              <span><strong>In full: <?= $v->e((string) $course->priceLabel()) ?></strong><span class="pick-hint">One payment, nothing more to pay.</span></span>
+            </label>
+            <label class="choice pick">
+              <input type="radio" name="plan" value="parts">
+              <span><strong>In <?= $parts ?> monthly parts: <?= $v->e($money($partOne)) ?> today</strong><span class="pick-hint">Then <?= $v->e($money($partRest)) ?> every 30 days, <?= $parts - 1 === 1 ? 'once more' : ($parts - 1) . ' more times' ?>. The course opens after the first part. If a part is more than a week late, the course pauses until it is paid.</span></span>
+            </label>
+          </fieldset>
+          <button type="submit" class="button">Continue to payment</button>
+          <?php else: ?>
           <button type="submit" class="button">Pay <?= $v->e($quote !== null ? \App\Modules\Payments\Money::format($quote['price'], (string) $course->currency) : (string) $course->priceLabel()) ?> and subscribe</button>
+          <?php endif; ?>
         </form>
+        <?php if ($parts > 0 && $quote !== null): ?><p class="small muted">Discount codes are for paying in full. To pay in parts, remove the code.</p><?php endif; ?>
       </section>
       <?php endif; ?>
 
@@ -181,27 +217,12 @@ $claimRejected = $claim !== null && $claim->status === 'rejected';
         <h2 id="sub-direct-h"><?= $payOnline ? 'Or pay the school directly' : 'Pay the school' ?></h2>
         <?php if ($instructions !== ''): ?>
           <div class="sub-bank"><?= $v->paragraphs($instructions) ?></div>
-          <p class="small muted">Pay <strong><?= $v->e((string) $course->priceLabel()) ?></strong>, then tell the school below so they can find your payment.</p>
+          <p class="small muted">Pay <strong><?= $v->e((string) $course->priceLabel()) ?></strong><?= $payParts ? ' (or the first part, ' . $v->e($money($partOne)) . ')' : '' ?>, then tell the school below so they can find your payment.</p>
         <?php else: ?>
-          <p>Ask the school office for their bank details, pay <strong><?= $v->e((string) $course->priceLabel()) ?></strong>, then tell the school below so they can find your payment.</p>
+          <p>Ask the school office for their bank details, pay <strong><?= $v->e((string) $course->priceLabel()) ?></strong><?= $payParts ? ' (or the first part, ' . $v->e($money($partOne)) . ')' : '' ?>, then tell the school below so they can find your payment.</p>
         <?php endif; ?>
 
-        <?= $v->errorSummary($errors) ?>
-        <form method="post" action="<?= $v->e($here) ?>/transfer" class="form sub-claim" novalidate>
-          <?= $v->csrfField() ?>
-          <h3 class="sub-claim-title">I have paid</h3>
-          <div class="field-row">
-            <?= $v->field('method', 'How you paid', ['type' => 'select', 'options' => $methods, 'value' => $old['method'], 'error' => $errors['method'] ?? null]) ?>
-            <?= $v->field('amount', 'Amount', ['value' => $old['amount'], 'inputmode' => 'decimal', 'error' => $errors['amount'] ?? null, 'hint' => 'In ' . $v->e((string) $course->currency) . ', as on your receipt.']) ?>
-          </div>
-          <div class="field-row">
-            <?= $v->field('paid_on', 'Date you paid', ['type' => 'date', 'value' => $old['paid_on'], 'error' => $errors['paid_on'] ?? null]) ?>
-            <?= $v->field('reference', 'Reference', ['value' => $old['reference'], 'maxlength' => 80, 'error' => $errors['reference'] ?? null, 'hint' => 'Session ID, transaction or teller number.']) ?>
-          </div>
-          <?= $v->field('note', 'Anything else the school should know (optional)', ['type' => 'textarea', 'rows' => 2, 'value' => $old['note'], 'maxlength' => 500, 'error' => $errors['note'] ?? null, 'hint' => 'For example, if someone else paid for you, their name.']) ?>
-          <button type="submit" class="button<?= $payOnline ? ' button-quiet' : '' ?>">Tell the school I have paid</button>
-          <p class="small muted">The course opens when the school confirms the money arrived. Nothing is charged here.<?= $quote !== null ? ' A discount code is applied to online payment; to use it when paying the school directly, show it to the school.' : '' ?></p>
-        </form>
+        <?php $forChoice = $payParts ? ['full' => 'The whole course (' . $course->priceLabel() . ')', 'part' => 'Part 1 of ' . $parts . ' (' . $money($partOne) . ')'] : null; include __DIR__ . '/_claim_form.php'; ?>
       </section>
       <?php endif; ?>
     <?php endif; ?>
@@ -219,7 +240,7 @@ $claimRejected = $claim !== null && $claim->status === 'rejected';
     <div class="sub-ticket-art"><?php $c = $course; include __DIR__ . '/_cover.php'; ?></div>
     <div class="sub-ticket-body">
       <p class="sub-ticket-title"><?= $v->e($course->title) ?></p>
-      <p class="sub-ticket-price"><?php if ($paid): ?><strong><?= $v->e((string) $course->priceLabel()) ?></strong> once, for the whole course<?php else: ?><strong>Free</strong><?php endif; ?></p>
+      <p class="sub-ticket-price"><?php if ($paid): ?><strong><?= $v->e((string) $course->priceLabel()) ?></strong> <?= $parts > 0 ? 'for the whole course' : 'once, for the whole course' ?><?php if ($parts > 0): ?><span class="sub-ticket-parts">or <?= $parts ?> monthly parts of about <?= $v->e($money($partRest)) ?></span><?php endif; ?><?php else: ?><strong>Free</strong><?php endif; ?></p>
     </div>
     <ul class="sub-ticket-list">
       <?php if ($included !== []): ?><li><?= $v->e(implode(', ', $included)) ?></li><?php else: ?><li><?= $v->e($v->plural($lessonCount, 'lesson')) ?></li><?php endif; ?>

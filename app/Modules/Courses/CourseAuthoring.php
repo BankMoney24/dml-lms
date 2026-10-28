@@ -121,7 +121,7 @@ final class CourseAuthoring
      * a course costs; a blank price makes it free. Payments already started
      * keep the amount they started with.
      */
-    public function setPrice(Course $course, CurrentUser $admin, string $priceText, string $currency): void
+    public function setPrice(Course $course, CurrentUser $admin, string $priceText, string $currency, string $instalments = ''): void
     {
         $admin->authorise(Permission::SchoolManage);
         $priceText = trim($priceText);
@@ -142,11 +142,20 @@ final class CourseAuthoring
         if (!Money::isSupported($currency)) {
             $errors['currency'] = 'Choose a currency.';
         }
+        $parts = null;
+        if ($instalments !== '' && $instalments !== '1') {
+            $parts = ctype_digit($instalments) ? (int) $instalments : 0;
+            if ($parts < \App\Modules\Payments\Plans\PaymentPlan::MIN_PARTS || $parts > \App\Modules\Payments\Plans\PaymentPlan::MAX_PARTS) {
+                $errors['instalments'] = 'Choose in full, or 2, 3 or 4 monthly parts.';
+            } elseif ($minor !== null && intdiv($minor, $parts) < Money::MIN_MINOR) {
+                $errors['instalments'] = 'Each part would be too small. Use fewer parts, or in full.';
+            }
+        }
         if ($errors !== []) {
             throw new ValidationException($errors);
         }
-        $this->courses->updatePrice($course->tenantId, $course->id, $minor, $currency);
-        $this->audit->record($course->tenantId, $admin->user->id, 'course.priced', 'course', $course->id, ['amount' => $minor, 'currency' => $currency]);
+        $this->courses->updatePrice($course->tenantId, $course->id, $minor, $currency, $parts);
+        $this->audit->record($course->tenantId, $admin->user->id, 'course.priced', 'course', $course->id, ['amount' => $minor, 'currency' => $currency, 'parts' => $parts]);
     }
 
     /**

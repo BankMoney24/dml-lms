@@ -24,7 +24,18 @@
  * @var ?int $courseFilter
  * @var array<int, string> $paymentCourses
  * @var array<string, int> $statusCounts
+ * @var list<\App\Modules\Payments\Plans\PaymentPlan> $plans learners paying in parts (ADR 0037)
+ * @var \DateTimeImmutable $planNow
  */
+$plans ??= [];
+$planNow ??= new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+$owing = array_values(array_filter($plans, static fn ($p): bool => $p->nextPart() !== null));
+$owedByCurrency = [];
+$pausedCount = 0;
+foreach ($owing as $p) {
+    $owedByCurrency[$p->currency] = ($owedByCurrency[$p->currency] ?? 0) + $p->balance();
+    $pausedCount += $p->isPaused($planNow) ? 1 : 0;
+}
 $refundRows ??= [];
 $refundable ??= [];
 $schoolTab = 'payments';
@@ -68,6 +79,9 @@ $manualErrors = array_intersect_key($errors, ['email' => 1, 'course_id' => 1, 'a
   </div>
   <dl class="pay-facts">
     <div><dt>To confirm</dt><dd><?php if ($claims === []): ?>None<?php else: ?><a href="#claims"><?= $v->e($v->plural(count($claims), 'payment')) ?></a><?php endif; ?></dd></div>
+    <?php if ($owing !== []): ?>
+    <div><dt>Paying in parts</dt><dd><a href="#plans"><?= $v->e($v->plural(count($owing), 'learner')) ?></a>, <?= $v->e(implode(' + ', array_map(static fn (string $c, int $m): string => \App\Modules\Payments\Money::format($m, $c), array_keys($owedByCurrency), $owedByCurrency))) ?> to come<?= $pausedCount > 0 ? '; ' . $pausedCount . ' paused' : '' ?></dd></div>
+    <?php endif; ?>
     <div><dt>Paid courses</dt><dd><?php if ($paidCourses === []): ?>None. Set a price in <a href="/teach">Teach</a><?php else: ?><?= $v->e($v->plural(count($paidCourses), 'course')) ?><?php endif; ?></dd></div>
     <div><dt>Paystack</dt><dd><?php if ($account === null): ?>Not connected<?php else: ?><a href="#online"><?= $account['mode'] === 'live' ? 'Live' : 'Test mode' ?></a><?php endif; ?></dd></div>
   </dl>
@@ -89,7 +103,7 @@ $manualErrors = array_intersect_key($errors, ['email' => 1, 'course_id' => 1, 'a
           <p class="claim-course"><?= $v->e($claim->courseTitle) ?></p>
         </div>
         <dl class="claim-facts">
-          <dt>Amount</dt><dd><strong><?= $v->e($claim->amount()) ?></strong><?php if ($claim->isShort()): ?> <?= $v->badge('Less than the price', 'danger') ?><?php endif; ?></dd>
+          <dt>Amount</dt><dd><strong><?= $v->e($claim->amount()) ?></strong><?php if ($claim->partLabel() !== null): ?> <span class="muted">for <?= $v->e(strtolower((string) $claim->partLabel())) ?></span><?php endif; ?><?php if ($claim->isShort()): ?> <?= $v->badge($claim->partLabel() !== null ? 'Less than the part' : 'Less than the price', 'danger') ?><?php endif; ?></dd>
           <dt>How</dt><dd><?= $v->e($claim->methodLabel()) ?>, <?= $v->e($v->datetime($claim->paidOn . ' 00:00:00', 'j M Y')) ?></dd>
           <?php if ($claim->payerReference !== ''): ?><dt>Reference</dt><dd class="ref"><?= $v->e($claim->payerReference) ?></dd><?php endif; ?>
           <?php if ($claim->note !== ''): ?><dt>Note</dt><dd><?= $v->e($claim->note) ?></dd><?php endif; ?>
@@ -115,6 +129,31 @@ $manualErrors = array_intersect_key($errors, ['email' => 1, 'course_id' => 1, 'a
   <?php endif; ?>
 
 </section>
+
+<?php if ($plans !== []): ?>
+<section class="pay-plans" id="plans" aria-labelledby="pay-plans-h">
+  <h2 id="pay-plans-h">Payment plans</h2>
+  <p class="small muted">Learners paying a course in monthly parts. A course pauses for the learner when a part is more than <?= \App\Modules\Payments\Plans\PaymentPlan::GRACE_DAYS ?> days late, and opens again when it is paid. Reminders go out by themselves.</p>
+  <div class="table-wrap">
+    <table class="table table-stack plan-table">
+      <thead><tr><th scope="col">Learner</th><th scope="col">Course</th><th scope="col">Paid</th><th scope="col">Next part</th><th scope="col">Still to pay</th><th scope="col">Standing</th></tr></thead>
+      <tbody>
+      <?php foreach ($plans as $p): $next = $p->nextPart(); [$label, $tone] = \App\Modules\Payments\Plans\PaymentPlan::standingBadge($p->standing($planNow)); ?>
+        <tr>
+          <th scope="row"><a href="/school/payments/plans/<?= $p->id ?>"><?= $v->e($p->learnerName) ?></a><span class="small muted"><?= $v->e($p->learnerEmail) ?></span></th>
+          <td data-label="Course"><?= $v->e($p->courseTitle) ?></td>
+          <td data-label="Paid"><?= count($p->paidParts) ?> of <?= $p->parts ?>
+            <span class="plan-progress" aria-hidden="true"><?php for ($i = 1; $i <= $p->parts; $i++): ?><span<?= $p->isPartPaid($i) ? ' class="is-paid"' : '' ?>></span><?php endfor; ?></span></td>
+          <td data-label="Next part"><?php if ($next === null): ?><span class="muted">None</span><?php else: ?><?= $v->e($p->partLabel($next)) ?><span class="small muted">due <?= $v->e($v->datetime($p->dueAt($next)?->format('Y-m-d H:i:s') ?? '', 'j M Y')) ?></span><?php endif; ?></td>
+          <td data-label="Still to pay" class="plan-owed"><?= $p->balance() > 0 ? $v->e(\App\Modules\Payments\Money::format($p->balance(), $p->currency)) : '<span class="muted">Nothing</span>' ?></td>
+          <td data-label="Standing"><?= $v->badge($label, $tone) ?></td>
+        </tr>
+      <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</section>
+<?php endif; ?>
 
 <section class="pay-list" aria-labelledby="pay-list-h">
   <div class="settings-head">
@@ -160,7 +199,7 @@ $manualErrors = array_intersect_key($errors, ['email' => 1, 'course_id' => 1, 'a
         <?php $refundsHere = $refundRows[$p->id] ?? []; $canRefund = ($refundable[$p->id] ?? 0) > 0; ?>
         <tr id="payment-<?= $p->id ?>">
           <td data-label="Learner"><?= $v->e($row['learner']) ?><span class="small muted"><?= $v->e($row['email']) ?></span></td>
-          <td data-label="Course"><?= $v->e($row['course']) ?><span class="small muted"><?= $v->e($p->methodLabel()) ?></span></td>
+          <td data-label="Course"><?= $v->e($row['course']) ?><span class="small muted"><?= $v->e($p->methodLabel()) ?><?= $p->planPart !== null ? ', part ' . (int) $p->planPart : '' ?></span></td>
           <td data-label="Amount" class="num" data-sort="<?= $p->amountMinor ?>"><?= $v->e($p->amount()) ?><?php if ($p->discountMinor() > 0): ?><span class="small muted"><?= $v->e(\App\Modules\Payments\Money::format($p->discountMinor(), $p->currency)) ?> off with a code</span><?php endif; ?></td>
           <td data-label="Status"><?= $v->badge($label, $tones[$label] ?? 'neutral') ?><?php if ($p->note !== null && $p->status !== 'pending'): ?><span class="small muted"<?= mb_strlen($p->note) > 70 ? ' title="' . $v->e($p->note) . '"' : '' ?>><?= $v->e(mb_strimwidth($p->note, 0, 70, '…')) ?></span><?php endif; ?>
             <?php foreach ($refundsHere as $rf): ?><span class="small refund-line<?= $rf->status === 'failed' ? ' is-failed' : '' ?>"><?= $v->e($rf->statusLabel()) ?>: <?= $v->e($rf->amount()) ?>, <?= $v->e($rf->reason) ?></span><?php endforeach; ?></td>

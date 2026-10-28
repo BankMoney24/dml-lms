@@ -188,6 +188,7 @@ final class CatalogueController
             'payOnline' => $mustPay && $this->payments->isConnected($tenant),
             'waiting' => $mustPay && $user !== null ? $this->payments->waiting($tenant, $user->user->id, $course) : null,
             'claim' => $mustPay && $user !== null ? $this->transfers?->latestFor($tenant, $user, $course) : null,
+            'planHold' => $enrolment !== null && $user !== null ? $this->learning->planHold($course, $user) : null,
         ]));
     }
 

@@ -121,6 +121,7 @@ return static function (Router $r): void {
     $r->get('/courses/{slug}/subscribe', [SubscribeController::class, 'show'], ['tenant']);
     $r->post('/courses/{slug}/subscribe', [SubscribeController::class, 'subscribe'], $learn);
     $r->post('/courses/{slug}/subscribe/transfer', [SubscribeController::class, 'claim'], $learn);
+    $r->post('/courses/{slug}/subscribe/part', [SubscribeController::class, 'payPart'], $learn);
     $r->post('/courses/{slug}/subscribe/transfer/withdraw', [SubscribeController::class, 'withdrawClaim'], $learn);
     $r->get('/account/receipts/{reference:code}', [\App\Modules\Payments\Http\ReceiptController::class, 'show'], ['tenant', 'auth']);
     $r->get('/payments/paystack/callback', [PaymentController::class, 'callback'], ['tenant', 'auth']);
@@ -330,6 +331,9 @@ return static function (Router $r): void {
     $r->post('/school/payments/instructions', [PaymentAdminController::class, 'instructions'], $school);
     $r->post('/school/payments/claims/{claim:int}/confirm', [PaymentAdminController::class, 'confirmClaim'], $school);
     $r->post('/school/payments/claims/{claim:int}/reject', [PaymentAdminController::class, 'rejectClaim'], $school);
+    $r->get('/school/payments/plans/{plan:int}', [PaymentAdminController::class, 'plan'], $school);
+    $r->post('/school/payments/plans/{plan:int}/record', [PaymentAdminController::class, 'recordPart'], $school);
+    $r->post('/school/payments/plans/{plan:int}/write-off', [PaymentAdminController::class, 'writeOff'], $school);
     $r->get('/school/payments/{payment:int}', [PaymentAdminController::class, 'show'], $school);
     $r->post('/school/payments/{payment:int}/refund', [PaymentAdminController::class, 'refund'], $school);
     $r->get('/school/payments/codes', [\App\Modules\Payments\Http\CouponController::class, 'index'], $school);

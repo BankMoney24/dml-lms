@@ -56,22 +56,53 @@ final class SupportRepository
     }
 
     /** @return list<SupportRequest> */
-    public function queue(int $tenantId, string $status, int $limit = 200): array
+    public function queue(int $tenantId, string $status, int $limit = 200, string $q = '', ?string $category = null): array
     {
         $order = $status === SupportRequest::RESOLVED ? 'r.updated_at DESC' : 'r.updated_at ASC';
+        [$where, $params] = self::filter($q, $category);
 
-        return $this->many(self::SELECT . ' WHERE r.tenant_id = ? AND r.status = ? ORDER BY ' . $order . ', r.id LIMIT ' . max(1, min($limit, 500)), [$tenantId, $status]);
+        return $this->many(
+            self::SELECT . ' WHERE r.tenant_id = ? AND r.status = ?' . $where . ' ORDER BY ' . $order . ', r.id LIMIT ' . max(1, min($limit, 500)),
+            [$tenantId, $status, ...$params],
+        );
     }
 
-    /** @return array<string, int> status => count */
-    public function counts(int $tenantId): array
+    /** @return array<string, int> status => count, for the same words and kind as the list */
+    public function counts(int $tenantId, string $q = '', ?string $category = null): array
     {
         $out = [SupportRequest::OPEN => 0, SupportRequest::ANSWERED => 0, SupportRequest::RESOLVED => 0];
-        foreach ($this->db->fetchAll('SELECT status, COUNT(*) AS n FROM support_requests WHERE tenant_id = ? GROUP BY status', [$tenantId]) as $r) {
+        [$where, $params] = self::filter($q, $category);
+        $rows = $this->db->fetchAll(
+            'SELECT r.status, COUNT(*) AS n FROM support_requests r JOIN users u ON u.id = r.user_id WHERE r.tenant_id = ?' . $where . ' GROUP BY r.status',
+            [$tenantId, ...$params],
+        );
+        foreach ($rows as $r) {
             $out[(string) $r['status']] = (int) $r['n'];
         }
 
         return $out;
+    }
+
+    /**
+     * Words match the subject, the person's name or email; the kind is a category key.
+     *
+     * @return array{0: string, 1: list<string>}
+     */
+    private static function filter(string $q, ?string $category): array
+    {
+        $where = '';
+        $params = [];
+        if ($q !== '') {
+            $like = '%' . addcslashes($q, '%_\\') . '%';
+            $where .= ' AND (r.subject LIKE ? OR u.display_name LIKE ? OR u.email LIKE ?)';
+            array_push($params, $like, $like, $like);
+        }
+        if ($category !== null && isset(SupportRequest::CATEGORIES[$category])) {
+            $where .= ' AND r.category = ?';
+            $params[] = $category;
+        }
+
+        return [$where, $params];
     }
 
     public function openCountFor(int $tenantId, int $userId): int

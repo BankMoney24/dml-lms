@@ -14,7 +14,7 @@ Personal data kinds: **Account** (who someone is), **Learning record** (what the
 | Code studio | [`code_challenge_solves`](#code-challenge-solves) | Which coding challenges a person solved, and when. | Learning record |
 | Code studio | [`code_snippets`](#code-snippets) | Code a person saved in the Code studio. | Written by a person |
 | Courses | [`assessments`](#assessments) | A quiz lesson's settings: pass mark and attempts allowed. | None |
-| Courses | [`courses`](#courses) | Courses: title, summary, level, price, who can read and join, completion rule. | None |
+| Courses | [`courses`](#courses) | Courses: title, summary, level, price and payment in parts, who can read and join, completion rule. | None |
 | Courses | [`course_modules`](#course-modules) | Sections of a course, in order. | None |
 | Courses | [`learning_paths`](#learning-paths) | Learning paths: an ordered set of courses. | None |
 | Courses | [`learning_path_courses`](#learning-path-courses) | The courses in each path, in order. | None |
@@ -51,6 +51,7 @@ Personal data kinds: **Account** (who someone is), **Learning record** (what the
 | Payments | [`payment_claims`](#payment-claims) | Learners saying they paid the school directly, until the school confirms or rejects. | Payment |
 | Payments | [`payment_events`](#payment-events) | Everything Paystack or staff reported about a payment, each event once. | Payment |
 | Payments | [`payment_instructions`](#payment-instructions) | The school's bank details text shown to learners who pay directly. | None |
+| Payments | [`payment_plans`](#payment-plans) | Learners paying a course in monthly parts: the price and number of parts agreed, when part 1 was paid, status, last reminder sent. | Payment |
 | Payments | [`payment_refunds`](#payment-refunds) | Money paid back, in full or part, with reason and status. | Payment |
 | People | [`account_tokens`](#account-tokens) | Single-use links: password reset, invitation, email confirmation. Stored as hashes; they expire. | Security |
 | People | [`join_requests`](#join-requests) | Requests to join from parents and would-be teachers, until the school decides. | Account |
@@ -322,7 +323,7 @@ Discount codes: percentage or amount, course, uses allowed, last day.
 
 ## courses
 
-Courses: title, summary, level, price, who can read and join, completion rule.
+Courses: title, summary, level, price and payment in parts, who can read and join, completion rule.
 
 | Column | Type | Null | Default | Key |
 |---|---|---|---|---|
@@ -343,6 +344,7 @@ Courses: title, summary, level, price, who can read and join, completion rule.
 | `track` | varchar(20) | yes | `NULL` |  |
 | `price_minor` | int(10) unsigned | yes | `NULL` |  |
 | `currency` | char(3) | yes | `NULL` |  |
+| `instalments` | tinyint(3) unsigned | yes | `NULL` |  |
 | `access` | varchar(10) |  | `'members'` |  |
 | `enrolment` | varchar(10) |  | `'open'` |  |
 | `capacity` | int(10) unsigned | yes | `NULL` |  |
@@ -810,6 +812,8 @@ Every payment: who, course, amount, discount code, method, status (pending, paid
 | `note` | varchar(255) | yes | `NULL` |  |
 | `coupon_id` | bigint(20) unsigned | yes | `NULL` |  |
 | `list_price_minor` | int(10) unsigned | yes | `NULL` |  |
+| `plan_id` | bigint(20) unsigned | yes | `NULL` |  |
+| `plan_part` | tinyint(3) unsigned | yes | `NULL` |  |
 | `recorded_by` | bigint(20) unsigned | yes | `NULL` | index |
 | `created_at` | datetime |  |  |  |
 | `updated_at` | datetime |  |  |  |
@@ -852,6 +856,8 @@ Learners saying they paid the school directly, until the school confirms or reje
 | `decided_at` | datetime | yes | `NULL` |  |
 | `created_at` | datetime |  |  |  |
 | `updated_at` | datetime |  |  |  |
+| `plan_id` | bigint(20) unsigned | yes | `NULL` |  |
+| `plan_part` | tinyint(3) unsigned | yes | `NULL` |  |
 
 ## payment_events
 
@@ -878,6 +884,27 @@ The school's bank details text shown to learners who pay directly.
 | `tenant_id` | bigint(20) unsigned |  |  | primary |
 | `instructions` | text |  |  |  |
 | `updated_by` | bigint(20) unsigned | yes | `NULL` | index |
+| `updated_at` | datetime |  |  |  |
+
+## payment_plans
+
+Learners paying a course in monthly parts: the price and number of parts agreed, when part 1 was paid, status, last reminder sent.
+
+| Column | Type | Null | Default | Key |
+|---|---|---|---|---|
+| `id` | bigint(20) unsigned |  |  | primary |
+| `tenant_id` | bigint(20) unsigned |  |  | index |
+| `user_id` | bigint(20) unsigned |  |  | index |
+| `course_id` | bigint(20) unsigned |  |  |  |
+| `parts` | tinyint(3) unsigned |  |  |  |
+| `total_minor` | int(10) unsigned |  |  |  |
+| `currency` | char(3) |  |  |  |
+| `status` | varchar(12) |  | `'pending'` | index |
+| `started_at` | datetime | yes | `NULL` |  |
+| `reminded` | varchar(16) | yes | `NULL` |  |
+| `ended_by` | bigint(20) unsigned | yes | `NULL` | index |
+| `ended_note` | varchar(255) | yes | `NULL` |  |
+| `created_at` | datetime |  |  |  |
 | `updated_at` | datetime |  |  |  |
 
 ## payment_refunds

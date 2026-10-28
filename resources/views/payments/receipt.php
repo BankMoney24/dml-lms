@@ -46,7 +46,7 @@ $school = $v->shared('tenant');
         <tr><td>Course: <?= $v->e($course?->title ?? 'Course') ?></td><td class="num"><?= $v->e(\App\Modules\Payments\Money::format((int) $payment->listPriceMinor, $payment->currency)) ?></td></tr>
         <tr><td>Discount code</td><td class="num">−<?= $v->e(\App\Modules\Payments\Money::format($payment->discountMinor(), $payment->currency)) ?></td></tr>
       <?php else: ?>
-        <tr><td>Course: <?= $v->e($course?->title ?? 'Course') ?></td><td class="num"><?= $v->e($payment->amount()) ?></td></tr>
+        <tr><td>Course: <?= $v->e($course?->title ?? 'Course') ?><?= $payment->planPart !== null ? ', part ' . (int) $payment->planPart . ' of a payment plan' : '' ?></td><td class="num"><?= $v->e($payment->amount()) ?></td></tr>
       <?php endif; ?>
     </tbody>
     <tfoot><tr><th scope="row">Total paid</th><td class="num"><strong><?= $v->e($payment->amount()) ?></strong></td></tr></tfoot>

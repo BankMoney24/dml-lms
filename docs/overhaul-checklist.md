@@ -52,8 +52,8 @@ Notes on the raw results:
 Interface:
 
 - [x] List tools on payments (find, course, status counts, pages, matching export) and activity (kind, person, days) (update 36)
-- [ ] List tools on the help desk and applications (low volume so far)
-- [ ] Unsaved-changes warning on the setup wizard steps (they save on Continue; leaving mid-step loses only that step)
+- [x] List tools on the help desk and applications (update 37)
+- [x] Unsaved-changes warning on the setup wizard steps (update 37)
 - [ ] Screen-reader passes: NVDA with Firefox, VoiceOver on iPhone, TalkBack on Android, for sign-in, a lesson, a quiz, the classroom and a payment
 - [ ] Real-device checks on a low-end Android phone on 3G for the lesson, quiz and classroom pages
 - [x] Empty states reviewed for a brand-new school (update 36)
@@ -67,7 +67,7 @@ Pending features (from the invoice's pending list):
 - [x] Network builder (Packet Tracer style) with build and repair labs; firewall, DNS, pendulum and osmosis labs; Packet Tracer files; Networking Foundations course (update 35, ADR 0035)
 
 - [x] Refunds and discount codes (update 32, ADR 0032)
-- [ ] Instalments
+- [x] Instalments: pay a course in 2–4 monthly parts (update 37, ADR 0037)
 - [x] Per-course completion rules (update 32)
 - [x] Learner report sheets for parents and staff, printable (update 32)
 - [x] Public API v1 (for PrimeERP and others) with per-school keys (update 36, ADR 0036)

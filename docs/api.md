@@ -44,7 +44,7 @@ curl -H "Authorization: Bearer dmlk_…" "https://dmlschooloftechnology.org/api/
 
 ```json
 {"data": [{"id": 5, "reference": "MAN-1-C5A593E96997", "learner_id": 16, "course_id": 2, "amount_minor": 2500000,
-  "currency": "NGN", "status": "paid", "method": "manual", "test": false,
+  "currency": "NGN", "status": "paid", "method": "manual", "test": false, "plan": null,
   "paid_at": "2026-10-19T08:29:29Z", "created_at": "2026-10-19T08:29:29Z"}],
  "page": 1, "per_page": 50, "total": 1, "next": null}
 ```

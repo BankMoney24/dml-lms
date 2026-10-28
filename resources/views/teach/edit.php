@@ -235,11 +235,17 @@ $n = 0;
                 'inputmode' => 'decimal', 'optional' => true, 'error' => $errors['price'] ?? null,
             ]) ?>
           </div>
-          <p class="hint">Leave blank for a free course. Learners pay before they can start; take payments on the <a href="/school/payments">Payments</a> page.</p>
+          <?= $v->field('instalments', 'Paying in parts', [
+              'type' => 'select', 'error' => $errors['instalments'] ?? null,
+              'options' => ['' => 'In full only', '2' => 'In full, or 2 monthly parts', '3' => 'In full, or 3 monthly parts', '4' => 'In full, or 4 monthly parts'],
+              'value' => $o('instalments', $course->instalments === null ? '' : (string) $course->instalments),
+              'hint' => 'The first part opens the course; the next is due every 30 days. If a part is more than 7 days late the course pauses until it is paid.',
+          ]) ?>
+          <p class="hint">Leave the price blank for a free course. Learners pay before they can start; take payments on the <a href="/school/payments">Payments</a> page.</p>
           <button type="submit" class="button button-small">Save price</button>
         </form>
       <?php else: ?>
-        <p><?= $course->isPaid() ? '<strong>' . $v->e((string) $course->priceLabel()) . '</strong>. Learners pay before they can start.' : 'Free.' ?></p>
+        <p><?= $course->isPaid() ? '<strong>' . $v->e((string) $course->priceLabel()) . '</strong>' . ($course->instalments !== null ? ', or ' . $course->instalments . ' monthly parts' : '') . '. Learners pay before they can start.' : 'Free.' ?></p>
         <p class="small muted">A school administrator sets prices.</p>
       <?php endif; ?>
     </section>

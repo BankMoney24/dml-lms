@@ -15,7 +15,7 @@ final class PaymentRepository
 
     /**
      * @param array{tenant_id: int, user_id: int, course_id: int, reference: string, provider: string, mode: string, amount_minor: int, currency: string,
-     *     status: string, note?: ?string, recorded_by?: ?int, coupon_id?: ?int, list_price_minor?: ?int} $p
+     *     status: string, note?: ?string, recorded_by?: ?int, coupon_id?: ?int, list_price_minor?: ?int, plan_id?: ?int, plan_part?: ?int} $p
      */
     public function create(array $p): int
     {
@@ -23,12 +23,12 @@ final class PaymentRepository
 
         return $this->db->insert(
             'INSERT INTO payments (tenant_id, user_id, course_id, reference, provider, mode, amount_minor, currency, status, note, coupon_id, list_price_minor,
-                                   recorded_by, created_at, updated_at, paid_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                                   plan_id, plan_part, recorded_by, created_at, updated_at, paid_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $p['tenant_id'], $p['user_id'], $p['course_id'], $p['reference'], $p['provider'], $p['mode'], $p['amount_minor'], $p['currency'],
                 $p['status'], $p['note'] ?? null, $p['coupon_id'] ?? null, $p['list_price_minor'] ?? null,
-                $p['recorded_by'] ?? null, $now, $now, $p['status'] === Payment::PAID ? $now : null,
+                $p['plan_id'] ?? null, $p['plan_part'] ?? null, $p['recorded_by'] ?? null, $now, $now, $p['status'] === Payment::PAID ? $now : null,
             ],
         );
     }
@@ -233,6 +233,15 @@ final class PaymentRepository
             'SELECT p.*, c.title AS course_title FROM payments p JOIN courses c ON c.tenant_id = p.tenant_id AND c.id = p.course_id
              WHERE p.tenant_id = ? AND p.user_id = ? ORDER BY p.id DESC LIMIT 50',
             [$tenantId, $userId],
+        ));
+    }
+
+    /** @return list<Payment> every payment made on a payment plan, oldest first (ADR 0037) */
+    public function forPlan(int $tenantId, int $planId): array
+    {
+        return array_map(Payment::fromRow(...), $this->db->fetchAll(
+            'SELECT * FROM payments WHERE tenant_id = ? AND plan_id = ? ORDER BY id LIMIT 100',
+            [$tenantId, $planId],
         ));
     }
 

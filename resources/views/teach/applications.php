@@ -8,18 +8,50 @@
  * @var array<int, int> $positions
  * @var array{waiting: int, offered: int} $counts
  * @var bool $mayCreateAccounts
+ * @var string $q
+ * @var ?int $courseFilter
+ * @var array<int, string> $appCourses
  */
+$q ??= '';
+$courseFilter ??= null;
+$appCourses ??= [];
+$keep = array_filter(['q' => $q, 'course' => $courseFilter === null ? '' : (string) $courseFilter]);
+$tabUrl = static fn (string $show) => '/teach/applications' . (($qs = http_build_query($keep + ($show === 'waiting' ? [] : ['show' => $show]))) === '' ? '' : '?' . $qs);
 ?>
 <header class="page-head">
   <h1>Applications</h1>
   <p class="lead">People asking for a place on a course. Offer places in the order they applied: a free course starts at once, a paid one waits for payment.</p>
 </header>
+<?php if ($appCourses !== []): ?>
+<form method="get" action="/teach/applications" class="list-tools" role="search" aria-label="Find applications" data-autosubmit>
+  <?php if ($show !== 'waiting'): ?><input type="hidden" name="show" value="<?= $v->e($show) ?>"><?php endif; ?>
+  <div class="list-tool list-tool-find">
+    <label for="app-q">Find</label>
+    <input id="app-q" name="q" type="search" value="<?= $v->e($q) ?>" maxlength="80" placeholder="Name, email or phone" autocomplete="off">
+  </div>
+  <?php if (count($appCourses) > 1): ?>
+  <div class="list-tool">
+    <label for="app-course">Course</label>
+    <select id="app-course" name="course">
+      <option value="">Every course</option>
+      <?php foreach ($appCourses as $cid => $ctitle): ?><option value="<?= $cid ?>"<?= $courseFilter === $cid ? ' selected' : '' ?>><?= $v->e($ctitle) ?></option><?php endforeach; ?>
+    </select>
+  </div>
+  <?php endif; ?>
+  <div class="list-tool-actions">
+    <button type="submit" class="button button-small button-quiet">Show</button>
+    <?php if ($keep !== []): ?><a class="small" href="/teach/applications<?= $show === 'waiting' ? '' : '?show=' . $v->e($show) ?>">Clear</a><?php endif; ?>
+  </div>
+</form>
+<?php endif; ?>
 <nav class="tabs" aria-label="Which applications">
-  <a href="/teach/applications"<?= $show === 'waiting' ? ' aria-current="page"' : '' ?>>Waiting <span class="tab-count">(<?= $counts['waiting'] ?>)</span></a>
-  <a href="/teach/applications?show=offered"<?= $show === 'offered' ? ' aria-current="page"' : '' ?>>Offered, not yet started <span class="tab-count">(<?= $counts['offered'] ?>)</span></a>
-  <a href="/teach/applications?show=decided"<?= $show === 'decided' ? ' aria-current="page"' : '' ?>>Decided</a>
+  <a href="<?= $v->e($tabUrl('waiting')) ?>"<?= $show === 'waiting' ? ' aria-current="page"' : '' ?>>Waiting <span class="tab-count">(<?= $counts['waiting'] ?>)</span></a>
+  <a href="<?= $v->e($tabUrl('offered')) ?>"<?= $show === 'offered' ? ' aria-current="page"' : '' ?>>Offered, not yet started <span class="tab-count">(<?= $counts['offered'] ?>)</span></a>
+  <a href="<?= $v->e($tabUrl('decided')) ?>"<?= $show === 'decided' ? ' aria-current="page"' : '' ?>>Decided</a>
 </nav>
-<?php if ($applications === []): ?>
+<?php if ($applications === [] && $keep !== []): ?>
+  <p class="muted">Nothing matches. <a href="/teach/applications<?= $show === 'waiting' ? '' : '?show=' . $v->e($show) ?>">Show every application</a>.</p>
+<?php elseif ($applications === []): ?>
   <?= $show === 'waiting'
       ? $v->emptyState('Nobody is waiting', 'When a course takes applications or is full, people who apply appear here, oldest first. Set this up in a course under "How people join".')
       : $v->emptyState('Nothing here yet', 'Applications move here once you decide on them.') ?>

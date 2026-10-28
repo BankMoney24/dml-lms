@@ -98,12 +98,18 @@ final class SupportController
         }
         $filter = (string) ($request->query('status') ?? 'open');
         $filter = isset(self::FILTERS[$filter]) ? $filter : 'open';
+        $q = mb_substr(trim((string) ($request->query('q') ?? '')), 0, 80);
+        $kind = (string) ($request->query('kind') ?? '');
+        $kind = isset(SupportRequest::CATEGORIES[$kind]) ? $kind : null;
 
         return Response::html($this->view->render('support/inbox', [
             'pageTitle' => 'Help desk',
-            'requests' => $this->requests->queue($tenant->id, self::FILTERS[$filter]),
-            'counts' => $this->requests->counts($tenant->id),
+            'requests' => $this->requests->queue($tenant->id, self::FILTERS[$filter], 200, $q, $kind),
+            'counts' => $this->requests->counts($tenant->id, $q, $kind),
+            'allCounts' => $q === '' && $kind === null ? null : $this->requests->counts($tenant->id),
             'filter' => $filter,
+            'q' => $q,
+            'kind' => $kind,
         ]));
     }
 

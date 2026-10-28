@@ -9,23 +9,36 @@ use App\Core\Database\Connection;
 
 final class PaymentClaimRepository
 {
-    private const SELECT = 'SELECT pc.*, c.title AS course_title, c.slug AS course_slug, c.price_minor, u.display_name AS learner_name, u.email AS learner_email
+    private const SELECT = 'SELECT pc.*, c.title AS course_title, c.slug AS course_slug, c.price_minor, u.display_name AS learner_name, u.email AS learner_email,
+               pp.parts AS plan_parts, pp.total_minor AS plan_total
         FROM payment_claims pc
         JOIN courses c ON c.tenant_id = pc.tenant_id AND c.id = pc.course_id
-        JOIN users u ON u.id = pc.user_id';
+        JOIN users u ON u.id = pc.user_id
+        LEFT JOIN payment_plans pp ON pp.tenant_id = pc.tenant_id AND pp.id = pc.plan_id';
 
     public function __construct(private readonly Connection $db, private readonly Clock $clock)
     {
     }
 
-    public function create(int $tenantId, int $userId, int $courseId, int $amountMinor, string $currency, string $method, string $paidOn, string $reference, string $note): int
-    {
+    public function create(
+        int $tenantId,
+        int $userId,
+        int $courseId,
+        int $amountMinor,
+        string $currency,
+        string $method,
+        string $paidOn,
+        string $reference,
+        string $note,
+        ?int $planId = null,
+        ?int $planPart = null,
+    ): int {
         $now = $this->clock->sqlNow();
 
         return $this->db->insert(
-            'INSERT INTO payment_claims (tenant_id, user_id, course_id, amount_minor, currency, method, paid_on, payer_reference, note, status, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [$tenantId, $userId, $courseId, $amountMinor, $currency, $method, $paidOn, $reference, $note, PaymentClaim::PENDING, $now, $now],
+            'INSERT INTO payment_claims (tenant_id, user_id, course_id, amount_minor, currency, method, paid_on, payer_reference, note, status, plan_id, plan_part, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [$tenantId, $userId, $courseId, $amountMinor, $currency, $method, $paidOn, $reference, $note, PaymentClaim::PENDING, $planId, $planPart, $now, $now],
         );
     }
 

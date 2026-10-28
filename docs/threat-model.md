@@ -50,6 +50,7 @@ The method is simple: what we protect, who might attack it and how (grouped by S
 | Script injection (XSS) | Output escaped by default (`$v->e`), Markdown renderer without raw HTML, strict CSP with no inline script or style | |
 | Learner code attacking the site | Runs in a sandboxed iframe (`allow-scripts` only) inside a Web Worker on a separate empty page | |
 | A leaked or misused API key reading learner data | Keys made only by `school.manage`, shown once, stored as SHA-256 hashes; read-only; bound to one school and checked against the host; 120 requests/minute; revocable at once; making and revoking audited; last use shown (ADR 0036) | A key copied into an insecure system exposes learner names, emails, progress and payments until revoked |
+| A learner keeping a paid course after paying only part 1 | The plan records the price and parts agreed; later parts are tracked per payment; more than 7 days late pauses every learning route (lessons, quizzes, labs, assignments) on the server, not only the page; parts are confirmed by the same row-locked Paystack check or by the school; closing a plan is audited (ADR 0037) | A school can choose to stop asking for the rest |
 
 ### Repudiation (denying what they did)
 

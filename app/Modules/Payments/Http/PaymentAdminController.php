@@ -39,7 +39,69 @@ final class PaymentAdminController
         private readonly ?TransferPayments $transfers = null,
         private readonly ?\App\Modules\Payments\Refunds\Refunds $refunds = null,
         private readonly ?\App\Modules\Payments\Refunds\RefundRepository $refundRows = null,
+        private readonly ?\App\Modules\Payments\Plans\PaymentPlans $plans = null,
     ) {
+    }
+
+    /** GET /school/payments/plans/{plan}: one learner's payment plan (ADR 0037). */
+    public function plan(Request $request): Response
+    {
+        return $this->renderPlan($request, $request->routeInt('plan'));
+    }
+
+    /** POST /school/payments/plans/{plan}/record: the next part was paid at the office or by transfer. */
+    public function recordPart(Request $request): Response
+    {
+        $id = $request->routeInt('plan');
+        $note = (string) ($request->input('note', '') ?? '');
+        try {
+            $payment = $this->plans()->recordPart(RequestContext::tenant($request), RequestContext::user($request), $id, $note, $request->clientIp);
+        } catch (ValidationException $e) {
+            return $this->renderPlan($request, $id, $e->errors, ['note' => $note], 422);
+        }
+        $this->session->flash('success', sprintf('Part %d recorded: %s.', (int) $payment->planPart, $payment->amount()));
+
+        return Response::redirect('/school/payments/plans/' . $id);
+    }
+
+    /** POST /school/payments/plans/{plan}/write-off: stop asking for the rest. */
+    public function writeOff(Request $request): Response
+    {
+        $id = $request->routeInt('plan');
+        $reason = (string) ($request->input('reason', '') ?? '');
+        try {
+            $this->plans()->writeOff(RequestContext::tenant($request), RequestContext::user($request), $id, $reason, $request->clientIp);
+        } catch (ValidationException $e) {
+            return $this->renderPlan($request, $id, $e->errors, ['reason' => $reason, 'writeoff_open' => '1'], 422);
+        }
+        $this->session->flash('success', 'The plan is closed. Nothing more is asked of the learner, and the course stays open for them.');
+
+        return Response::redirect('/school/payments/plans/' . $id);
+    }
+
+    private function plans(): \App\Modules\Payments\Plans\PaymentPlans
+    {
+        return $this->plans ?? throw new \LogicException('Payment plans are not wired.');
+    }
+
+    /**
+     * @param array<string, string> $errors
+     * @param array<string, string> $old
+     */
+    private function renderPlan(Request $request, int $id, array $errors = [], array $old = [], int $status = 200): Response
+    {
+        $tenant = RequestContext::tenant($request);
+        $plan = $this->plans()->find($tenant, $id);
+
+        return Response::html($this->view->render('school/payment_plan', [
+            'pageTitle' => 'Payment plan: ' . $plan->learnerName,
+            'plan' => $plan,
+            'standing' => $plan->standing($this->clock->now()),
+            'payments' => $this->payments->forPlan($tenant->id, $plan->id),
+            'now' => $this->clock->now()->getTimestamp(),
+            'errors' => $errors,
+            'old' => $old + ['note' => '', 'reason' => ''],
+        ]), $status);
     }
 
     public function index(Request $request): Response
@@ -308,6 +370,8 @@ final class PaymentAdminController
             'currencies' => array_map(static fn (array $c): string => $c[1] . ' (' . $c[0] . ')', Money::CURRENCIES),
             'now' => $this->clock->now()->getTimestamp(),
             'claims' => $this->transfers?->pending($tenant) ?? [],
+            'plans' => $this->plans?->forSchool($tenant) ?? [],
+            'planNow' => $this->clock->now(),
             'instructions' => $old['instructions'] ?? ($this->transfers?->instructions($tenant) ?? ''),
             'errors' => $errors,
             'old' => $old,

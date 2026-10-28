@@ -11,7 +11,12 @@
  * @var list<\App\Modules\Payments\PaymentClaim> $pendingClaims
  * @var list<\App\Modules\Payments\PaymentClaim> $rejectedClaims
  * @var list<\App\Modules\Applications\Application> $applications
+ * @var list<\App\Modules\Payments\Plans\PaymentPlan> $plans courses being paid in parts (ADR 0037)
+ * @var \DateTimeImmutable $now
  */
+$plans ??= [];
+$now ??= new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+$owingPlans = array_values(array_filter($plans, static fn ($p): bool => $p->nextPart() !== null));
 $waitingCount = count($pendingClaims) + count($checkouts) + count($applications) + count($rejectedClaims);
 ?>
 <header class="page-head">
@@ -55,6 +60,21 @@ $waitingCount = count($pendingClaims) + count($checkouts) + count($applications)
 </section>
 <?php endif; ?>
 
+<?php if ($owingPlans !== []): ?>
+<section class="subs-section" aria-labelledby="subs-plans-h">
+  <h2 id="subs-plans-h">Paying in parts</h2>
+  <ul class="subs-list">
+    <?php foreach ($owingPlans as $p): $next = (int) $p->nextPart(); $st = $p->standing($now); [$label, $tone] = \App\Modules\Payments\Plans\PaymentPlan::standingBadge($st); ?>
+      <li class="subs-row">
+        <div><a href="/courses/<?= $v->e($p->courseSlug) ?>/subscribe#plan"><?= $v->e($p->courseTitle) ?></a>
+          <span class="small muted"><?= count($p->paidParts) ?> of <?= $p->parts ?> parts paid. Part <?= $next ?>, <?= $v->e($p->partLabel($next)) ?>, <?= $st === 'paused' || $st === 'late' ? 'was due' : 'is due' ?> <?= $v->e($v->datetime($p->dueAt($next)?->format('Y-m-d H:i:s') ?? '', 'j M Y')) ?>.</span></div>
+        <?= $st === 'on_time' ? '<a class="button button-small button-quiet" href="/courses/' . $v->e($p->courseSlug) . '/subscribe#plan">Pay early</a>' : $v->badge($label, $tone) ?>
+      </li>
+    <?php endforeach; ?>
+  </ul>
+</section>
+<?php endif; ?>
+
 <section class="subs-section" aria-labelledby="subs-courses-h">
   <h2 id="subs-courses-h">Your courses</h2>
   <?php if ($courses === []): ?>
@@ -83,7 +103,7 @@ $waitingCount = count($pendingClaims) + count($checkouts) + count($applications)
     <?php foreach ($paid as $row): $p = $row['payment']; ?>
       <li class="subs-row">
         <div><?= $v->e($row['course']) ?>
-          <span class="small muted"><?= $v->e($p->amount()) ?>, <?= $v->e($p->provider === 'manual' ? 'paid to the school' : $p->methodLabel()) ?>, <?= $v->e($v->datetime($p->paidAt ?? $p->createdAt, 'j M Y')) ?></span></div>
+          <span class="small muted"><?= $v->e($p->amount()) ?><?= $p->planPart !== null ? ' (part ' . (int) $p->planPart . ')' : '' ?>, <?= $v->e($p->provider === 'manual' ? 'paid to the school' : $p->methodLabel()) ?>, <?= $v->e($v->datetime($p->paidAt ?? $p->createdAt, 'j M Y')) ?></span></div>
         <a class="button button-small button-quiet" href="/account/receipts/<?= $v->e($p->reference) ?>"><?= $v->icon('receipt') ?>Receipt</a>
       </li>
     <?php endforeach; ?>

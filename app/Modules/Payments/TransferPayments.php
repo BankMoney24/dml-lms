@@ -47,6 +47,7 @@ final class TransferPayments
         private readonly AuditLog $audit,
         private readonly Clock $clock,
         private readonly ?Notifier $notifier = null,
+        private readonly ?Plans\PaymentPlanRepository $plans = null,
     ) {
     }
 
@@ -93,7 +94,10 @@ final class TransferPayments
     /**
      * The learner says they paid.
      *
-     * @param array{method: string, amount: string, paid_on: string, reference: string, note: string} $input
+     * With "for" = "part", it pays the first part of a new payment plan; a learner
+     * already paying in parts always pays their next part (ADR 0037).
+     *
+     * @param array{method: string, amount: string, paid_on: string, reference: string, note: string, for?: string} $input
      */
     public function claim(Tenant $tenant, Course $course, CurrentUser $learner, array $input, string $clientIp): PaymentClaim
     {
@@ -101,12 +105,25 @@ final class TransferPayments
         if (!$course->isPublished() || !$course->isPaid() || $course->tenantId !== $tenant->id) {
             throw HttpException::notFound();
         }
-        if ($this->learning->mustApply($course, $learner)) {
-            throw ValidationException::single('form', 'This course takes applications. Apply for a place first; pay once the school offers you one.');
+        $plan = $this->payments->planFor($tenant, $learner->user->id, $course);
+        $part = $plan !== null && $plan->status === Plans\PaymentPlan::ACTIVE ? $plan->nextPart() : null;
+        if ($part === null) {
+            $plan = null;
+            if ($this->learning->mustApply($course, $learner)) {
+                throw ValidationException::single('form', 'This course takes applications. Apply for a place first; pay once the school offers you one.');
+            }
+            if (!$this->learning->needsPayment($course, $learner)) {
+                throw ValidationException::single('form', 'There is nothing to pay: you can start this course now.');
+            }
+            if (($input['for'] ?? 'full') === 'part' && $course->offersInstalments()) {
+                $part = 1;
+            }
         }
-        if (!$this->learning->needsPayment($course, $learner)) {
-            throw ValidationException::single('form', 'There is nothing to pay: you can start this course now.');
-        }
+        $expected = match (true) {
+            $plan !== null && $part !== null => $plan->partAmount($part),
+            $part !== null => Plans\PaymentPlan::split((int) $course->priceMinor, (int) $course->instalments, 1),
+            default => (int) $course->priceMinor,
+        };
         $existing = $this->claims->latestFor($tenant->id, $learner->user->id, $course->id);
         if ($existing !== null && $existing->isPending()) {
             throw ValidationException::single('form', 'The school is already checking a payment you told them about for this course.');
@@ -119,7 +136,7 @@ final class TransferPayments
         }
         $amount = Money::parse($input['amount']);
         if ($amount === null || $amount < 1 || $amount > Money::MAX_MINOR) {
-            $errors['amount'] = 'Enter the amount you paid, for example ' . number_format(((int) $course->priceMinor) / 100, 0, '.', '') . '.';
+            $errors['amount'] = 'Enter the amount you paid, for example ' . number_format($expected / 100, 0, '.', '') . '.';
         }
         $today = $this->clock->now()->format('Y-m-d');
         $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $input['paid_on']);
@@ -149,8 +166,25 @@ final class TransferPayments
             throw ValidationException::single('form', 'You have sent several payment notes today. Wait for the school to answer, or speak to the office.');
         }
 
-        $id = $this->claims->create($tenant->id, $learner->user->id, $course->id, (int) $amount, (string) $course->currency, $method, $input['paid_on'], $reference, $note);
-        $this->audit->record($tenant->id, $learner->user->id, 'payment.claimed', 'course', $course->id, ['claim' => $id, 'amount' => (int) $amount], $clientIp);
+        if ($plan === null && $part !== null) {
+            // The first part of a new plan: the plan is made only once the note is valid.
+            $plan = $this->payments->openPlan($tenant, $course, $learner);
+        }
+        $id = $this->claims->create(
+            $tenant->id,
+            $learner->user->id,
+            $course->id,
+            (int) $amount,
+            $plan !== null ? $plan->currency : (string) $course->currency,
+            $method,
+            $input['paid_on'],
+            $reference,
+            $note,
+            $plan?->id,
+            $plan === null ? null : $part,
+        );
+        $meta = ['claim' => $id, 'amount' => (int) $amount, 'part' => $plan === null ? null : $part];
+        $this->audit->record($tenant->id, $learner->user->id, 'payment.claimed', 'course', $course->id, $meta, $clientIp);
         $admins = array_map('intval', array_column($this->db->fetchAll(
             "SELECT user_id FROM memberships WHERE tenant_id = ? AND status = 'active' AND role IN ('owner', 'admin') LIMIT 50",
             [$tenant->id],
@@ -159,7 +193,8 @@ final class TransferPayments
             $tenant->id,
             $admins,
             self::NOTIFY_CLAIM,
-            $learner->user->displayName . ' says they paid ' . Money::format((int) $amount, (string) $course->currency) . ' for ' . $course->title,
+            $learner->user->displayName . ' says they paid ' . Money::format((int) $amount, (string) $course->currency) . ' for ' . $course->title
+                . ($plan !== null ? sprintf(' (part %d of %d)', $part, $plan->parts) : ''),
             'Check your bank, then confirm it to enrol them.',
             '/school/payments#claims',
         );
@@ -195,7 +230,13 @@ final class TransferPayments
                 throw ValidationException::single('claim', $claim->learnerName . ' no longer belongs to this school. Add them on the People page, then confirm.');
             }
             $paymentId = null;
-            if (!$this->payments->hasPaid($tenant, $user->id, $course)) {
+            $plan = $claim->planId === null ? null : $this->plans?->find($tenant->id, $claim->planId, true);
+            if ($plan !== null && $claim->planPart !== null) {
+                // A part of a payment plan: record it unless that part was paid another way meanwhile.
+                if ($plan->nextPart() === $claim->planPart) {
+                    $paymentId = $this->payments->storeManual($tenant, $admin, $user, $course, $claim->amountMinor, $claim->paymentNote(), $clientIp, $plan, $claim->planPart)->id;
+                }
+            } elseif (!$this->payments->hasPaid($tenant, $user->id, $course)) {
                 $paymentId = $this->payments->storeManual($tenant, $admin, $user, $course, $claim->amountMinor, $claim->paymentNote(), $clientIp)->id;
             }
             $this->claims->decide($tenant->id, $id, PaymentClaim::CONFIRMED, $admin->user->id, null, $paymentId);

@@ -31,7 +31,11 @@ final class ApplicationsAdminController
         $tenant = RequestContext::tenant($request);
         $show = $request->query('show', 'waiting') ?? 'waiting';
         $show = in_array($show, ['waiting', 'offered', 'decided'], true) ? $show : 'waiting';
-        $list = $this->applications->queue($tenant->id, $show);
+        $q = mb_substr(trim((string) ($request->query('q') ?? '')), 0, 80);
+        $courses = $this->applications->courses($tenant->id);
+        $course = (string) ($request->query('course') ?? '');
+        $courseId = ctype_digit($course) && isset($courses[(int) $course]) ? (int) $course : null;
+        $list = $this->applications->queue($tenant->id, $show, $courseId, 200, $q);
         $positions = [];
         if ($show === 'waiting') {
             foreach ($list as $a) {
@@ -45,6 +49,9 @@ final class ApplicationsAdminController
             'applications' => $list,
             'positions' => $positions,
             'counts' => $this->applications->counts($tenant->id),
+            'q' => $q,
+            'courseFilter' => $courseId,
+            'appCourses' => $courses,
             'mayCreateAccounts' => RequestContext::user($request)->can(Permission::MembersManage),
         ]));
     }

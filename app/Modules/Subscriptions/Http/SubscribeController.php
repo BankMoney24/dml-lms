@@ -52,6 +52,7 @@ final class SubscribeController
         private readonly ApplicationRepository $applications,
         private readonly ?\App\Modules\Payments\Coupons\Coupons $coupons = null,
         private readonly ?\App\Core\Security\RateLimiter $limiter = null,
+        private readonly ?\App\Modules\Payments\Plans\PaymentPlans $plans = null,
     ) {
     }
 
@@ -99,6 +100,12 @@ final class SubscribeController
                 }
             }
         }
+        // Paying in parts (ADR 0037): the learner's plan, where it stands, and its payments.
+        $plan = $user === null || !$course->isPaid() ? null : $this->payments->planFor($tenant, $user->user->id, $course);
+        if ($plan !== null && $plan->status === \App\Modules\Payments\Plans\PaymentPlan::PENDING) {
+            $plan = null;
+        }
+        $planNext = $plan?->nextPart();
         $raw = $this->session->pullFlash(self::FORM_FLASH);
         $data = $raw === null ? null : json_decode($raw, true);
         $errors = is_array($data) && is_array($data['errors'] ?? null) ? array_filter($data['errors'], 'is_string') : [];
@@ -115,6 +122,12 @@ final class SubscribeController
             'payOnline' => $state === 'pay' && $this->payments->isConnected($tenant),
             'instructions' => $course->isPaid() ? $this->transfers->instructions($tenant) : '',
             'claim' => $user !== null && $course->isPaid() ? $this->transfers->latestFor($tenant, $user, $course) : null,
+            'plan' => $plan,
+            'planNext' => $planNext,
+            'planStanding' => $plan?->standing($this->plans?->now() ?? new \DateTimeImmutable('now', new \DateTimeZone('UTC'))),
+            'planPayments' => $plan === null ? [] : $this->paymentRows->forPlan($tenant->id, $plan->id),
+            'payParts' => $state === 'pay' && $course->offersInstalments() && $quote === null,
+            'onlineOn' => $this->payments->isConnected($tenant),
             'waiting' => $state === 'pay' && $user !== null ? $this->payments->waiting($tenant, $user->user->id, $course) : null,
             'methods' => PaymentClaim::METHODS,
             'codesOn' => $this->coupons !== null,
@@ -122,7 +135,16 @@ final class SubscribeController
             'quote' => $quote,
             'codeError' => $codeError,
             'errors' => $errors,
-            'old' => $old + ['method' => 'transfer', 'amount' => $course->priceMinor === null ? '' : (string) intdiv($course->priceMinor, 100), 'paid_on' => '', 'reference' => '', 'note' => ''],
+            'old' => $old + [
+                'method' => 'transfer',
+                'amount' => $planNext !== null && $plan !== null
+                    ? (string) intdiv($plan->partAmount($planNext), 100)
+                    : ($course->priceMinor === null ? '' : (string) intdiv($course->priceMinor, 100)),
+                'paid_on' => '',
+                'reference' => '',
+                'note' => '',
+                'for' => 'full',
+            ],
         ]));
     }
 
@@ -178,7 +200,9 @@ final class SubscribeController
                 return Response::redirect($here . '#transfer');
             }
             try {
-                $url = $this->payments->startCheckout($tenant, $course, $user, $request->baseUrl(), $request->clientIp);
+                // "In parts" opens a payment plan and charges its first part (ADR 0037).
+                $plan = $request->input('plan') === 'parts' && $course->offersInstalments() ? $this->payments->openPlan($tenant, $course, $user) : null;
+                $url = $this->payments->startCheckout($tenant, $course, $user, $request->baseUrl(), $request->clientIp, null, $plan);
             } catch (ValidationException $e) {
                 $this->session->flash('error', implode(' ', $e->errors));
 
@@ -194,6 +218,35 @@ final class SubscribeController
         return Response::redirect($first === null ? '/courses/' . $course->slug : '/courses/' . $course->slug . '/lessons/' . $first->id);
     }
 
+    /** POST /courses/{slug}/subscribe/part: pay the next part of a payment plan online (ADR 0037). */
+    public function payPart(Request $request): Response
+    {
+        $tenant = RequestContext::tenant($request);
+        $user = RequestContext::user($request);
+        $course = $this->course($request);
+        $here = '/courses/' . $course->slug . '/subscribe';
+        $plan = $this->payments->planFor($tenant, $user->user->id, $course);
+        if ($plan === null || $plan->status !== \App\Modules\Payments\Plans\PaymentPlan::ACTIVE || $plan->nextPart() === null) {
+            $this->session->flash('error', 'There is nothing left to pay on this course.');
+
+            return Response::redirect($here);
+        }
+        if (!$this->payments->isConnected($tenant)) {
+            $this->session->flash('error', 'This school takes payment directly. Pay using the details below, then tell the school.');
+
+            return Response::redirect($here . '#transfer');
+        }
+        try {
+            $url = $this->payments->startCheckout($tenant, $course, $user, $request->baseUrl(), $request->clientIp, null, $plan);
+        } catch (ValidationException $e) {
+            $this->session->flash('error', implode(' ', $e->errors));
+
+            return Response::redirect($here . '#plan');
+        }
+
+        return Response::redirectToCheckout($url);
+    }
+
     /** Twenty code checks an hour per person, so codes cannot be guessed by trying many. */
     private function codeAttemptAllowed(int $tenantId, int $userId): bool
     {
@@ -206,7 +259,7 @@ final class SubscribeController
         $tenant = RequestContext::tenant($request);
         $course = $this->course($request);
         $input = [];
-        foreach (['method', 'amount', 'paid_on', 'reference', 'note'] as $key) {
+        foreach (['method', 'amount', 'paid_on', 'reference', 'note', 'for'] as $key) {
             $input[$key] = (string) ($request->input($key, '') ?? '');
         }
         try {
@@ -261,6 +314,8 @@ final class SubscribeController
             'pendingClaims' => array_values(array_filter($claims, static fn (PaymentClaim $c): bool => $c->isPending())),
             'rejectedClaims' => array_values(array_filter($claims, static fn (PaymentClaim $c): bool => $c->status === PaymentClaim::REJECTED)),
             'applications' => $applications,
+            'plans' => $this->plans?->forLearner($tenant, $user->user->id) ?? [],
+            'now' => $this->plans?->now() ?? new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
         ]));
     }
 

@@ -76,7 +76,7 @@ final class SupportTest extends AppTestCase
 
         $this->signIn('admin@school.test');
         $desk = $this->get(self::HOST, '/school/support')->body;
-        $this->assertStringContainsString('Needs an answer (1)', $desk);
+        $this->assertStringContainsString('Needs an answer <span class="tab-count">(1)</span>', $desk);
         $this->assertSame(200, $this->get(self::HOST, '/files/' . $file)->status, 'staff open attachments');
         $this->assertRedirectTo('/help/' . $id, $this->post(self::HOST, '/help/' . $id . '/reply', ['body' => 'Try the latest Chrome; we fixed it.']));
         $this->assertSame('answered', $this->db()->fetchValue('SELECT status FROM support_requests WHERE id = ?', [$id]));

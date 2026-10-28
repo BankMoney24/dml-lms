@@ -28,7 +28,24 @@ final class LearningService
         private readonly PaymentRepository $payments,
         private readonly ?\App\Modules\Applications\ApplicationRepository $applications = null,
         private readonly ?\App\Modules\Courses\CourseRepository $courses = null,
+        private readonly ?\App\Modules\Payments\Plans\PaymentPlanRepository $plans = null,
+        private readonly ?\App\Core\Clock $clock = null,
     ) {
+    }
+
+    /**
+     * The learner's payment plan when a part is more than a week late (ADR 0037):
+     * the course is paused until it is paid. Null when nothing holds them back.
+     */
+    public function planHold(Course $course, CurrentUser $learner): ?\App\Modules\Payments\Plans\PaymentPlan
+    {
+        if ($this->plans === null || !$course->isPaid() || $learner->can(Permission::CourseManage)) {
+            return null;
+        }
+        $plan = $this->plans->current($course->tenantId, $learner->user->id, $course->id);
+        $now = ($this->clock ?? new \App\Core\Clock())->now();
+
+        return $plan !== null && $plan->isPaused($now) ? $plan : null;
     }
 
     /**
@@ -119,6 +136,16 @@ final class LearningService
         $enrolment = $this->enrolments->find($course->tenantId, $course->id, $user->user->id);
         if ($enrolment === null || !$course->isPublished()) {
             throw HttpException::forbidden();
+        }
+        $hold = $this->planHold($course, $user);
+        if ($hold !== null) {
+            $next = (int) $hold->nextPart();
+            throw new HttpException(403, sprintf(
+                'This course is paused: part %d of your payment plan (%s) was due on %s. Pay it on the course’s Subscribe page and the course opens again at once.',
+                $next,
+                $hold->partLabel($next),
+                $hold->dueAt($next)?->format('j M Y') ?? 'its due date',
+            ));
         }
 
         return $enrolment;

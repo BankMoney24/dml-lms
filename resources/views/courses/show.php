@@ -7,6 +7,12 @@
 /** @var bool $payOnline the school takes payments through Paystack */
 /** @var ?\App\Modules\Payments\Payment $waiting a checkout started recently and not yet confirmed */
 /** @var ?\App\Modules\Payments\PaymentClaim $claim the learner's latest note that they paid the school directly */
+/** @var ?\App\Modules\Payments\Plans\PaymentPlan $planHold the learner's payment plan when a part is overdue and the course is paused */
+$planHold ??= null;
+$partsLine = $course->offersInstalments()
+    ? '<p class="small course-parts">or ' . (int) $course->instalments . ' monthly parts of about '
+      . $v->e(\App\Modules\Payments\Money::format(\App\Modules\Payments\Plans\PaymentPlan::split((int) $course->priceMinor, (int) $course->instalments, 2), (string) $course->currency)) . '</p>'
+    : '';
 $user = $v->shared('user');
 $lessonIds = [];
 $counts = [];
@@ -112,6 +118,10 @@ $chips[] = $v->plural($lessonCount, 'lesson');
   <?php elseif ($enrolment !== null && $enrolment->isCompleted()): ?>
     <p class="start-title">You completed this course</p>
     <p class="muted">Open any lesson below to go over it again.</p>
+  <?php elseif ($enrolment !== null && $planHold !== null): $holdPart = (int) $planHold->nextPart(); ?>
+    <p class="start-title">The course is paused</p>
+    <p>Part <?= $holdPart ?> of your payment plan, <?= $v->e($planHold->partLabel($holdPart)) ?>, was due on <?= $v->e($v->datetime($planHold->dueAt($holdPart)?->format('Y-m-d H:i:s') ?? '', 'j M Y')) ?>. Pay it and the lessons open again at once. Your progress is kept.</p>
+    <p class="start-action"><a class="button" href="/courses/<?= $v->e($course->slug) ?>/subscribe#plan">Pay part <?= $holdPart ?></a></p>
   <?php elseif ($enrolment !== null && $firstOpen !== null): ?>
     <p class="start-progress"><strong><?= $done ?> of <?= $lessonCount ?></strong> lessons done</p>
     <progress class="meter" max="<?= max(1, $lessonCount) ?>" value="<?= $done ?>" aria-label="Your progress"></progress>
@@ -140,7 +150,7 @@ $chips[] = $v->plural($lessonCount, 'lesson');
     <p class="start-action"><a class="button" href="/courses/<?= $slug ?>/preview/<?= $firstReadable->id ?>"><?= $v->icon('lesson') ?>Start reading: <?= $v->e($firstReadable->title) ?></a></p>
     <p class="start-alt"><a href="<?= $signUpOpen ? $joinHref : $signInHref ?>"><?= $signUpOpen ? 'Create a free account' : 'Sign in' ?></a><?= $signUpOpen ? ' or <a href="' . $signInHref . '">sign in</a>' : '' ?> to keep your progress.</p>
   <?php elseif ($user === null): ?>
-    <?php if ($course->isPaid()): ?><p class="course-price"><strong><?= $v->e((string) $course->priceLabel()) ?></strong> for the whole course</p><?= $includedList ?><?php else: ?><p class="start-title">Free to take</p><?php endif; ?>
+    <?php if ($course->isPaid()): ?><p class="course-price"><strong><?= $v->e((string) $course->priceLabel()) ?></strong> for the whole course</p><?= $partsLine ?><?= $includedList ?><?php else: ?><p class="start-title">Free to take</p><?php endif; ?>
     <p class="start-action"><a class="button" href="<?= $subscribeHref ?>"><?= $course->isPaid() ? 'Subscribe for ' . $v->e((string) $course->priceLabel()) : 'Subscribe for free' ?></a></p>
     <p class="start-alt"><?= $signUpOpen
         ? 'You will create an account' . ($course->isPaid() ? ', pay, then start.' : ', then start.') . ' Already have one? <a href="' . $subscribeSignIn . '">Sign in</a>'
@@ -148,6 +158,7 @@ $chips[] = $v->plural($lessonCount, 'lesson');
   <?php elseif ($v->can('course.learn') && $mustPay): ?>
     <div id="pay">
       <p class="course-price"><strong><?= $v->e((string) $course->priceLabel()) ?></strong> for the whole course</p>
+      <?= $partsLine ?>
       <?= $includedList ?>
       <?php if ($waiting !== null): ?>
         <p class="notice">You started a payment of <?= $v->e($waiting->amount()) ?> on <?= $v->e($v->datetime($waiting->createdAt)) ?>.

@@ -139,7 +139,7 @@ final class ApiController
             $params[] = $since . ' 00:00:00';
         }
 
-        $select = 'SELECT p.id, p.reference, p.user_id, p.course_id, p.amount_minor, p.currency, p.status, p.provider, p.mode, p.paid_at, p.created_at';
+        $select = 'SELECT p.id, p.reference, p.user_id, p.course_id, p.amount_minor, p.currency, p.status, p.provider, p.mode, p.paid_at, p.created_at, p.plan_id, p.plan_part';
         $map = static fn (array $r): array => [
             'id' => (int) $r['id'],
             'reference' => (string) $r['reference'],
@@ -150,6 +150,7 @@ final class ApiController
             'status' => (string) $r['status'],
             'method' => (string) $r['provider'],
             'test' => ($r['mode'] ?? '') === 'test',
+            'plan' => $r['plan_id'] === null ? null : ['id' => (int) $r['plan_id'], 'part' => (int) $r['plan_part']],
             'paid_at' => self::iso($r['paid_at']),
             'created_at' => self::iso($r['created_at']),
         ];

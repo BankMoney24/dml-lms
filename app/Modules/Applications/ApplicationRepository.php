@@ -76,7 +76,7 @@ final class ApplicationRepository
      * @param 'waiting'|'offered'|'decided' $filter
      * @return list<Application>
      */
-    public function queue(int $tenantId, string $filter, ?int $courseId = null, int $limit = 100): array
+    public function queue(int $tenantId, string $filter, ?int $courseId = null, int $limit = 100, string $q = ''): array
     {
         $where = match ($filter) {
             'offered' => "a.status = 'offered'",
@@ -88,6 +88,11 @@ final class ApplicationRepository
             $where .= ' AND a.course_id = ?';
             $params[] = $courseId;
         }
+        if ($q !== '') {
+            $like = '%' . addcslashes($q, '%_\\') . '%';
+            $where .= ' AND (a.name LIKE ? OR a.email LIKE ? OR a.phone LIKE ?)';
+            array_push($params, $like, $like, $like);
+        }
 
         return array_map(Application::fromRow(...), $this->db->fetchAll(
             self::SELECT . ' WHERE a.tenant_id = ? AND ' . $where
@@ -95,6 +100,21 @@ final class ApplicationRepository
                 . ' LIMIT ' . max(1, min($limit, 500)),
             $params,
         ));
+    }
+
+    /** @return array<int, string> course id => title, for courses that have had applications */
+    public function courses(int $tenantId): array
+    {
+        $out = [];
+        $rows = $this->db->fetchAll(
+            'SELECT DISTINCT c.id, c.title FROM course_applications a JOIN courses c ON c.tenant_id = a.tenant_id AND c.id = a.course_id WHERE a.tenant_id = ? ORDER BY c.title LIMIT 300',
+            [$tenantId],
+        );
+        foreach ($rows as $r) {
+            $out[(int) $r['id']] = (string) $r['title'];
+        }
+
+        return $out;
     }
 
     /** @return array{waiting: int, offered: int} */

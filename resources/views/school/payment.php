@@ -32,6 +32,7 @@ $tones = ['Paid' => 'done', 'Failed' => 'danger', 'Waiting' => 'draft', 'Not com
     <dl class="facts">
       <dt>Learner</dt><dd><?= $v->e($learner) ?> <span class="muted small"><?= $v->e($email) ?></span></dd>
       <dt>Course</dt><dd><?= $v->e($course) ?></dd>
+      <?php if ($payment->planId !== null): ?><dt>Pays</dt><dd>Part <?= (int) $payment->planPart ?> of a <a href="/school/payments/plans/<?= $payment->planId ?>">payment plan</a></dd><?php endif; ?>
       <dt>Amount</dt><dd><?= $v->e($payment->amount()) ?><?php if ($payment->discountMinor() > 0): ?> <span class="muted small">(price <?= $v->e(Money::format((int) $payment->listPriceMinor, $payment->currency)) ?>, discount code)</span><?php endif; ?></dd>
       <dt>How</dt><dd><?= $v->e($payment->methodLabel()) ?><?php if ($payment->note !== null): ?><br><span class="small muted"><?= $v->e($payment->note) ?></span><?php endif; ?></dd>
       <dt>Reference</dt><dd class="ref"><?= $v->e($payment->reference) ?></dd>

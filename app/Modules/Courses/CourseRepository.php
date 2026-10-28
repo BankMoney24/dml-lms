@@ -166,11 +166,11 @@ final class CourseRepository
         return $id === null ? null : (int) $id;
     }
 
-    public function updatePrice(int $tenantId, int $courseId, ?int $priceMinor, ?string $currency): void
+    public function updatePrice(int $tenantId, int $courseId, ?int $priceMinor, ?string $currency, ?int $instalments = null): void
     {
         $this->db->execute(
-            'UPDATE courses SET price_minor = ?, currency = ?, updated_at = ? WHERE tenant_id = ? AND id = ?',
-            [$priceMinor, $currency, $this->clock->sqlNow(), $tenantId, $courseId],
+            'UPDATE courses SET price_minor = ?, currency = ?, instalments = ?, updated_at = ? WHERE tenant_id = ? AND id = ?',
+            [$priceMinor, $currency, $priceMinor === null ? null : $instalments, $this->clock->sqlNow(), $tenantId, $courseId],
         );
     }
 

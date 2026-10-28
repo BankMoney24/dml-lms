@@ -19,7 +19,7 @@ from playwright.sync_api import sync_playwright
 WIDTHS = [360, 390, 430, 768, 820, 1024, 1280, 1440]
 PUBLIC_PAGES = ["/", "/login", "/join", "/join/parent", "/password/forgot", "/courses", "/courses?track=everyday", "/verify", "/developers", "/accessibility", "/programmes", "/blog", "/blog/how-to-spot-a-payment-scam"]
 SIGNED_IN_PAGES = ["/", "/courses", "/classes", "/meetings", "/notifications", "/account", "/help", "/playground", "/search?q=net"]
-ADMIN_PAGES = ["/school", "/people", "/school/reports", "/school/payments", "/school/payments?q=amaka&status=failed", "/school/payments/codes", "/school/api", "/activity?kind=learning", "/school/website", "/school/blog", "/school/blog/new", "/school/website/faq", "/school/classroom", "/teach/labs/network-build", "/teach/labs/network-repair", "/teach/labs/firewall-rules", "/teach/labs/dns-lookup", "/teach/labs/pendulum", "/teach/labs/osmosis", "/teach", "/groups", "/meetings/new"]
+ADMIN_PAGES = ["/school", "/people", "/school/reports", "/school/payments", "/school/payments?q=amaka&status=failed", "/school/payments/codes", "/school/api", "/school/support?q=a", "/teach/applications?q=a", "/activity?kind=learning", "/school/website", "/school/blog", "/school/blog/new", "/school/website/faq", "/school/classroom", "/teach/labs/network-build", "/teach/labs/network-repair", "/teach/labs/firewall-rules", "/teach/labs/dns-lookup", "/teach/labs/pendulum", "/teach/labs/osmosis", "/teach", "/groups", "/meetings/new"]
 
 failures = []
 

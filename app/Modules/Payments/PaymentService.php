@@ -49,6 +49,7 @@ final class PaymentService
         private readonly ?\App\Modules\Notifications\Notifier $notifier = null,
         private readonly ?Coupons\Coupons $coupons = null,
         private readonly ?Refunds\Refunds $refunds = null,
+        private readonly ?Plans\PaymentPlanRepository $plans = null,
     ) {
     }
 
@@ -75,8 +76,46 @@ final class PaymentService
         return null;
     }
 
-    /** Starts a Paystack checkout and returns its address. A discount code lowers the amount charged (ADR 0032). */
-    public function startCheckout(Tenant $tenant, Course $course, CurrentUser $user, string $baseUrl, string $clientIp, ?string $code = null): string
+    /**
+     * The plan this learner pays the course through (ADR 0037): the one they are
+     * already paying, or a new one when the course offers parts and they have not
+     * paid yet. An unpaid plan made at an older price is replaced.
+     */
+    public function openPlan(Tenant $tenant, Course $course, CurrentUser $user): Plans\PaymentPlan
+    {
+        if ($this->plans === null || $course->tenantId !== $tenant->id || !$course->isPaid()) {
+            throw HttpException::notFound();
+        }
+        $plan = $this->plans->current($tenant->id, $user->user->id, $course->id);
+        if ($plan !== null && $plan->status === Plans\PaymentPlan::ACTIVE) {
+            return $plan;
+        }
+        if ($course->instalments === null) {
+            throw ValidationException::single('payment', 'This course is paid in full.');
+        }
+        if ($this->payments->hasPaid($tenant->id, $user->user->id, $course->id)) {
+            throw ValidationException::single('payment', 'You have already paid for this course.');
+        }
+        $same = $plan !== null && $plan->parts === $course->instalments && $plan->totalMinor === $course->priceMinor && $plan->currency === $course->currency;
+        if ($plan !== null && $same && $plan->status === Plans\PaymentPlan::PENDING) {
+            return $plan;
+        }
+        $id = $this->plans->create($tenant->id, $user->user->id, $course->id, $course->instalments, (int) $course->priceMinor, (string) $course->currency);
+
+        return $this->plans->find($tenant->id, $id) ?? throw new \RuntimeException('Plan not stored.');
+    }
+
+    /** The learner's plan for this course, if they chose to pay in parts. */
+    public function planFor(Tenant $tenant, int $userId, Course $course): ?Plans\PaymentPlan
+    {
+        return $this->plans?->current($tenant->id, $userId, $course->id);
+    }
+
+    /**
+     * Starts a Paystack checkout and returns its address. A discount code lowers the
+     * amount charged (ADR 0032). With a plan, it charges the plan's next part (ADR 0037).
+     */
+    public function startCheckout(Tenant $tenant, Course $course, CurrentUser $user, string $baseUrl, string $clientIp, ?string $code = null, ?Plans\PaymentPlan $plan = null): string
     {
         if (!$course->isPaid() || !$course->isPublished() || $course->tenantId !== $tenant->id) {
             throw HttpException::notFound();
@@ -86,7 +125,16 @@ final class PaymentService
         if ($account === null || $secret === null) {
             throw ValidationException::single('payment', 'This school has not set up online payments yet. Ask the school how to pay.');
         }
-        if ($this->payments->hasPaid($tenant->id, $user->user->id, $course->id)) {
+        $part = null;
+        if ($plan !== null) {
+            $part = $plan->nextPart();
+            if ($part === null || $plan->userId !== $user->user->id || $plan->courseId !== $course->id) {
+                throw ValidationException::single('payment', 'There is nothing left to pay on this plan.');
+            }
+            if ($code !== null && trim($code) !== '') {
+                throw ValidationException::single('code', 'Discount codes are for paying in full. Pay in full to use your code.');
+            }
+        } elseif ($this->payments->hasPaid($tenant->id, $user->user->id, $course->id)) {
             throw ValidationException::single('payment', 'You have already paid for this course.');
         }
         $hourAgo = $this->clock->now()->modify('-1 hour')->format('Y-m-d H:i:s');
@@ -94,9 +142,10 @@ final class PaymentService
             throw ValidationException::single('payment', 'You have started several payments in the last hour. If money left your account, wait a few minutes: it will show up here.');
         }
 
-        $price = (int) $course->priceMinor;
+        $price = $plan !== null && $part !== null ? $plan->partAmount($part) : (int) $course->priceMinor;
+        $currency = $plan !== null ? $plan->currency : (string) $course->currency;
         $coupon = null;
-        if ($code !== null && trim($code) !== '' && $this->coupons !== null) {
+        if ($plan === null && $code !== null && trim($code) !== '' && $this->coupons !== null) {
             $quote = $this->coupons->quote($tenant, $course, $code);
             if ($quote['price'] === 0) {
                 throw ValidationException::single('code', 'That code covers the whole price, so there is nothing to pay. Use it to start straight away.');
@@ -114,25 +163,28 @@ final class PaymentService
             'provider' => 'paystack',
             'mode' => $account['mode'],
             'amount_minor' => $price,
-            'currency' => (string) $course->currency,
+            'currency' => $currency,
             'status' => Payment::PENDING,
             'coupon_id' => $coupon?->id,
             'list_price_minor' => $coupon === null ? null : (int) $course->priceMinor,
+            'plan_id' => $plan?->id,
+            'plan_part' => $part,
         ]);
         $this->payments->recordEvent($tenant->id, $id, 'created:' . $reference, 'platform', 'checkout.started', 'pending');
 
         try {
-            $url = $this->paystack->initialize($secret, $user->user->email, $price, (string) $course->currency, $reference, $baseUrl . '/payments/paystack/callback', [
+            $url = $this->paystack->initialize($secret, $user->user->email, $price, $currency, $reference, $baseUrl . '/payments/paystack/callback', [
                 'school' => $tenant->slug,
                 'course' => $course->slug,
                 'payment_id' => $id,
-            ]);
+            ] + ($plan === null ? [] : ['plan' => $plan->id, 'part' => $part . ' of ' . $plan->parts]));
         } catch (PaymentProviderError $e) {
             $this->payments->markFailed($tenant->id, $id, 'Checkout could not start: ' . $e->getMessage());
             $this->logger->error('Paystack initialize failed', ['tenant' => $tenant->id, 'payment' => $id, 'error' => $e->getMessage()]);
             throw ValidationException::single('payment', 'The payment page could not be opened just now. Nothing was charged. Please try again in a few minutes.');
         }
-        $this->audit->record($tenant->id, $user->user->id, 'payment.started', 'course', $course->id, ['reference' => $reference, 'amount' => $price, 'coupon' => $coupon?->code], $clientIp);
+        $meta = ['reference' => $reference, 'amount' => $price, 'coupon' => $coupon?->code] + ($plan === null ? [] : ['part' => $part, 'parts' => $plan->parts]);
+        $this->audit->record($tenant->id, $user->user->id, 'payment.started', 'course', $course->id, $meta, $clientIp);
 
         return $url;
     }
@@ -298,6 +350,9 @@ final class PaymentService
             }
             $this->payments->markPaid($tenant->id, $payment->id, $tx['id'] !== '' ? $tx['id'] : null, $tx['channel']);
             $this->payments->recordEvent($tenant->id, $payment->id, $eventKey, $source, 'charge', 'paid', $details);
+            if ($payment->planId !== null) {
+                $this->plans?->sync($tenant->id, $payment->planId);
+            }
             $this->enrolAfterPayment($tenant, $payment);
             $this->audit->record($tenant->id, $payment->userId, 'payment.paid', 'course', $payment->courseId, ['reference' => $payment->reference, 'via' => $source]);
 
@@ -334,6 +389,10 @@ final class PaymentService
         }
         /** @var Course $course */
         /** @var \App\Modules\Identity\User $user */
+        $plan = $this->plans?->current($tenant->id, $user->id, $course->id);
+        if ($plan !== null && $plan->status === Plans\PaymentPlan::ACTIVE) {
+            throw ValidationException::single('email', 'That learner is paying this course in parts. Record the next part on their plan, under Payment plans.');
+        }
         if ($this->payments->hasPaid($tenant->id, $user->id, $course->id)) {
             throw ValidationException::single('email', 'That learner has already paid for this course.');
         }
@@ -346,10 +405,19 @@ final class PaymentService
      * Callers have checked the person, the course and the amount. Runs inside
      * the caller's transaction when there is one.
      */
-    public function storeManual(Tenant $tenant, CurrentUser $admin, \App\Modules\Identity\User $user, Course $course, int $amount, string $note, string $clientIp): Payment
-    {
+    public function storeManual(
+        Tenant $tenant,
+        CurrentUser $admin,
+        \App\Modules\Identity\User $user,
+        Course $course,
+        int $amount,
+        string $note,
+        string $clientIp,
+        ?Plans\PaymentPlan $plan = null,
+        ?int $part = null,
+    ): Payment {
         $admin->authorise(Permission::SchoolManage);
-        $payment = $this->db->transaction(function () use ($tenant, $admin, $user, $course, $amount, $note): Payment {
+        $payment = $this->db->transaction(function () use ($tenant, $admin, $user, $course, $amount, $note, $plan, $part): Payment {
             $reference = sprintf('MAN-%d-%s', $tenant->id, strtoupper(bin2hex(random_bytes(6))));
             $id = $this->payments->create([
                 'tenant_id' => $tenant->id,
@@ -359,11 +427,16 @@ final class PaymentService
                 'provider' => 'manual',
                 'mode' => 'live',
                 'amount_minor' => $amount,
-                'currency' => (string) $course->currency,
+                'currency' => $plan !== null ? $plan->currency : (string) $course->currency,
                 'status' => Payment::PAID,
                 'note' => $note,
                 'recorded_by' => $admin->user->id,
+                'plan_id' => $plan?->id,
+                'plan_part' => $plan === null ? null : $part,
             ]);
+            if ($plan !== null) {
+                $this->plans?->sync($tenant->id, $plan->id);
+            }
             $this->payments->recordEvent($tenant->id, $id, 'manual:' . $reference, 'admin', 'recorded', 'paid', ['by' => $admin->user->id]);
             $payment = $this->payments->find($tenant->id, $id) ?? throw new \RuntimeException('Payment not stored.');
             $this->enrolAfterPayment($tenant, $payment);
@@ -419,13 +492,23 @@ final class PaymentService
             return;
         }
         $this->learning->enrol($course, new CurrentUser($user, $membership));
+        $plan = $payment->planId === null ? null : $this->plans?->find($tenant->id, $payment->planId);
+        $later = $plan !== null && $payment->planPart !== null && $payment->planPart > 1;
+        $next = $plan?->nextPart();
         $this->notifier?->notify(
             $tenant->id,
             $user->id,
             \App\Modules\Notifications\Notifier::PAYMENT_PAID,
-            'Payment received for ' . $course->title,
-            'You are enrolled. Start whenever you are ready.',
-            '/courses/' . $course->slug,
+            $plan !== null && $payment->planPart !== null
+                ? sprintf('Part %d of %d received for %s', $payment->planPart, $plan->parts, $course->title)
+                : 'Payment received for ' . $course->title,
+            match (true) {
+                $plan !== null && $next === null => $later ? 'That was the last part: the course is fully paid. Thank you.' : 'You are enrolled.',
+                $plan !== null && $next !== null => ($later ? 'Thank you. ' : 'You are enrolled. Start whenever you are ready. ')
+                    . sprintf('Part %d (%s) is due on %s.', $next, $plan->partLabel($next), $plan->dueAt($next)?->format('j M Y') ?? 'the date shown on the course'),
+                default => 'You are enrolled. Start whenever you are ready.',
+            },
+            '/courses/' . $course->slug . ($plan !== null ? '/subscribe' : ''),
         );
     }
 }

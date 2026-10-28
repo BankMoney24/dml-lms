@@ -52,6 +52,7 @@ final class ConsoleApplication
                 'sample:seed' => $this->sampleSeed($args),
                 'mail:work' => $this->mailWork(),
                 'lab:expire' => $this->labExpire(),
+                'payments:plan-reminders' => $this->planReminders(),
                 'lab:list' => $this->labList(),
                 'mail:status' => $this->mailStatus(),
                 'mail:test' => $this->mailTest($args),
@@ -109,6 +110,8 @@ final class ConsoleApplication
           certificate:revoke <code> "<reason>"      Revoke a certificate; the reason shows on /verify
           lab:list                                  The labs in this release (use the key in course packages)
           lab:expire                                Close lab sessions whose time ran out (cron, every 10 minutes)
+          payments:plan-reminders                   Remind learners paying in parts before a part is due, when it is
+                                                    late, and when the course pauses (cron, once a day)
           user:platform-admin <email> [--revoke]    Let a user see the System page (they must use two-step sign-in)
           classroom:connect <tenant-slug> --domain=<host> [--app-id=dml-lms] [--secret-file=<path>] [--low-data=1|0]
                                                     Connect the online classroom (Jitsi). The secret is read
@@ -670,6 +673,17 @@ final class ConsoleApplication
         $n = $this->container->get(\App\Modules\VirtualLabs\LabGateway::class)->expireStale();
         if ($n > 0) {
             echo "Expired {$n} lab session(s).\n";
+        }
+
+        return 0;
+    }
+
+    /** Reminders for payment plans (ADR 0037): before a part is due, when it is late, and when the course pauses. */
+    private function planReminders(): int
+    {
+        $sent = $this->container->get(\App\Modules\Payments\Plans\PaymentPlans::class)->sendReminders();
+        if (array_sum($sent) > 0) {
+            printf("Reminded: %d due soon, %d late, %d paused.\n", $sent['soon'], $sent['due'], $sent['paused']);
         }
 
         return 0;

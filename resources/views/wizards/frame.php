@@ -54,7 +54,7 @@ $continueLabel = $returnToReview ? 'Save and go back to the review' : ($next !==
     <?= $v->errorSummary(array_diff_key($errors, ['finish' => true])) ?>
     <?php if (isset($errors['finish'])): ?><p class="notice notice-err" role="alert"><?= $v->e($errors['finish']) ?></p><?php endif; ?>
 
-    <form method="post" action="<?= $base . '/' . $v->e($step->key()) ?>" enctype="multipart/form-data" class="form wizard-form" novalidate>
+    <form method="post" action="<?= $base . '/' . $v->e($step->key()) ?>" enctype="multipart/form-data" class="form wizard-form" novalidate<?= $step->isReview() ? '' : ' data-unsaved' ?>>
       <?= $v->csrfField() ?>
       <?php if ($returnToReview): ?><input type="hidden" name="return" value="review"><?php endif; ?>
 
