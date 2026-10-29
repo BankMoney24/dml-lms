@@ -347,6 +347,9 @@ return static function (Router $r): void {
     $r->post('/school/joining/requests/{request:int}/decline', [JoiningAdminController::class, 'decline'], ['tenant', 'auth', 'can:members.manage']);
     $r->get('/school/website', [SiteController::class, 'index'], $school);
     $r->post('/school/website-settings', [SiteController::class, 'saveSettings'], $school);
+    $r->get('/school/website/ready', [SiteController::class, 'ready'], $school);
+    $r->post('/school/website/ready/drafts', [SiteController::class, 'readyDrafts'], $school);
+    $r->post('/school/website/ready/publish', [SiteController::class, 'readyPublish'], $school);
     $r->get('/school/website/{page}', [SiteController::class, 'edit'], $school);
     $r->post('/school/website/{page}', [SiteController::class, 'save'], $school);
     $r->get('/school/website/{page}/preview', [SiteController::class, 'preview'], $school);

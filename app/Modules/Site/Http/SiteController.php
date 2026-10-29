@@ -26,6 +26,7 @@ final class SiteController
         private readonly SitePages $site,
         private readonly SitePageRepository $pages,
         private readonly ?\App\Modules\Site\FullDrafts $drafts = null,
+        private readonly ?\App\Modules\Blog\BlogRepository $blog = null,
     ) {
     }
 
@@ -61,6 +62,111 @@ final class SiteController
     public function index(Request $request): Response
     {
         return $this->settingsPage($request);
+    }
+
+    /** GET /school/website/ready: every page not yet on the website, what stops it, and what each draft decides. */
+    public function ready(Request $request): Response
+    {
+        $tenant = RequestContext::tenant($request);
+        RequestContext::user($request)->authorise(Permission::SchoolManage);
+        $rows = [];
+        foreach (array_keys(SitePages::PAGES) as $slug) {
+            $page = $this->pages->find($tenant->id, $slug);
+            if ($page !== null && $page->isPublished()) {
+                continue;
+            }
+            $rows[$slug] = [
+                'page' => $page,
+                'title' => $page->title ?? SitePages::PAGES[$slug][0],
+                'problems' => $page === null ? ['Not written yet.'] : SitePages::problems($page, $tenant),
+                'hasDraft' => $this->drafts !== null && in_array($slug, \App\Modules\Site\FullDrafts::PAGES, true),
+                'choices' => \App\Modules\Site\FullDrafts::choices($slug),
+                'gaps' => $page === null || self::hasGaps($page),
+            ];
+        }
+
+        return Response::html($this->view->render('school/website_ready', [
+            'pageTitle' => 'Put your pages on the website',
+            'schoolTab' => 'website',
+            'school' => $tenant,
+            'rows' => $rows,
+            'blogLive' => $this->blog?->hasPublished($tenant->id) ?? true,
+            'blogDrafts' => $this->blog === null ? 0 : count(array_filter($this->blog->all($tenant->id), static fn ($p): bool => !$p->isPublished())),
+        ]));
+    }
+
+    /** POST /school/website/ready/drafts: a full draft for every unpublished page that is not started or still has gaps. The school's own finished drafts are kept. */
+    public function readyDrafts(Request $request): Response
+    {
+        $tenant = RequestContext::tenant($request);
+        $user = RequestContext::user($request);
+        $user->authorise(Permission::SchoolManage);
+        $today = (new \DateTimeImmutable('now', new \DateTimeZone($tenant->timezone ?: 'UTC')))->format('Y-m-d');
+        $written = 0;
+        foreach (\App\Modules\Site\FullDrafts::PAGES as $slug) {
+            $page = $this->pages->find($tenant->id, $slug);
+            if ($page !== null && ($page->isPublished() || !self::hasGaps($page))) {
+                continue;
+            }
+            $draft = $this->drafts?->draft($slug, $tenant, $today);
+            if ($draft !== null) {
+                $this->site->save($tenant, $user, $slug, $draft, $request->clientIp);
+                $written++;
+            }
+        }
+        $this->session->flash('success', $written === 0
+            ? 'Every page already has a draft of its own.'
+            : sprintf('%d full %s saved. Read each one below (Read it), change anything that is not right, then publish the ones you are happy with.', $written, $written === 1 ? 'draft' : 'drafts'));
+
+        return Response::redirect('/school/website/ready');
+    }
+
+    /** POST /school/website/ready/publish: publishes the pages the administrator ticked, if nothing stops them. */
+    public function readyPublish(Request $request): Response
+    {
+        $tenant = RequestContext::tenant($request);
+        $user = RequestContext::user($request);
+        $chosen = array_values(array_unique(array_filter($request->inputArray('pages'), static fn (string $s): bool => SitePages::exists($s))));
+        if ($chosen === []) {
+            $this->session->flash('error', 'Tick the pages to publish first.');
+
+            return Response::redirect('/school/website/ready');
+        }
+        $done = [];
+        $held = [];
+        foreach ($chosen as $slug) {
+            try {
+                $this->site->publish($tenant, $user, $slug, $request->clientIp);
+                $done[] = SitePages::PAGES[$slug][0];
+            } catch (ValidationException) {
+                $held[] = SitePages::PAGES[$slug][0];
+            }
+        }
+        if ($done !== []) {
+            $this->session->flash('success', 'Published: ' . implode(', ', $done) . '. They are in your website\'s menu and footer now.');
+        }
+        if ($held !== []) {
+            $this->session->flash('error', 'Not published yet: ' . implode(', ', $held) . '. Each still needs the changes listed under it.');
+        }
+
+        return Response::redirect($this->allPublished($tenant->id) ? '/school/website' : '/school/website/ready');
+    }
+
+    private function allPublished(int $tenantId): bool
+    {
+        $pages = $this->pages->all($tenantId);
+        foreach (array_keys(SitePages::PAGES) as $slug) {
+            if (!isset($pages[$slug]) || !$pages[$slug]->isPublished()) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static function hasGaps(SitePage $page): bool
+    {
+        return preg_match('/\[\[[^\]]*\]\]/u', $page->body . $page->summary . $page->title) === 1 || trim($page->summary) === '';
     }
 
     public function edit(Request $request): Response

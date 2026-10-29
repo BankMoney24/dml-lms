@@ -81,7 +81,7 @@ final class LaunchChecklist
             'Website pages are published',
             $missing === [],
             $missing === [] ? count($wanted) . ' of ' . count($wanted) . ' published' : 'Still to publish: ' . implode(', ', $names),
-            '/school/website',
+            $missing === [] ? '/school/website' : '/school/website/ready',
             $missing === [] ? 'See the website' : 'Publish pages'
         );
 

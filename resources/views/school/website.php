@@ -23,7 +23,14 @@ $live = count(array_filter($pages, static fn ($p): bool => $p->isPublished()));
 <div class="teach-layout">
   <section aria-labelledby="pages-h">
     <h2 id="pages-h">Pages <span class="muted small"><?= $live ?> of <?= count(SitePages::PAGES) ?> published</span></h2>
-    <p class="muted">Published pages appear in the footer of every page and in your sitemap. Each one starts as a draft with gaps in [[double brackets]] for facts only your school can give; it can go live once they are filled in.</p>
+    <?php if ($live < count(SitePages::PAGES)): ?>
+    <div class="notice ready-nudge" role="status">
+      <p><strong><?= $live === 0 ? 'Your website has no About us, Contact or policy pages yet.' : (count(SitePages::PAGES) - $live) . ' of your pages are not on the website yet.' ?></strong>
+        Visitors only see published pages, so the missing ones are not in the menu or footer.</p>
+      <p><a class="button button-small" href="/school/website/ready">Put your pages on the website</a></p>
+    </div>
+    <?php endif; ?>
+    <p class="muted">Published pages appear in the footer of every page and in your sitemap. Write a page yourself, or start from a full draft built from your school's settings and courses; either way it goes live only when you publish it.</p>
     <ul class="site-page-list">
       <?php foreach (SitePages::PAGES as $slug => [$title, , $hint]): $p = $pages[$slug] ?? null; ?>
       <li>

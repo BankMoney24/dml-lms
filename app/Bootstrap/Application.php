@@ -1024,6 +1024,7 @@ final class Application
             $c->get(\App\Modules\Site\SitePages::class),
             $c->get(\App\Modules\Site\SitePageRepository::class),
             $c->get(\App\Modules\Site\FullDrafts::class),
+            $c->get(\App\Modules\Blog\BlogRepository::class),
         ));
         $c->set(\App\Modules\Api\ApiKeyRepository::class, static fn (Container $c) => new \App\Modules\Api\ApiKeyRepository($c->get(Connection::class), $c->get(Clock::class)));
         $c->set(\App\Modules\Api\ApiKeys::class, static fn (Container $c) => new \App\Modules\Api\ApiKeys(
@@ -1061,6 +1062,7 @@ final class Application
         $c->set(\App\Modules\Site\FullDrafts::class, static fn (Container $c) => new \App\Modules\Site\FullDrafts(
             $c->get(CourseRepository::class),
             $c->get(PaymentAccountRepository::class),
+            $c->get(Connection::class),
         ));
         $c->set(\App\Modules\Platform\Seo\ShareController::class, static fn (Container $c) => new \App\Modules\Platform\Seo\ShareController(
             new \App\Modules\Platform\Seo\ShareCard($storage . '/share', self::basePath('resources/fonts')),

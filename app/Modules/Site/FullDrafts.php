@@ -25,11 +25,12 @@ final class FullDrafts
     public function __construct(
         private readonly CourseRepository $courses,
         private readonly ?PaymentAccountRepository $payments = null,
+        private readonly ?\App\Core\Database\Connection $db = null,
     ) {
     }
 
     /** Pages that have a full draft. */
-    public const PAGES = ['admissions', 'contact', 'faq', 'careers', 'privacy', 'terms', 'refunds', 'safeguarding'];
+    public const PAGES = ['about', 'admissions', 'contact', 'faq', 'careers', 'privacy', 'terms', 'refunds', 'safeguarding'];
 
     /**
      * The policy choices each draft makes, to read before publishing.
@@ -39,6 +40,10 @@ final class FullDrafts
     public static function choices(string $slug): array
     {
         return match ($slug) {
+            'about' => [
+                'Describes the school only from its settings (name, kind, tagline, levels, contact details) and its published courses.',
+                'Says nothing about when the school was founded, where it is, its staff, partners, results or accreditation. Add those yourself if you want them on the page.',
+            ],
             'contact' => ['Replies within two working days.'],
             'faq' => ['Help requests are answered within two working days, as on the contact page.'],
             'careers' => [
@@ -78,6 +83,11 @@ final class FullDrafts
 
         // phpcs:disable Generic.Files.LineLength -- Markdown paragraphs are single lines; a line break would show on the page.
         return match ($slug) {
+            'about' => [
+                'title' => 'About us',
+                'summary' => 'Who ' . $name . ' is, what it teaches and how learning works here: courses, practical work, teachers and certificates.',
+                'body' => $this->about($tenant),
+            ],
             'contact' => [
                 'title' => 'Contact us',
                 'summary' => 'How to reach ' . $name . ' about courses, admissions, payments or your account.',
@@ -343,6 +353,81 @@ final class FullDrafts
         return implode("\n\n", $out);
     }
     // phpcs:enable
+
+    /** About us, from the school's settings and published courses only: no invented history, people or claims. */
+    private function about(Tenant $tenant): string
+    {
+        $name = $tenant->name;
+        $kind = match ($tenant->kind) {
+            'university' => 'a university',
+            'polytechnic' => 'a polytechnic',
+            'training_centre' => 'a training centre',
+            'community' => 'a community learning programme',
+            default => 'a school',
+        };
+        $courses = $this->courses->listPublished($tenant->id, 100);
+        $byTrack = [];
+        foreach ($courses as $c) {
+            $byTrack[$c->track ?? 'other'][] = $c;
+        }
+        $trackNames = ['school' => 'School subjects', 'skills' => 'Practical and professional skills', 'everyday' => 'Everyday learning', 'other' => 'Other courses'];
+        $taught = [];
+        foreach ($trackNames as $key => $label) {
+            if (!isset($byTrack[$key])) {
+                continue;
+            }
+            $lines = array_map(static function (Course $c): string {
+                $bits = array_filter([$c->levelLabel(), $c->durationHours !== null ? 'about ' . $c->durationHours . ' hours' : null]);
+                $summary = trim($c->summary);
+                if (mb_strlen($summary) > 140) {
+                    // Cut at a word, so the sentence ends cleanly with an ellipsis.
+                    $cut = mb_substr($summary, 0, 140);
+                    $summary = rtrim(mb_substr($cut, 0, max(1, (int) mb_strrpos($cut, ' '))), " ,;:.") . '…';
+                } elseif ($summary !== '') {
+                    $summary = rtrim($summary, '.') . '.';
+                }
+                $summary = $summary === '' ? '' : ': ' . $summary;
+
+                return sprintf('- [%s](/courses/%s)%s%s', $c->title, $c->slug, $bits === [] ? '' : ' (' . strtolower(implode(', ', $bits)) . ')', $summary);
+            }, array_slice($byTrack[$key], 0, 12));
+            $taught[] = '### ' . $label . "\n\n" . implode("\n", $lines);
+        }
+        $count = count($courses);
+        $intro = $tenant->tagline !== '' ? $name . ': ' . rtrim($tenant->tagline, '.') . '.' . "\n\n" : '';
+        $intro .= $name . ' is ' . $kind . ' that teaches on this website, so learners can study on a phone or a computer, at their own pace, and pick up where they stopped.';
+        if ($count > 0) {
+            $intro .= ' We run ' . $count . ' ' . ($count === 1 ? 'course' : 'courses') . ' at the moment.';
+        }
+        if ($tenant->levels !== []) {
+            $intro .= ' We teach at these levels: ' . implode(', ', $tenant->levels) . '.';
+        }
+        $labs = $this->db === null ? 0 : (int) $this->db->fetchValue(
+            "SELECT COUNT(*) FROM lessons l JOIN courses c ON c.tenant_id = l.tenant_id AND c.id = l.course_id
+             WHERE l.tenant_id = ? AND c.status = 'published' AND l.type = 'lab'",
+            [$tenant->id],
+        );
+        $how = [
+            '- **Lessons** to read and watch, which you can also save to study offline.',
+            '- **Quizzes** that explain every answer, so a wrong answer still teaches you something.',
+        ];
+        if ($labs > 0) {
+            $how[] = '- **Hands-on labs** in the browser: build circuits, networks or code and see the result, with new numbers every time.';
+        }
+        $how[] = '- **Teachers** who answer questions under every lesson and review the work learners hand in.';
+        if ($tenant->certificatesEnabled) {
+            $how[] = '- **Certificates** for finished courses, which anyone can check online with the certificate number.';
+        }
+        if ($tenant->parentRequests) {
+            $how[] = '- **Parents and guardians** can follow their child\'s progress once the school has checked who they are.';
+        }
+        $what = $taught === []
+            ? 'Our courses will be listed here soon. See [all courses](/courses).'
+            : implode("\n\n", $taught) . "\n\nSee [all courses](/courses), or [programmes](/programmes) for how they fit together.";
+        $reach = $this->reach($tenant);
+
+        return $intro . "\n\n## What we teach\n\n" . $what . "\n\n## How learning works here\n\n" . implode("\n", $how)
+            . "\n\n## Join us\n\nSee [Admissions](/admissions) for how to start, or contact us " . $reach . '. You can also read our [questions and answers](/faq).';
+    }
 
     private function admissions(Tenant $tenant, bool $online): string
     {
