@@ -103,7 +103,7 @@ $admissionsPage = array_values(array_filter($sitePages, static fn ($sp): bool =>
     <h2 id="latest"><?= $tenant->publicCatalogue ? 'Popular courses' : 'Free courses anyone can read' ?></h2>
     <a href="/courses">All courses</a>
   </div>
-  <?php include __DIR__ . '/../courses/_list.php'; ?>
+  <?php $listScroll = true; $listLabel = 'Popular courses'; include __DIR__ . '/../courses/_list.php'; ?>
 </section>
 <?php endif; ?>
 
@@ -114,7 +114,7 @@ $admissionsPage = array_values(array_filter($sitePages, static fn ($sp): bool =>
     <a href="/courses?show=open">All open courses</a>
   </div>
   <p class="muted section-sub">No account needed for the lessons. Join when you want to save progress and take the quizzes.</p>
-  <?php $cards = $openCards; include __DIR__ . '/../courses/_list.php'; ?>
+  <?php $cards = $openCards; $listLabel = 'Courses to start reading now'; include __DIR__ . '/../courses/_list.php'; ?>
 </section>
 <?php endif; ?>
 
@@ -125,7 +125,7 @@ $admissionsPage = array_values(array_filter($sitePages, static fn ($sp): bool =>
     <a href="/courses?track=everyday">All everyday courses</a>
   </div>
   <p class="muted section-sub">Short, practical courses for your phone, your money and your business. No school needed: start on your phone today and go at your own pace.</p>
-  <?php $cards = $everydayCards; include __DIR__ . '/../courses/_list.php'; ?>
+  <?php $cards = $everydayCards; $listLabel = 'Courses for everyday life'; include __DIR__ . '/../courses/_list.php'; ?>
 </section>
 <?php endif; ?>
 

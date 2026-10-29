@@ -12,7 +12,7 @@ $c = $card['course'];
 $pct = $card['lessons'] === 0 ? 0 : (int) round($card['done'] * 100 / $card['lessons']);
 ?>
 <article class="course-card<?= $card['completed'] ? ' is-complete' : '' ?><?= $card['enrolled'] ? ' is-enrolled' : '' ?>">
-  <div class="course-cover">
+  <div class="course-cover cover-<?= $v->e($c->track ?? 'other') ?>">
     <?php include __DIR__ . '/_cover.php'; ?>
     <?php include __DIR__ . '/_board.php'; ?>
   </div>

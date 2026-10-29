@@ -7,7 +7,7 @@ Legend: **Built** = implemented and covered by tests · **Partial** = foundation
 | Item | Status | Notes |
 |---|---|---|
 | Repository, layout, coding standards | Built | PSR-12 (phpcs), PHPStan level 8, strict types |
-| Architecture overview, ADRs | Built | `docs/architecture.md`, `docs/adr/0001–0039`; design system in `docs/design-system.md`; interface audit and checklist in `docs/overhaul-checklist.md` |
+| Architecture overview, ADRs | Built | `docs/architecture.md`, `docs/adr/0001–0040`; design system in `docs/design-system.md`; interface audit and checklist in `docs/overhaul-checklist.md` |
 | ERD / data dictionary | Built | Schema diagram in architecture.md; `docs/data-dictionary.md` generated from the live schema (`bin/console schema:dictionary`) with what each table holds and its kind of personal data; a test keeps it complete |
 | Threat model | Built | `docs/threat-model.md`: assets, trust boundaries, STRIDE threats with the controls that answer them, and the top remaining risks |
 | CI (lint, analysis, tests, secret scan, asset budget) | Built | `.github/workflows/ci.yml`, PHP 8.3 / 8.4 / 8.5 matrix on MySQL 8.4 |

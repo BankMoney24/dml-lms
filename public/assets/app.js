@@ -278,11 +278,12 @@
   // App shell: the sidebar slides in on phones. Without scripts the menu link opens it with :target.
   var sidebar = document.getElementById('sidebar');
   var scrim = document.querySelector('.nav-scrim');
-  var opener = document.querySelector('[data-nav-open]');
+  var openers = document.querySelectorAll('[data-nav-open]');
+  var opener = openers[0] || null;
   function setNav(open) {
     document.body.classList.toggle('nav-open', open);
     if (scrim) { scrim.hidden = !open; }
-    if (opener) { opener.setAttribute('aria-expanded', open ? 'true' : 'false'); }
+    Array.prototype.forEach.call(openers, function (o) { o.setAttribute('aria-expanded', open ? 'true' : 'false'); });
     if (open && sidebar) {
       var first = sidebar.querySelector('a[aria-current="page"]') || sidebar.querySelector('a');
       if (first) { first.focus(); }
@@ -291,9 +292,11 @@
     }
   }
   if (sidebar && opener) {
-    opener.setAttribute('role', 'button');
-    opener.setAttribute('aria-expanded', 'false');
-    opener.addEventListener('click', function (e) { e.preventDefault(); setNav(true); });
+    Array.prototype.forEach.call(openers, function (o) {
+      o.setAttribute('role', 'button');
+      o.setAttribute('aria-expanded', 'false');
+      o.addEventListener('click', function (e) { e.preventDefault(); opener = o; setNav(true); });
+    });
     Array.prototype.forEach.call(document.querySelectorAll('[data-nav-close]'), function (el) {
       el.addEventListener('click', function (e) { e.preventDefault(); setNav(false); });
     });

@@ -366,7 +366,7 @@ $hasMain = $continue !== null || $children !== [] || $myGroups !== [] || $myPath
 <?php if ($myCards !== []): ?>
 <section class="section" aria-labelledby="mine">
   <h2 id="mine"><?= $continue !== null ? 'Your other courses' : 'Your courses' ?></h2>
-  <?php $cards = $myCards; include __DIR__ . '/../courses/_list.php'; ?>
+  <?php $cards = $myCards; $listScroll = true; $listLabel = 'Your other courses'; include __DIR__ . '/../courses/_list.php'; ?>
 </section>
 <?php endif; ?>
 
@@ -387,7 +387,7 @@ $hasMain = $continue !== null || $children !== [] || $myGroups !== [] || $myPath
 <?php if ($suggestedCards !== []): ?>
 <section class="section" aria-labelledby="join">
   <h2 id="join"><?= $cardReasons !== [] ? 'Suggested for you' : ($hasLearning ? 'More courses' : 'Courses you can join') ?></h2>
-  <?php $cards = $suggestedCards; include __DIR__ . '/../courses/_list.php'; ?>
+  <?php $cards = $suggestedCards; $listScroll = true; $listLabel = 'More courses'; include __DIR__ . '/../courses/_list.php'; ?>
 </section>
 <?php elseif (!$hasLearning && $teaching === null && $v->can('course.learn')): ?>
   <?= $v->emptyState('No courses yet', 'Your school has not published any courses. Check back soon, or ask your teacher which course to join.') ?>

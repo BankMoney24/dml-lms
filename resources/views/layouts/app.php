@@ -105,25 +105,25 @@ $shell = $tenant !== null && $user !== null;
       <ul>
         <?= $v->sideLink('/', 'Home', 'home') ?>
         <?= $v->sideLink('/courses', 'Courses', 'courses') ?>
-        <?php if ($v->can('course.learn')): ?><?= $v->sideLink('/account/subscriptions', 'My subscriptions', 'receipt') ?><?php endif; ?>
-        <?php if (($counts['in_group'] ?? 0) > 0 || ($counts['teaches_group'] ?? 0) > 0 || $v->can('groups.manage')): ?><?= $v->sideLink('/classes', 'Live classes', 'calendar', [], (int) ($counts['registers'] ?? 0)) ?><?php endif; ?>
+        <?php if ($v->can('course.learn')): ?><?= $v->sideLink('/account/subscriptions', 'My subscriptions', 'receipt', [], 0, 'My courses') ?><?php endif; ?>
+        <?php if (($counts['in_group'] ?? 0) > 0 || ($counts['teaches_group'] ?? 0) > 0 || $v->can('groups.manage')): ?><?= $v->sideLink('/classes', 'Live classes', 'calendar', [], (int) ($counts['registers'] ?? 0), 'Classes') ?><?php endif; ?>
         <?php if (($counts['meetings'] ?? 0) > 0 || $v->can('course.manage') || $v->can('groups.manage')): ?><?= $v->sideLink('/meetings', 'Meetings', 'people', [], (int) ($counts['meetings'] ?? 0)) ?><?php endif; ?>
-        <?php if ($v->can('course.learn')): ?><?= $v->sideLink('/saved', 'Saved and notes', 'saved') ?><?php endif; ?>
-        <?php if ($v->can('course.learn')): ?><?= $v->sideLink('/achievements', 'Achievements', 'sparkle') ?><?php endif; ?>
-        <?php if ($v->can('course.learn') || $v->can('course.manage')): ?><?= $v->sideLink('/playground', 'Code studio', 'code') ?><?php endif; ?>
-        <?php if (($counts['children'] ?? 0) > 0): ?><?= $v->sideLink('/children', ($counts['children'] ?? 0) === 1 ? 'Your child' : 'Your children', 'child') ?><?php endif; ?>
+        <?php if ($v->can('course.learn')): ?><?= $v->sideLink('/saved', 'Saved and notes', 'saved', [], 0, 'Saved') ?><?php endif; ?>
+        <?php if ($v->can('course.learn')): ?><?= $v->sideLink('/achievements', 'Achievements', 'sparkle', [], 0, 'Badges') ?><?php endif; ?>
+        <?php if ($v->can('course.learn') || $v->can('course.manage')): ?><?= $v->sideLink('/playground', 'Code studio', 'code', [], 0, 'Code') ?><?php endif; ?>
+        <?php if (($counts['children'] ?? 0) > 0): ?><?= $v->sideLink('/children', ($counts['children'] ?? 0) === 1 ? 'Your child' : 'Your children', 'child', [], 0, 'Children') ?><?php endif; ?>
       </ul>
       <?php if ($isStaffish): ?>
       <p class="side-label">Teaching</p>
       <ul>
         <?php if ($v->can('course.manage')): ?>
-          <?= $v->sideLink('/teach', 'Your courses', 'teach', ['/teach/courses']) ?>
-          <?= $v->sideLink('/teach/paths', 'Learning paths', 'link') ?>
+          <?= $v->sideLink('/teach', 'Your courses', 'teach', ['/teach/courses'], 0, 'Teach') ?>
+          <?= $v->sideLink('/teach/paths', 'Learning paths', 'link', [], 0, 'Paths') ?>
           <?= $v->sideLink('/teach/reviews', 'Reviews', 'review', [], (int) ($counts['reviews'] ?? 0)) ?>
           <?= $v->sideLink('/teach/questions', 'Questions', 'help', [], (int) ($counts['questions'] ?? 0)) ?>
-          <?= $v->sideLink('/teach/applications', 'Applications', 'inbox', [], (int) ($counts['applications'] ?? 0)) ?>
+          <?= $v->sideLink('/teach/applications', 'Applications', 'inbox', [], (int) ($counts['applications'] ?? 0), 'Applicants') ?>
           <?php if ($v->can('reports.view')): ?><?= $v->sideLink('/school/reports', 'Reports', 'chart') ?><?php endif; ?>
-          <?= $v->sideLink('/teach/labs', 'Lab catalogue', 'lab') ?>
+          <?= $v->sideLink('/teach/labs', 'Lab catalogue', 'lab', [], 0, 'Labs') ?>
         <?php endif; ?>
         <?= $v->sideLink('/groups', $tenant->groupWord(true, true), 'groups') ?>
       </ul>
@@ -134,7 +134,7 @@ $shell = $tenant !== null && $user !== null;
         <?php if ($v->can('school.manage')): ?><?= $v->sideLink('/school', 'Settings', 'school', ['/setup']) ?><?php endif; ?>
         <?php if ($v->can('members.manage')): ?><?= $v->sideLink('/people', 'People', 'people') ?><?php endif; ?>
         <?php if ($v->can('members.manage')): ?><?= $v->sideLink('/school/joining', 'Joining', 'user-plus', [], (int) ($counts['requests'] ?? 0)) ?><?php endif; ?>
-        <?php if ($v->can('support.manage')): ?><?= $v->sideLink('/school/support', 'Help desk', 'inbox', [], (int) ($counts['support'] ?? 0)) ?><?php endif; ?>
+        <?php if ($v->can('support.manage')): ?><?= $v->sideLink('/school/support', 'Help desk', 'inbox', [], (int) ($counts['support'] ?? 0), 'Help desk') ?><?php endif; ?>
         <?php if ($v->can('school.manage')): ?><?= $v->sideLink('/school/website', 'Website', 'link') ?><?php endif; ?>
         <?php if ($v->can('school.manage')): ?><?= $v->sideLink('/school/payments', 'Payments', 'payments', [], (int) ($counts['claims'] ?? 0)) ?><?php endif; ?>
         <?php if ($v->can('audit.view')): ?><?= $v->sideLink('/activity', 'Activity', 'activity') ?><?php endif; ?>
@@ -144,7 +144,7 @@ $shell = $tenant !== null && $user !== null;
     </nav>
     <div class="side-foot">
       <ul>
-        <?= $v->sideLink('/help', 'Get help', 'help') ?>
+        <?= $v->sideLink('/help', 'Get help', 'help', [], 0, 'Help') ?>
       </ul>
       <p class="side-credit"><?php include __DIR__ . '/../partials/tridax_credit.php'; ?></p>
     </div>
@@ -220,6 +220,25 @@ $shell = $tenant !== null && $user !== null;
     </footer>
   </div>
 </div>
+<?php
+    // Phones: the five places people go most, always at the bottom of the screen; everything else is under Menu.
+    $tabTeach = $v->can('course.manage') && !$v->can('course.learn');
+    $tabs = [
+        ['/', 'Home', 'home', $path === '/'],
+        $tabTeach ? ['/teach', 'Teach', 'teach', str_starts_with($path, '/teach')] : ['/courses', 'Courses', 'courses', str_starts_with($path, '/courses')],
+        ['/search', 'Search', 'search', str_starts_with($path, '/search')],
+        ['/notifications', 'Alerts', 'bell', str_starts_with($path, '/notifications')],
+    ];
+?>
+<nav class="tabbar" aria-label="Quick links">
+  <?php foreach ($tabs as [$tabHref, $tabLabel, $tabIcon, $tabOn]): ?>
+  <a class="tabbar-item" href="<?= $tabHref ?>"<?= $tabOn ? ' aria-current="page"' : '' ?>>
+    <span class="tabbar-icon"><?= $v->icon($tabIcon) ?><?php if ($tabIcon === 'bell' && $unread > 0): ?><span class="tabbar-dot" aria-hidden="true"><?= $unread >= 100 ? '99+' : $unread ?></span><?php endif; ?></span>
+    <span class="tabbar-label"><?= $tabLabel ?><?php if ($tabIcon === 'bell' && $unread > 0): ?><span class="visually-hidden">, <?= $unread ?> new</span><?php endif; ?></span>
+  </a>
+  <?php endforeach; ?>
+  <a class="tabbar-item" href="#sidebar" data-nav-open aria-controls="sidebar"><span class="tabbar-icon"><?= $v->icon('menu') ?></span><span class="tabbar-label">Menu</span></a>
+</nav>
 <div class="nav-scrim" data-nav-close hidden></div>
 <?php include __DIR__ . '/../partials/tridax_popover.php'; ?>
 </body>

@@ -110,7 +110,7 @@ final class ViewHelpers
      *
      * @param list<string> $alsoFor
      */
-    public function sideLink(string $href, string $label, string $icon, array $alsoFor = [], int $count = 0): string
+    public function sideLink(string $href, string $label, string $icon, array $alsoFor = [], int $count = 0, ?string $short = null): string
     {
         $path = (string) ($this->shared['path'] ?? '/');
         // With $alsoFor, the link's own section is matched exactly (so /teach is not current on /teach/reviews).
@@ -119,12 +119,14 @@ final class ViewHelpers
             $current = $current || $path === $prefix || str_starts_with($path, $prefix . '/');
         }
 
+        // On tablets the menu is a narrow rail: it shows the short label, and screen readers still hear the full one.
         return sprintf(
-            '<li><a href="%s"%s>%s<span class="side-text">%s</span>%s</a></li>',
+            '<li><a href="%s"%s>%s<span class="side-text">%s</span><span class="side-short" aria-hidden="true">%s</span>%s</a></li>',
             $this->e($href),
             $current ? ' aria-current="page"' : '',
             $this->icon($icon),
             $this->e($label),
+            $this->e($short ?? $label),
             $count > 0 ? '<span class="side-count">' . ($count > 99 ? '99+' : $count) . '<span class="visually-hidden"> waiting</span></span>' : '',
         );
     }

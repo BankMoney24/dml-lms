@@ -6,7 +6,7 @@ The platform has one stylesheet (`public/assets/app.css`, no build step) and one
 
 DML School of Technology: blue and black on light surfaces, navy with red on dark ones. The logo's square "pixels" are the unit of progress everywhere: board strips on course cards, traces on the sign-in panel, the lit squares on the "Ready for learners?" list. Squares are lit (sky blue) when something is done and hollow when it is still to do.
 
-Avoid: gradients as decoration, glass effects, drop shadows on every card, all-caps labels (the only exception is the certificate kicker, which imitates print), and a different radius on every component.
+Avoid: gradients as decoration (the only ones are the faint glow on the dark hero panels and the shade at the foot of a course cover), blur except on bars that sit over content (the top bar and the phone tab bar), heavy shadows (cards get one soft `--shadow-card`; only floating things get `--shadow-2`), all-caps labels (the only exception is the certificate kicker, which imitates print), and radii outside the scale.
 
 ## Tokens (`:root` in app.css)
 
@@ -16,10 +16,11 @@ Avoid: gradients as decoration, glass effects, drop shadows on every card, all-c
 | Text | `--ink`, `--ink-soft` | `--ink-soft` passes 4.5:1 on paper and surface, in both modes |
 | Brand | `--primary` #1670ad, `--primary-soft`, `--primary-ink`; `--lamp` #23a1de (done and progress); `--accent` DML red (what needs attention first, used sparingly); `--brand-navy` #161a25 | |
 | States | `--warn`, `--danger`, their `-soft` backgrounds, `--focus` | |
-| Type | Plus Jakarta Sans (self-hosted, variable 200–800); steps `--step--1` 0.875rem to `--step-4` 2.75rem; body 1.0625rem | |
+| Type | Plus Jakarta Sans (self-hosted, variable 200–800); fluid steps with `clamp()`: `--step-0` 1–1.0625rem (body), `--step-3` 1.75–2.375rem (page titles), `--step-4` up to 3.25rem; headings tighten letter-spacing (−0.025em for h1) | Form fields are 16px so iPhones do not zoom |
 | Space | `--space-1` 0.25rem … `--space-7` 3rem | Use the scale; no one-off pixel gaps |
-| Radius | `--radius-s` 8px (inputs, small controls), `--radius-m` 12px (cards, tables, notices), `--radius-l` 16px (large panels); buttons are fully round | |
-| Layout | `--sidebar-w` 16rem, `--appbar-h` 3.75rem, `--measure` 70ch for reading text | |
+| Radius | `--radius-xs` 6px (badges, square like the logo's pixels), `--radius-s` 10px, buttons and fields 12px, `--radius-m` 14px (notices), `--radius-l` 18px (cards, panels, tables), `--radius-xl` 26px (the dark hero panels) | Larger things get larger corners |
+| Layout | `--sidebar-w` 16.5rem, `--rail-w` 5.75rem (tablets), `--appbar-h` 4rem (3.5rem on phones), `--tabbar-h` 4.25rem, `--gutter` 1–2.5rem fluid, `--measure` 70ch for reading text | |
+| Elevation | `--shadow-1` (hairline), `--shadow-card` (cards, panels, tables), `--shadow-2` (things that float: menus, the drawer, hovered cards); `--ring` is the focus halo on buttons and fields | |
 
 Dark mode follows the device unless the person picks Light or Dark in the account menu (`data-appearance` on `<html>`). Every token above is redefined for dark mode; components use tokens, not raw colours. The seven school colour themes (`.theme-*`) only change `--primary` and its pair, and each is checked for contrast in both modes.
 
@@ -54,7 +55,15 @@ Dark mode follows the device unless the person picks Light or Dark in the accoun
 
 ## Responsive rules
 
-Checked at 360, 390, 430, 768, 820, 1024, 1280 and 1440px wide (`tests/browser/ui_check.py`). No page may scroll sideways; wide tables scroll inside their own frame. Below 48rem the sidebar becomes a slide-in menu. Touch targets are at least 24px (WCAG 2.2, 2.5.8), and main actions 44px.
+The signed-in shell has three forms (ADR 0040):
+
+| Screen | Width | Navigation |
+|---|---|---|
+| Phone | under 48rem (768px) | Top bar with the school, and the account menu; a **bottom tab bar** with Home, Courses (Teach for staff who do not learn), Search, Alerts and Menu. Menu opens the full list as a drawer. Pages with the classroom, the network builder or the code studio hide the tab bar so the work has the whole screen. |
+| Tablet (iPad) | 48–74.99rem | A navy **rail** of icons with short labels (`sideLink(..., $short)`), the full label kept for screen readers; the top bar keeps search and the menu button, which opens the full list over the rail. |
+| Desktop | 75rem and up | The full navy sidebar. |
+
+Rows of courses on the home pages (`$listScroll`) swipe sideways on phones instead of stacking; the course list itself always stacks. Tables marked `.table-stack` turn into one card per row under 40rem. Every page is checked for sideways scrolling at 360–1440px.
 
 ## Accessibility baseline
 
