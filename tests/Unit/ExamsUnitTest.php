@@ -13,6 +13,9 @@ use App\Modules\Exams\Cbt\CbtExams;
 use App\Modules\Exams\Cbt\PaperBuilder;
 use App\Modules\Exams\Live\LiveClock;
 use App\Modules\Exams\Live\LiveGame;
+use App\Modules\Exams\Live\LiveQuestion;
+use App\Modules\Exams\StarterKit\SampleExams;
+use App\Modules\Exams\StarterKit\SampleQuizzes;
 use PHPUnit\Framework\TestCase;
 use Random\Engine\Mt19937;
 use Random\Randomizer;
@@ -101,7 +104,42 @@ final class ExamsUnitTest extends TestCase
                 }
             }
         }
-        $this->assertGreaterThanOrEqual(50, $count);
+        $this->assertGreaterThanOrEqual(200, $count);
+        foreach (SampleBanks::all() as $bank) {
+            $prompts = array_column($bank['questions'], 0);
+            $this->assertSame(count($prompts), count(array_unique($prompts)), $bank['name'] . ' has no question twice, so topping up matches by wording');
+        }
+    }
+
+    public function testTheSampleQuizzesAndExamsFitTheRules(): void
+    {
+        $titles = [];
+        foreach (SampleQuizzes::all() as $quiz) {
+            $titles[] = $quiz['title'];
+            $this->assertStringEndsWith('(sample)', $quiz['title']);
+            foreach ($quiz['questions'] as [$prompt, $answers, $correct, $seconds, $points]) {
+                $this->assertLessThanOrEqual(500, mb_strlen($prompt));
+                $this->assertGreaterThanOrEqual(2, count($answers), $prompt);
+                $this->assertLessThanOrEqual(4, count($answers), $prompt . ': one answer per tile, A to D');
+                $this->assertSame(count($answers), count(array_unique($answers)), $prompt);
+                $this->assertLessThanOrEqual(120, max(0, ...array_map('mb_strlen', $answers)), $prompt);
+                $this->assertArrayHasKey($correct, $answers, $prompt);
+                $this->assertContains($seconds, LiveQuestion::SECONDS, $prompt);
+                $this->assertArrayHasKey($points, LiveQuestion::POINTS, $prompt);
+            }
+        }
+        $this->assertSame(count($titles), count(array_unique($titles)));
+        $banks = array_column(SampleBanks::all(), 'name');
+        foreach (SampleExams::all() as $exam) {
+            $optional = 0;
+            foreach ($exam['sections'] as [$bank, $count, $label, $compulsory]) {
+                $this->assertContains($bank, $banks, $exam['title']);
+                $this->assertGreaterThan(0, $count);
+                $optional += $compulsory ? 0 : 1;
+            }
+            $this->assertTrue($exam['choose'] === 0 || $exam['choose'] < $optional, $exam['title'] . ': candidates choose some, not all, of the optional subjects');
+            $this->assertArrayHasKey($exam['results'], CbtExam::RESULTS);
+        }
     }
 
     public function testPapersDrawTheRightNumberAndKeepPassagesTogether(): void

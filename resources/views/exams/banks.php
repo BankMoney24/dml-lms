@@ -6,7 +6,7 @@
  * @var list<\App\Modules\Exams\Bank\QuestionBank> $banks
  * @var array<string, string> $errors
  * @var array<string, mixed> $old
- * @var int $samplesMissing how many of the sample banks this school does not have yet
+ * @var array{banks: int, questions: int, quizzes: int, exams: int, missing: int} $kit
  */
 $testsTab = 'banks';
 $current = array_values(array_filter($banks, static fn ($b): bool => $b->archivedAt === null));
@@ -22,7 +22,7 @@ $archived = array_values(array_filter($banks, static fn ($b): bool => $b->archiv
   <section aria-labelledby="banks-h">
     <h2 id="banks-h"><?= $v->e($v->plural(count($current), 'bank')) ?></h2>
     <?php if ($current === []): ?>
-      <?= $v->emptyState('No question banks yet', 'Make one for each subject, then add questions one at a time or import a whole set. To try everything first, add the sample banks.') ?>
+      <?= $v->emptyState('No question banks yet', 'Make one for each subject, then add questions one at a time or import a whole set. To try everything first, add the starter kit.') ?>
     <?php else: ?>
     <ul class="bank-grid">
       <?php foreach ($current as $b): ?>
@@ -57,17 +57,6 @@ $archived = array_values(array_filter($banks, static fn ($b): bool => $b->archiv
         <button type="submit" class="button">Make the bank</button>
       </form>
     </section>
-    <section class="panel panel-quiet" aria-labelledby="samples-h">
-      <h2 id="samples-h">Sample banks</h2>
-      <p class="small">Five starter banks (Use of English, Mathematics, Physics, Chemistry and Biology) with about 55 practice questions, so you can try a UTME-style exam and a live quiz straight away. They were written for this site; they are not past JAMB, WAEC or NECO questions.</p>
-      <?php if ($samplesMissing > 0): ?>
-      <form method="post" action="/teach/banks/samples">
-        <?= $v->csrfField() ?>
-        <button type="submit" class="button button-quiet button-small"><?= $samplesMissing === 5 ? 'Add the sample banks' : 'Add the ' . $v->plural($samplesMissing, 'missing sample bank') ?></button>
-      </form>
-      <?php else: ?>
-      <p class="small muted">All five are in your list above.</p>
-      <?php endif; ?>
-    </section>
+    <?php $kitBack = '/teach/banks'; include __DIR__ . '/_starter_kit.php'; ?>
   </aside>
 </div>

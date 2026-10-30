@@ -54,6 +54,7 @@ final class ConsoleApplication
                 'lab:expire' => $this->labExpire(),
                 'payments:plan-reminders' => $this->planReminders(),
                 'exams:close' => $this->examsClose(),
+                'exams:starter-kit' => $this->examsStarterKit($args),
                 'lab:list' => $this->labList(),
                 'mail:status' => $this->mailStatus(),
                 'mail:test' => $this->mailTest($args),
@@ -114,6 +115,7 @@ final class ConsoleApplication
           payments:plan-reminders                   Remind learners paying in parts before a part is due, when it is
                                                     late, and when the course pauses (cron, once a day)
           exams:close                               Submit CBT attempts whose time ran out and end live quizzes
+          exams:starter-kit <tenant-slug> [--author=<email>]  Add sample banks, live quizzes and draft exams (safe to repeat)
                                                     left open for a day (cron, every 5 minutes)
           user:platform-admin <email> [--revoke]    Let a user see the System page (they must use two-step sign-in)
           classroom:connect <tenant-slug> --domain=<host> [--app-id=dml-lms] [--secret-file=<path>] [--low-data=1|0]
@@ -700,6 +702,24 @@ final class ConsoleApplication
         if ($submitted + $ended > 0) {
             printf("Submitted %d exam attempts whose time ran out; ended %d live quizzes left open.\n", $submitted, $ended);
         }
+
+        return 0;
+    }
+
+    /**
+     * Adds the tests starter kit to a school: sample banks (topping up ones it has),
+     * live quizzes and draft exams. Nothing is published.
+     *
+     * @param list<string> $args
+     */
+    private function examsStarterKit(array $args): int
+    {
+        [$positional, $options] = self::options($args);
+        [$slug] = $this->requireArgs($positional, 1, 'exams:starter-kit <tenant-slug> [--author=<email>]');
+        $tenant = $this->container->get(TenantRepository::class)->findBySlug($slug) ?? throw new \RuntimeException('No tenant with that slug.');
+        $added = $this->container->get(\App\Modules\Exams\StarterKit\ExamStarterKit::class)->install($tenant, $this->author($tenant, $options['author'] ?? null));
+        echo \App\Modules\Exams\Http\BankController::kitMessage($added) . "\n";
+        echo "Find them under Teach → Quizzes and exams.\n";
 
         return 0;
     }

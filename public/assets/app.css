@@ -3907,3 +3907,7 @@ body.focus-play .focus-main { max-width: 32rem; display: flex; flex-direction: c
 .table tbody th[scope="row"] { white-space: normal; }
 .items-table tbody th[scope="row"] { font-weight: 500; min-width: 16rem; }
 .exam-scores td.num { white-space: nowrap; }
+
+/* Tests starter kit (update 43) */
+.kit-row { margin-top: var(--space-6); max-width: 40rem; }
+.starter-kit form { margin-top: var(--space-3); }

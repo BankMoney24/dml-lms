@@ -6,6 +6,7 @@
  * @var list<\App\Modules\Exams\Live\LiveQuiz> $quizzes
  * @var array<string, string> $errors
  * @var string $title
+ * @var array{banks: int, questions: int, quizzes: int, exams: int, missing: int} $kit
  */
 $testsTab = 'live';
 ?>
@@ -19,7 +20,7 @@ $testsTab = 'live';
   <section aria-labelledby="quizzes-h">
     <h2 id="quizzes-h"><?= $v->e($v->plural(count($quizzes), 'quiz', 'quizzes')) ?></h2>
     <?php if ($quizzes === []): ?>
-      <?= $v->emptyState('No live quizzes yet', 'Give one a title, add a few questions (or borrow them from a question bank), then press Play live. Learners join at /play with the PIN on your screen.') ?>
+      <?= $v->emptyState('No live quizzes yet', 'Give one a title, add a few questions (or borrow them from a question bank), then press Play live. Learners join at /play with the PIN on your screen. Or add the starter kit for six quizzes ready to play.') ?>
     <?php else: ?>
     <ul class="quiz-grid">
       <?php foreach ($quizzes as $q): ?>
@@ -42,6 +43,7 @@ $testsTab = 'live';
         <button type="submit" class="button">Make the quiz</button>
       </form>
     </section>
+    <?php $kitBack = '/teach/live'; include __DIR__ . '/_starter_kit.php'; ?>
     <section class="panel panel-quiet" aria-labelledby="how-live-h">
       <h2 id="how-live-h">How a game runs</h2>
       <ol class="small how-steps">

@@ -87,6 +87,7 @@ Server and account tasks (done by the school on the server; instructions in each
 - [ ] Paystack live key
 - [ ] Publish the website pages: full drafts can now be saved in one step (School → Website, or `site:full-drafts`), then read and publish
 - [ ] Read and publish the starter blog posts (School → Website → Blog, or `blog:starter-posts`)
+- [ ] Add the tests starter kit (Teach → Quizzes and exams → Starter kit, or `exams:starter-kit`), check the sample questions, then publish the exams you want
 - [ ] Staging copy
 
 ## How to repeat the checks

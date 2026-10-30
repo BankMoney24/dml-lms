@@ -224,6 +224,9 @@ final class SampleSchool
         $this->guardians($admin, $learners);
         $this->requests();
         $this->support($learners, $admin);
+        foreach ((new SampleSchoolTests($this->c, $this->clock, $tenant))->run($teachers[0], $learners, $start) as $line) {
+            $this->say($line);
+        }
         $this->clock->now = null;
         foreach ($learners as $l) {
             $this->c->get(Achievements::class)->refresh($tenant->id, $l->user->id);
@@ -254,6 +257,8 @@ final class SampleSchool
                 'live classes' => $count('SELECT COUNT(*) FROM class_sessions WHERE tenant_id = ?'),
                 'attendance marks' => $count('SELECT COUNT(*) FROM class_attendance WHERE tenant_id = ?'),
                 'help requests' => $count('SELECT COUNT(*) FROM support_requests WHERE tenant_id = ?'),
+                'exam attempts' => $count('SELECT COUNT(*) FROM cbt_attempts WHERE tenant_id = ?'),
+                'live quiz players' => $count('SELECT COUNT(*) FROM live_players WHERE tenant_id = ?'),
                 'notifications' => $count('SELECT COUNT(*) FROM notifications WHERE tenant_id = ?'),
             ],
             'log' => $this->log,

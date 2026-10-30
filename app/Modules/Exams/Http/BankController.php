@@ -16,7 +16,7 @@ use App\Modules\Exams\Bank\BankQuestion;
 use App\Modules\Exams\Bank\BankRepository;
 use App\Modules\Exams\Bank\QuestionBank;
 use App\Modules\Exams\Bank\QuestionBanks;
-use App\Modules\Exams\Bank\SampleBanks;
+use App\Modules\Exams\StarterKit\ExamStarterKit;
 use App\Modules\Reports\Csv;
 
 /** Teach → Tests → Question banks (ADR 0042). */
@@ -28,6 +28,7 @@ final class BankController
         private readonly QuestionBanks $service,
         private readonly BankRepository $banks,
         private readonly Clock $clock,
+        private readonly ExamStarterKit $kit,
     ) {
     }
 
@@ -49,15 +50,39 @@ final class BankController
         return Response::redirect('/teach/banks/' . $id);
     }
 
+    /** Adds the tests starter kit (sample banks, live quizzes and draft exams); the button is on all three lists. */
     public function samples(Request $request): Response
     {
-        $added = $this->service->addSamples(RequestContext::tenant($request), RequestContext::user($request));
-        $this->session->flash('success', $added === 0
-            ? 'The sample banks are already here.'
-            : 'Added ' . $added . ' sample ' . ($added === 1 ? 'bank' : 'banks')
-                . ', open for practice. They are practice questions written for this site, not past exam questions: check them, edit them and add your own.');
+        $added = $this->kit->install(RequestContext::tenant($request), RequestContext::user($request));
+        $this->session->flash('success', self::kitMessage($added));
+        $back = (string) ($request->input('back', '') ?? '');
 
-        return Response::redirect('/teach/banks');
+        return Response::redirect(in_array($back, ['/teach/live', '/teach/exams'], true) ? $back : '/teach/banks');
+    }
+
+    /** @param array{banks: int, questions: int, quizzes: int, exams: int} $added */
+    public static function kitMessage(array $added): string
+    {
+        $parts = [];
+        if ($added['banks'] > 0) {
+            $parts[] = $added['banks'] . ' sample ' . ($added['banks'] === 1 ? 'bank' : 'banks');
+        }
+        if ($added['questions'] > 0) {
+            $parts[] = $added['questions'] . ' sample ' . ($added['questions'] === 1 ? 'question' : 'questions');
+        }
+        if ($added['quizzes'] > 0) {
+            $parts[] = $added['quizzes'] . ' live ' . ($added['quizzes'] === 1 ? 'quiz' : 'quizzes');
+        }
+        if ($added['exams'] > 0) {
+            $parts[] = $added['exams'] . ' draft ' . ($added['exams'] === 1 ? 'exam' : 'exams');
+        }
+        if ($parts === []) {
+            return 'Everything in the starter kit is already here.';
+        }
+        $last = array_pop($parts);
+
+        return 'Added ' . ($parts === [] ? $last : implode(', ', $parts) . ' and ' . $last)
+            . '. They were written for this site, not taken from past JAMB, WAEC or NECO papers: check them, edit them and add your own. The exams stay drafts until you publish them.';
     }
 
     public function show(Request $request): Response
@@ -251,14 +276,10 @@ final class BankController
     private function renderIndex(Request $request, array $errors = [], array $old = [], int $status = 200): Response
     {
         $tenant = RequestContext::tenant($request);
-        $banks = $this->banks->banks($tenant->id, true);
-        $names = array_map(static fn (QuestionBank $b): string => mb_strtolower($b->name), $banks);
-        $missing = array_filter(SampleBanks::all(), static fn (array $s): bool => !in_array(mb_strtolower($s['name']), $names, true));
-
         return Response::html($this->view->render('exams/banks', [
             'pageTitle' => 'Question banks',
-            'banks' => $banks,
-            'samplesMissing' => count($missing),
+            'banks' => $this->banks->banks($tenant->id, true),
+            'kit' => $this->kit->summary($tenant),
             'errors' => $errors,
             'old' => $old,
         ]), $status);

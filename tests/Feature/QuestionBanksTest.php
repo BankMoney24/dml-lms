@@ -98,13 +98,13 @@ final class QuestionBanksTest extends AppTestCase
         $this->assertRedirectTo('/teach/banks', $this->post(self::HOST, '/teach/banks/samples'));
         $this->assertRedirectTo('/teach/banks', $this->post(self::HOST, '/teach/banks/samples'), 'adding again changes nothing');
         $banks = $this->db()->fetchAll('SELECT id, name, practice FROM question_banks WHERE tenant_id = ? ORDER BY id', [$this->tenant->id]);
-        $this->assertCount(5, $banks);
+        $this->assertCount(count(\App\Modules\Exams\Bank\SampleBanks::all()), $banks);
         $this->assertSame(1, (int) $banks[0]['practice']);
         $this->assertSame(1, (int) $this->db()->fetchValue('SELECT COUNT(*) FROM bank_passages WHERE tenant_id = ?', [$this->tenant->id]));
         $list = $this->get(self::HOST, '/teach/banks');
         $this->assertStringContainsString('not past', $list->body, 'the sample banks say they are not past exam questions');
-        $this->assertStringContainsString('All five are in your list above.', $list->body);
-        $this->assertStringNotContainsString('Add the sample banks', $list->body);
+        $this->assertStringContainsString('Everything in the kit is in your lists.', $list->body);
+        $this->assertStringNotContainsString('Add the starter kit', $list->body);
 
         $bank = $this->bank('Comprehension');
         $this->assertSame(303, $this->post(self::HOST, '/teach/banks/' . $bank . '/passages', ['title' => 'The market', 'body' => 'Mama Nkechi opens her stall at six.'])->status);

@@ -20,6 +20,7 @@ final class SampleSchoolTest extends AppTestCase
         $kinds = [
             'enrolments', 'lessons completed', 'quiz attempts', 'lab sessions', 'certificates', 'payments',
             'payment notes', 'applications', 'questions', 'groups', 'help requests', 'notifications', 'live classes', 'attendance marks',
+            'exam attempts', 'live quiz players',
         ];
         foreach ($kinds as $what) {
             $this->assertGreaterThan(0, $result['counts'][$what], $what);
@@ -31,6 +32,7 @@ final class SampleSchoolTest extends AppTestCase
         $dated = [
             'enrolments' => 'enrolled_at', 'quiz_attempts' => 'submitted_at', 'notifications' => 'created_at',
             'certificates' => 'issued_at', 'lab_sessions' => 'started_at', 'audit_events' => 'created_at',
+            'cbt_attempts' => 'submitted_at', 'live_answers' => 'answered_at',
         ];
         foreach ($dated as $table => $column) {
             $future = $this->db()->fetchAll("SELECT * FROM {$table} WHERE tenant_id = ? AND {$column} > ? LIMIT 3", [$tid, $soon]);
@@ -39,6 +41,12 @@ final class SampleSchoolTest extends AppTestCase
         $this->assertGreaterThan(30, (int) $this->db()->fetchValue('SELECT DATEDIFF(MAX(enrolled_at), MIN(enrolled_at)) FROM enrolments WHERE tenant_id = ?', [$tid]), 'activity is spread over weeks');
         $pendingNotes = (int) $this->db()->fetchValue("SELECT COUNT(*) FROM payment_claims WHERE tenant_id = ? AND status = 'pending'", [$tid]);
         $this->assertGreaterThanOrEqual(3, $pendingNotes, 'payment notes waiting for the school (3 set up, plus any made late today)');
+        $this->assertSame(0, (int) $this->db()->fetchValue('SELECT COUNT(*) FROM cbt_attempts WHERE tenant_id = ? AND submitted_at IS NULL', [$tid]), 'every sample attempt is marked');
+        $this->assertSame(['closed', 'published'], array_column($this->db()->fetchAll(
+            "SELECT status FROM cbt_exams WHERE tenant_id = ? AND status <> 'draft' ORDER BY status",
+            [$tid],
+        ), 'status'), 'the mock UTME has closed and the maths test is open');
+        $this->assertSame(2, (int) $this->db()->fetchValue("SELECT COUNT(*) FROM live_sessions WHERE tenant_id = ? AND status = 'finished'", [$tid]));
 
         // The owner can sign in with the printed password and sees a busy school.
         $this->assertRedirectTo('/', $this->login('sample.test', 'owner@sample.test', $result['password']));

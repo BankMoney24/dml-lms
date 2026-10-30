@@ -1065,12 +1065,22 @@ final class Application
             $c->get(Clock::class),
             $c->get(AuditLog::class),
         ));
+        $c->set(\App\Modules\Exams\StarterKit\ExamStarterKit::class, static fn (Container $c) => new \App\Modules\Exams\StarterKit\ExamStarterKit(
+            $c->get(\App\Modules\Exams\Bank\QuestionBanks::class),
+            $c->get(\App\Modules\Exams\Bank\BankRepository::class),
+            $c->get(\App\Modules\Exams\Live\LiveGame::class),
+            $c->get(\App\Modules\Exams\Live\LiveRepository::class),
+            $c->get(\App\Modules\Exams\Cbt\CbtExams::class),
+            $c->get(\App\Modules\Exams\Cbt\CbtRepository::class),
+            $c->get(AuditLog::class),
+        ));
         $c->set(\App\Modules\Exams\Http\BankController::class, static fn (Container $c) => new \App\Modules\Exams\Http\BankController(
             $c->get(View::class),
             $c->get(Session::class),
             $c->get(\App\Modules\Exams\Bank\QuestionBanks::class),
             $c->get(\App\Modules\Exams\Bank\BankRepository::class),
             $c->get(Clock::class),
+            $c->get(\App\Modules\Exams\StarterKit\ExamStarterKit::class),
         ));
         $c->set(\App\Modules\Exams\Http\CbtAdminController::class, static fn (Container $c) => new \App\Modules\Exams\Http\CbtAdminController(
             $c->get(View::class),
@@ -1079,6 +1089,7 @@ final class Application
             $c->get(\App\Modules\Exams\Cbt\CbtRepository::class),
             $c->get(\App\Modules\Exams\Bank\BankRepository::class),
             $c->get(Clock::class),
+            $c->get(\App\Modules\Exams\StarterKit\ExamStarterKit::class),
         ));
         $c->set(\App\Modules\Exams\Http\CbtController::class, static fn (Container $c) => new \App\Modules\Exams\Http\CbtController(
             $c->get(View::class),
@@ -1094,6 +1105,7 @@ final class Application
             $c->get(\App\Modules\Exams\Live\LiveRepository::class),
             $c->get(\App\Modules\Exams\Bank\BankRepository::class),
             $c->get(Clock::class),
+            $c->get(\App\Modules\Exams\StarterKit\ExamStarterKit::class),
         ));
         $c->set(\App\Modules\Exams\Http\PlayController::class, static fn (Container $c) => new \App\Modules\Exams\Http\PlayController(
             $c->get(View::class),

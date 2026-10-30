@@ -18,6 +18,7 @@ use App\Modules\Exams\Cbt\CbtExam;
 use App\Modules\Exams\Cbt\CbtExams;
 use App\Modules\Exams\Cbt\CbtRepository;
 use App\Modules\Reports\Csv;
+use App\Modules\Exams\StarterKit\ExamStarterKit;
 use App\Modules\Tenancy\Tenant;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -32,6 +33,7 @@ final class CbtAdminController
         private readonly CbtRepository $exams,
         private readonly BankRepository $banks,
         private readonly Clock $clock,
+        private readonly ExamStarterKit $kit,
     ) {
     }
 
@@ -42,6 +44,7 @@ final class CbtAdminController
         return Response::html($this->view->render('exams/cbt_list', [
             'pageTitle' => 'CBT exams',
             'rows' => $this->exams->exams($tenant->id),
+            'kit' => $this->kit->summary($tenant),
             'now' => $this->clock->sqlNow(),
             'hasBanks' => $this->banks->banks($tenant->id) !== [],
         ]));

@@ -21,6 +21,22 @@ final class SampleBanks
      */
     public static function all(): array
     {
+        $extra = SampleSubjects::topUps();
+        $out = [];
+        foreach (self::core() as $bank) {
+            $bank['questions'] = array_merge($bank['questions'], $extra[$bank['name']] ?? []);
+            $out[] = $bank;
+        }
+
+        return array_merge($out, SampleSubjects::banks(), SampleTech::banks());
+    }
+
+    /**
+     * @return list<array{name: string, passages: array<string, array{0: string, 1: string}>,
+     *     questions: list<array{0: string, 1: list<string>, 2: int, 3: string, 4: string, 5: int, 6?: string}>}>
+     */
+    private static function core(): array
+    {
         return [
             [
                 'name' => 'Use of English (sample)',

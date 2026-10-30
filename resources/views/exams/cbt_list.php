@@ -6,6 +6,7 @@
  * @var list<array{exam: \App\Modules\Exams\Cbt\CbtExam, attempts: int, submitted: int, in_progress: int}> $rows
  * @var string $now
  * @var bool $hasBanks
+ * @var array{banks: int, questions: int, quizzes: int, exams: int, missing: int} $kit
  */
 $testsTab = 'exams';
 $statusBadge = static function (\App\Modules\Exams\Cbt\CbtExam $e, string $now) use ($v): string {
@@ -37,7 +38,7 @@ $statusBadge = static function (\App\Modules\Exams\Cbt\CbtExam $e, string $now) 
 <?php include __DIR__ . '/_teach_tabs.php'; ?>
 
 <?php if (!$hasBanks): ?>
-  <?= $v->emptyState('First, a question bank', 'An exam draws its questions from banks, one per subject. Make a bank and add questions, or add the sample banks to try it out.', '/teach/banks', 'Go to question banks') ?>
+  <?= $v->emptyState('First, a question bank', 'An exam draws its questions from banks, one per subject. Make a bank and add questions, or add the starter kit below to try it out.', '/teach/banks', 'Go to question banks') ?>
 <?php elseif ($rows === []): ?>
   <?= $v->emptyState('No exams yet', 'Set a mock exam, a test at the end of a topic, or a full UTME-style practice: English plus three subjects, two hours.', '/teach/exams/new?layout=utme', 'Start from the UTME layout') ?>
 <?php else: ?>
@@ -56,5 +57,11 @@ $statusBadge = static function (\App\Modules\Exams\Cbt\CbtExam $e, string $now) 
     <?php endforeach; ?>
     </tbody>
   </table>
+</div>
+<?php endif; ?>
+
+<?php if ($kit['missing'] > 0 || $rows === []): ?>
+<div class="kit-row">
+  <?php $kitBack = '/teach/exams'; include __DIR__ . '/_starter_kit.php'; ?>
 </div>
 <?php endif; ?>

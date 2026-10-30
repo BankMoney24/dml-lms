@@ -155,38 +155,64 @@ final class QuestionBanks
     }
 
     /**
-     * Adds the sample banks (subject names ending "(sample)") that the school does not have yet.
+     * Adds the sample banks (subject names ending "(sample)") that the school does not
+     * have yet, and tops up the ones it has with sample questions added since, matched
+     * by their wording. Archived sample banks are left alone. Running it twice changes nothing.
      *
-     * @return int how many banks were added
+     * @return array{banks: int, questions: int} banks created, and questions added in all
      */
-    public function addSamples(Tenant $tenant, CurrentUser $by): int
+    public function addSamples(Tenant $tenant, CurrentUser $by): array
     {
         $by->authorise(Permission::CourseManage);
-        $added = 0;
+        $existing = [];
+        foreach ($this->banks->banks($tenant->id, true) as $b) {
+            $existing[mb_strtolower($b->name)] = $b;
+        }
+        $banks = 0;
+        $questions = 0;
         foreach (SampleBanks::all() as $sample) {
-            if ($this->banks->nameTaken($tenant->id, $sample['name'])) {
+            $have = $existing[mb_strtolower($sample['name'])] ?? null;
+            if ($have !== null && $have->archivedAt !== null) {
                 continue;
             }
-            $this->db->transaction(function () use ($tenant, $by, $sample): void {
-                $bankId = $this->banks->createBank($tenant->id, $sample['name'], SampleBanks::NOTE, true, $by->user->id);
+            $questions += $this->db->transaction(function () use ($tenant, $by, $sample, $have): int {
+                $bankId = $have !== null ? $have->id : $this->banks->createBank($tenant->id, $sample['name'], SampleBanks::NOTE, true, $by->user->id);
                 $passages = [];
-                foreach ($sample['passages'] as $key => [$title, $body]) {
-                    $passages[$key] = $this->banks->createPassage($tenant->id, $bankId, $title, $body);
+                foreach ($this->banks->passages($tenant->id, $bankId) as $p) {
+                    $passages[$p->title] = $p->id;
                 }
+                $passageIds = [];
+                foreach ($sample['passages'] as $key => [$title, $body]) {
+                    $passageIds[$key] = $passages[$title] ?? $this->banks->createPassage($tenant->id, $bankId, $title, $body);
+                }
+                $prompts = [];
+                foreach ($this->banks->allQuestions($tenant->id, $bankId, true) as $q) {
+                    $prompts[$q->prompt] = true;
+                }
+                $added = 0;
                 foreach ($sample['questions'] as $q) {
+                    if (isset($prompts[$q[0]])) {
+                        continue;
+                    }
                     $this->banks->createQuestion($tenant->id, $bankId, [
-                        'passage_id' => isset($q[6]) ? ($passages[$q[6]] ?? null) : null,
+                        'passage_id' => isset($q[6]) ? ($passageIds[$q[6]] ?? null) : null,
                         'prompt' => $q[0], 'options' => $q[1], 'correct' => $q[2], 'explanation' => $q[3], 'topic' => $q[4], 'difficulty' => $q[5],
                     ], $by->user->id);
+                    $added++;
                 }
+                if ($have !== null && $added > 0) {
+                    $this->banks->touchBank($tenant->id, $bankId);
+                }
+
+                return $added;
             });
-            $added++;
+            $banks += $have === null ? 1 : 0;
         }
-        if ($added > 0) {
-            $this->audit->record($tenant->id, $by->user->id, 'bank.samples_added', null, null, ['banks' => $added]);
+        if ($banks + $questions > 0) {
+            $this->audit->record($tenant->id, $by->user->id, 'bank.samples_added', null, null, ['banks' => $banks, 'questions' => $questions]);
         }
 
-        return $added;
+        return ['banks' => $banks, 'questions' => $questions];
     }
 
     /**

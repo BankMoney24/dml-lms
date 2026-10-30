@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Exams\Http;
 
+use App\Modules\Exams\StarterKit\ExamStarterKit;
 use App\Core\Clock;
 use App\Core\Http\HttpException;
 use App\Core\Http\Request;
@@ -30,6 +31,7 @@ final class LiveAdminController
         private readonly LiveRepository $live,
         private readonly BankRepository $banks,
         private readonly Clock $clock,
+        private readonly ExamStarterKit $kit,
     ) {
     }
 
@@ -41,6 +43,7 @@ final class LiveAdminController
         return Response::html($this->view->render('exams/live_list', [
             'pageTitle' => 'Live quizzes',
             'quizzes' => $this->live->quizzes($tenant->id),
+            'kit' => $this->kit->summary($tenant),
             'errors' => $errors,
             'title' => $title,
         ]), $status);

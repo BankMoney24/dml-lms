@@ -111,7 +111,7 @@ final class CbtExamsTest extends AppTestCase
         $exam = $this->exam(['section_count' => ['5', '40', '4', '4']]);
         $this->post(self::HOST, '/teach/exams/' . $exam . '/publish');
         $this->assertSame('draft', $this->db()->fetchValue('SELECT status FROM cbt_exams WHERE id = ?', [$exam]), 'Physics asks for more questions than its bank has');
-        $this->assertStringContainsString('asks for 40 questions but its bank has 10', $this->get(self::HOST, '/teach/exams/' . $exam)->body);
+        $this->assertStringContainsString('asks for 40 questions but its bank has 19', $this->get(self::HOST, '/teach/exams/' . $exam)->body);
         $this->assertRedirectTo('/teach/exams/' . $exam, $this->post(self::HOST, '/teach/exams/' . $exam, [
             'title' => 'SS 3 Mock UTME', 'section_bank' => [(string) $this->banks['Use'], (string) $this->banks['Physics'], (string) $this->banks['Chemistry'], (string) $this->banks['Biology']],
             'section_count' => ['5', '4', '4', '4'], 'section_label' => ['Use of English', 'Physics', 'Chemistry', 'Biology'], 'section_compulsory' => ['0'],
