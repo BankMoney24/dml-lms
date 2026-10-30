@@ -135,5 +135,10 @@ $learns = $v->can('course.learn');
     </ul>
     <?php endif; ?>
   </section>
+  <section class="panel panel-quiet" aria-labelledby="cards-h">
+    <h2 id="cards-h">Report cards</h2>
+    <p class="small">Your term report cards, once your teacher shares them: scores by subject, grades, positions and remarks.</p>
+    <p><a class="button button-small button-quiet" href="/report-cards">Your report cards</a></p>
+  </section>
 </aside>
 </div>

@@ -47,6 +47,8 @@ final class SampleSchoolTest extends AppTestCase
             [$tid],
         ), 'status'), 'the mock UTME has closed and the maths test is open');
         $this->assertSame(2, (int) $this->db()->fetchValue("SELECT COUNT(*) FROM live_sessions WHERE tenant_id = ? AND status = 'finished'", [$tid]));
+        $this->assertSame(1, (int) $this->db()->fetchValue("SELECT COUNT(*) FROM report_cards WHERE tenant_id = ? AND status = 'published'", [$tid]));
+        $this->assertGreaterThan(0, (int) $this->db()->fetchValue('SELECT COUNT(*) FROM report_card_remarks WHERE tenant_id = ?', [$tid]));
 
         // The owner can sign in with the printed password and sees a busy school.
         $this->assertRedirectTo('/', $this->login('sample.test', 'owner@sample.test', $result['password']));

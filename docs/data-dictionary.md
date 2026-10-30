@@ -70,6 +70,8 @@ Personal data kinds: **Account** (who someone is), **Learning record** (what the
 | Quizzes and exams | [`live_quizzes`](#live-quizzes) | Live quizzes teachers run in class. | None |
 | Quizzes and exams | [`live_sessions`](#live-sessions) | Each time a live quiz is played: PIN, host, a copy of the questions, where the game is. | None |
 | Quizzes and exams | [`question_banks`](#question-banks) | A school's question banks, one per subject, and whether learners may practise from them. | None |
+| Report cards | [`report_cards`](#report-cards) | A class's report card for a term: title, the exams that count and their weights, grading scale, shared or not. | None |
+| Report cards | [`report_card_remarks`](#report-card-remarks) | The class teacher's and head's remarks on one learner's report card. | Learning record |
 | School | [`api_keys`](#api-keys) | Keys the school made for its own systems to read data through API v1: name, prefix, a hash of the key (never the key), who made it, last use. | Security |
 | Schools | [`tenants`](#tenants) | One row per school: name, branding, time zone, settings chosen in setup. | None |
 | Schools | [`tenant_domains`](#tenant-domains) | Web addresses that open a school; one is the primary address. | None |
@@ -1218,6 +1220,40 @@ Two-step sign-in recovery codes, stored as hashes.
 | `code_hash` | char(64) |  |  | unique |
 | `used_at` | datetime | yes | `NULL` |  |
 | `created_at` | datetime |  |  |  |
+
+## report_cards
+
+A class's report card for a term: title, the exams that count and their weights, grading scale, shared or not.
+
+| Column | Type | Null | Default | Key |
+|---|---|---|---|---|
+| `id` | bigint(20) unsigned |  |  | primary |
+| `tenant_id` | bigint(20) unsigned |  |  | index |
+| `group_id` | bigint(20) unsigned |  |  |  |
+| `title` | varchar(120) |  |  |  |
+| `components` | longtext |  |  |  |
+| `grading` | varchar(20) |  | `'waec'` |  |
+| `next_term` | varchar(160) | yes | `NULL` |  |
+| `status` | varchar(20) |  | `'draft'` |  |
+| `published_at` | datetime | yes | `NULL` |  |
+| `created_by` | bigint(20) unsigned |  |  | index |
+| `created_at` | datetime |  |  |  |
+| `updated_at` | datetime |  |  |  |
+
+## report_card_remarks
+
+The class teacher's and head's remarks on one learner's report card.
+
+| Column | Type | Null | Default | Key |
+|---|---|---|---|---|
+| `id` | bigint(20) unsigned |  |  | primary |
+| `tenant_id` | bigint(20) unsigned |  |  | index |
+| `report_card_id` | bigint(20) unsigned |  |  | index |
+| `user_id` | bigint(20) unsigned |  |  | index |
+| `teacher_remark` | varchar(600) | yes | `NULL` |  |
+| `head_remark` | varchar(600) | yes | `NULL` |  |
+| `updated_by` | bigint(20) unsigned |  |  | index |
+| `updated_at` | datetime |  |  |  |
 
 ## schema_migrations
 

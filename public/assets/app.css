@@ -3935,3 +3935,26 @@ body.focus-play .focus-main { max-width: 32rem; display: flex; flex-direction: c
 .class-exams td > span { display: block; }
 .class-exams .pg-count { white-space: nowrap; font-weight: 700; }
 .class-exams tfoot th, .class-exams tfoot td { border-top: 2px solid var(--line-strong, var(--line)); font-size: var(--step--1); }
+
+/* Report cards (update 46) */
+.rc-components .rc-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) 6rem; gap: var(--space-3); align-items: end; margin-top: var(--space-3); }
+.rc-components .rc-row .field { margin: 0; }
+@media (max-width: 40rem) { .rc-components .rc-row { grid-template-columns: 1fr 6rem; } .rc-components .rc-row .field:first-child { grid-column: 1 / -1; } }
+.rc-list .set-course { justify-content: space-between; }
+.rc-absent { display: block; color: var(--danger); font-weight: 650; }
+.rc-broadsheet td .small { display: block; }
+.rc-step { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); margin: var(--space-3) 0 var(--space-4); }
+.rc-step a { display: inline-flex; align-items: center; gap: 0.35rem; }
+.report-card-h { font-size: var(--step-2); margin: 0; }
+.report-card-table th .small { display: block; font-weight: 400; }
+.rc-remarks { display: grid; gap: var(--space-3); }
+.rc-remarks h3 { font-size: var(--step--1); margin: 0 0 0.2rem; color: var(--ink-soft); }
+.rc-remarks p { margin: 0; }
+.rc-key { margin-top: var(--space-4); }
+.rc-remark-form { max-width: 52rem; margin-top: var(--space-6); }
+.rc-share { max-width: 52rem; margin-top: var(--space-6); }
+@media print {
+  .rc-page { break-after: page; }
+  .rc-page:last-child { break-after: auto; }
+  .report-card .report-part { break-inside: avoid; }
+}

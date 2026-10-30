@@ -86,6 +86,8 @@ final class DataDictionary
         'bank_questions' => ['Quizzes and exams', 'Bank questions: options A to E, the right one, explanation, topic, difficulty, a picture and its description, times seen and right.', self::NONE],
         'cbt_exams' => ['Quizzes and exams', 'CBT exams: sections from banks, subjects to choose, time, window, who sits it, attempts, results policy and announcement, access code.', self::NONE],
         'cbt_exam_groups' => ['Quizzes and exams', 'Which classes sit a CBT exam set for classes only.', self::NONE],
+        'report_cards' => ['Report cards', 'A class\'s report card for a term: title, the exams that count and their weights, grading scale, shared or not.', self::NONE],
+        'report_card_remarks' => ['Report cards', 'The class teacher\'s and head\'s remarks on one learner\'s report card.', self::LEARNING],
         'cbt_attempts' => ['Quizzes and exams', 'One sitting of a CBT exam or practice test: questions drawn, answers, flags, deadline, times the page was left, scores by subject.', self::LEARNING],
         'live_quizzes' => ['Quizzes and exams', 'Live quizzes teachers run in class.', self::NONE],
         'live_questions' => ['Quizzes and exams', 'Questions in a live quiz: answers, the right one, time limit, points.', self::NONE],

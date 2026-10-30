@@ -7,6 +7,7 @@
  * @var \App\Modules\Guardians\GuardianLink $link
  * @var list<\App\Modules\Guardians\GuardianLink> $siblings
  * @var list<array{title: string, slug: string, status: string, done: int, total: int, last_at: ?string, due_on: ?string}> $courses
+ * @var list<\App\Modules\ReportCards\ReportCard> $reportCards
  * @var ?array{quizzes: list<array{course: string, lesson: string, best: int, passed: bool, attempts: int}>, assignments: list<array{course: string, lesson: string, status: string, at: string}>, exams: list<array{title: string, at: string, total: int, max: int, percent: int, sections: list<array{label: string, scaled: int}>}>} $results
  * @var list<\App\Modules\Certificates\Certificate> $certificates
  * @var list<array{group: \App\Modules\Groups\LearnerGroup, teachers: list<string>, courses: list<array{course: \App\Modules\Courses\Course, due_on: ?string}>, announcements: list<array{id: int, body: string, author: string, author_id: ?int, created_at: string}>}> $groups
@@ -94,6 +95,17 @@ $nothing = !$link->canProgress && !$link->canResults && !$link->canNotices;
     <?php endforeach; ?>
   </ol>
   <?php endif; ?>
+</section>
+<?php endif; ?>
+
+<?php if (($reportCards ?? []) !== []): ?>
+<section class="section" aria-labelledby="rc-h">
+  <h2 id="rc-h">Report cards</h2>
+  <ul class="plain-list rc-list">
+    <?php foreach ($reportCards as $rcard): ?>
+    <li class="set-course"><span><a href="/children/<?= $link->learnerId ?>/report-cards/<?= $rcard->id ?>"><?= $v->e($rcard->title) ?></a><span class="small muted"><?= $v->e($rcard->groupName) ?>, shared <?= $v->datetime((string) $rcard->publishedAt, 'j M Y') ?></span></span></li>
+    <?php endforeach; ?>
+  </ul>
 </section>
 <?php endif; ?>
 

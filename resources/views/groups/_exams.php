@@ -12,7 +12,10 @@
 <section class="section" aria-labelledby="class-exams-h">
   <div class="section-head">
     <h2 id="class-exams-h">Exams</h2>
-    <?php if ($exams['list'] !== [] && $learners !== []): ?><a class="button button-small button-quiet" href="/groups/<?= $group->id ?>/exams.csv" download><?= $v->icon('download') ?>Download exam results</a><?php endif; ?>
+    <p class="row-actions">
+      <a class="button button-small" href="/groups/<?= $group->id ?>/report-cards">Report cards</a>
+      <?php if ($exams['list'] !== [] && $learners !== []): ?><a class="button button-small button-quiet" href="/groups/<?= $group->id ?>/exams.csv" download><?= $v->icon('download') ?>Download exam results</a><?php endif; ?>
+    </p>
   </div>
   <?php if ($exams['list'] === []): ?>
     <p class="muted">No CBT exams are set for this class yet. Set one under <a href="/teach/exams">Quizzes and exams → CBT exams</a>, for everyone or for this class.</p>

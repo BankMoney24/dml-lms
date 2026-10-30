@@ -351,6 +351,23 @@ return static function (Router $r): void {
     $r->get('/groups/{group:int}', [GroupController::class, 'show'], $groups);
     $r->get('/groups/{group:int}/progress.csv', [GroupController::class, 'export'], $groups);
     $r->get('/groups/{group:int}/exams.csv', [GroupController::class, 'examsExport'], $groups);
+    // Report cards (ADR 0046).
+    $rc = \App\Modules\ReportCards\Http\ReportCardController::class;
+    $r->get('/groups/{group:int}/report-cards', [$rc, 'index'], $groups);
+    $r->post('/groups/{group:int}/report-cards', [$rc, 'store'], $groups);
+    $r->get('/groups/{group:int}/report-cards/{card:int}', [$rc, 'show'], $groups);
+    $r->post('/groups/{group:int}/report-cards/{card:int}', [$rc, 'update'], $groups);
+    $r->get('/groups/{group:int}/report-cards/{card:int}/edit', [$rc, 'edit'], $groups);
+    $r->get('/groups/{group:int}/report-cards/{card:int}/print', [$rc, 'printAll'], $groups);
+    $r->get('/groups/{group:int}/report-cards/{card:int}/broadsheet.csv', [$rc, 'csv'], $groups);
+    $r->post('/groups/{group:int}/report-cards/{card:int}/publish', [$rc, 'publish'], $groups);
+    $r->post('/groups/{group:int}/report-cards/{card:int}/unpublish', [$rc, 'unpublish'], $groups);
+    $r->post('/groups/{group:int}/report-cards/{card:int}/delete', [$rc, 'delete'], $groups);
+    $r->get('/groups/{group:int}/report-cards/{card:int}/learners/{learner:int}', [$rc, 'learner'], $groups);
+    $r->post('/groups/{group:int}/report-cards/{card:int}/learners/{learner:int}', [$rc, 'saveRemarks'], $groups);
+    $r->get('/report-cards', [$rc, 'mine'], ['tenant', 'auth']);
+    $r->get('/report-cards/{card:int}', [$rc, 'myCard'], ['tenant', 'auth']);
+    $r->get('/children/{learner:int}/report-cards/{card:int}', [$rc, 'childCard'], ['tenant', 'auth']);
     $r->post('/groups/{group:int}/details', [GroupController::class, 'update'], ['tenant', 'auth', 'can:groups.manage']);
     $r->post('/groups/{group:int}/archive', [GroupController::class, 'archive'], ['tenant', 'auth', 'can:groups.manage']);
     $r->post('/groups/{group:int}/teachers', [GroupController::class, 'teachers'], ['tenant', 'auth', 'can:groups.manage']);

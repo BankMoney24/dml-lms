@@ -31,7 +31,8 @@ use DateTimeZone;
  * * the Mathematics class test is published and left open, with some attempts;
  * * a few learners set themselves practice tests;
  * * two finished live quiz games, on days 80 and 86;
- * * a few exam candidates who left the exam page now and then (ADR 0045).
+ * * a few exam candidates who left the exam page now and then (ADR 0045);
+ * * a shared report card for the teacher's first class, with remarks (ADR 0046).
  *
  * Only learners who had joined by then take part.
  */
@@ -122,6 +123,41 @@ final class SampleSchoolTests
             $practice += $this->sit($learner, $id, 20) ? 1 : 0;
         }
         $log[] = sprintf('%d practice tests.', $practice);
+
+        // A shared report card for the teacher's first class, from the mock and the maths test (ADR 0046).
+        if ($mock !== null && $maths !== null) {
+            $this->clock->at($start->modify('+89 days')->setTime(15, 0));
+            $groupId = (int) $this->db->fetchValue(
+                "SELECT m.group_id FROM learner_group_members m JOIN learner_groups g ON g.tenant_id = m.tenant_id AND g.id = m.group_id
+                 WHERE m.tenant_id = ? AND m.user_id = ? AND m.role = 'teacher' AND g.archived_at IS NULL ORDER BY m.group_id LIMIT 1",
+                [$this->tenant->id, $teacher->user->id],
+            );
+            $group = $groupId > 0 ? $this->c->get(\App\Modules\Groups\GroupRepository::class)->find($this->tenant->id, $groupId) : null;
+            if ($group !== null) {
+                $cards = $this->c->get(\App\Modules\ReportCards\ReportCards::class);
+                $cardId = $cards->create($this->tenant, $group, $teacher, [
+                    'title' => 'First term (sample)', 'grading' => 'waec', 'next_term' => 'Next term begins in three weeks.',
+                    'exam' => [(string) $mock->id, (string) $maths->id], 'label' => ['Mock UTME', 'Maths test'], 'weight' => ['40', '60'],
+                ]);
+                $card = $this->c->get(\App\Modules\ReportCards\ReportCardRepository::class)->find($this->tenant->id, $cardId);
+                $members = $this->c->get(\App\Modules\Groups\GroupRepository::class)->members($this->tenant->id, $group->id, \App\Modules\Groups\GroupRepository::LEARNER);
+                if ($card !== null) {
+                    $sheet = $cards->sheet($this->tenant, $card, $members);
+                    foreach ($members as $m) {
+                        $avg = $sheet['rows'][$m['user_id']]['average'] ?? null;
+                        $remark = match (true) {
+                            $avg === null => 'Missed this term\'s tests. Please see me so we can plan how to catch up.',
+                            $avg >= 70 => 'An excellent term. Keep up the steady work.',
+                            $avg >= 50 => 'A good term. Revise the topics you found hard and practise past-style questions.',
+                            default => 'You can do better. Ask questions in class and use the practice tests every week.',
+                        };
+                        $cards->saveRemarks($this->tenant, $group, $card, $teacher, $m['user_id'], $remark, '');
+                    }
+                    $cards->publish($this->tenant, $group, $card, $teacher);
+                    $log[] = 'A shared report card for ' . $group->name . '.';
+                }
+            }
+        }
 
         $games = 0;
         $players = 0;

@@ -26,6 +26,7 @@ final class ChildController
         private readonly GroupRepository $groups,
         private readonly CertificateService $certificates,
         private readonly ?\App\Modules\LiveClasses\ClassSessionRepository $classes = null,
+        private readonly ?\App\Modules\ReportCards\ReportCardRepository $reportCards = null,
     ) {
     }
 
@@ -58,6 +59,7 @@ final class ChildController
             'courses' => $link->canProgress ? $this->report->courses($tenant->id, $link->learnerId) : [],
             'results' => $link->canResults ? $this->report->results($tenant->id, $link->learnerId) : null,
             'certificates' => $link->canResults || $link->canProgress ? $this->certificates->forUser($tenant->id, $link->learnerId) : [],
+            'reportCards' => $link->canResults ? $this->reportCards?->publishedFor($tenant->id, $link->learnerId) ?? [] : [],
             'groups' => $groups,
             // Attendance is part of progress (ADR 0028).
             'attendance' => $link->canProgress && $this->classes !== null

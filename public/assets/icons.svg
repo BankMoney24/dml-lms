@@ -52,4 +52,5 @@
 <symbol id="quiz" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/><path d="m15.5 17 1.5 1.5 3-3"/></symbol>
 <symbol id="exam" viewBox="0 0 24 24"><path d="M9 4h6M9 4a1 1 0 0 0-1 1v1h8V5a1 1 0 0 0-1-1"/><path d="M8 5.5H6a1 1 0 0 0-1 1V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6.5a1 1 0 0 0-1-1h-2"/><path d="M8.5 11h3M8.5 15h3"/><circle cx="15.5" cy="14" r="2.5"/><path d="M15.5 12.8V14l.8.6"/></symbol>
 <symbol id="image" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="m4 16 5-5 4 4 2-2 5 5"/><circle cx="15.5" cy="9" r="1.5"/></symbol>
+<symbol id="print" viewBox="0 0 24 24"><path d="M7 8V3.5h10V8"/><path d="M7 17H4.5a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1H17"/><path d="M7 14h10v6.5H7z"/></symbol>
 </svg>

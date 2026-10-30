@@ -922,6 +922,28 @@ final class Application
             $c->get(\App\Modules\LiveClasses\ClassSessionRepository::class),
             $c->get(\App\Modules\Exams\Cbt\CbtRepository::class),
         ));
+        // Report cards (ADR 0046).
+        $c->set(\App\Modules\ReportCards\ReportCardRepository::class, static fn (Container $c) => new \App\Modules\ReportCards\ReportCardRepository($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(\App\Modules\ReportCards\ReportCards::class, static fn (Container $c) => new \App\Modules\ReportCards\ReportCards(
+            $c->get(\App\Modules\ReportCards\ReportCardRepository::class),
+            $c->get(\App\Modules\Exams\Cbt\CbtRepository::class),
+            $c->get(GroupRepository::class),
+            $c->get(GroupService::class),
+            $c->get(Clock::class),
+            $c->get(AuditLog::class),
+            $c->get(Notifier::class),
+            $c->get(GuardianRepository::class),
+            $c->get(\App\Modules\LiveClasses\ClassSessionRepository::class),
+        ));
+        $c->set(\App\Modules\ReportCards\Http\ReportCardController::class, static fn (Container $c) => new \App\Modules\ReportCards\Http\ReportCardController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(\App\Modules\ReportCards\ReportCards::class),
+            $c->get(\App\Modules\ReportCards\ReportCardRepository::class),
+            $c->get(GroupService::class),
+            $c->get(GroupRepository::class),
+            $c->get(\App\Modules\Guardians\GuardianService::class),
+        ));
         // Live classes and attendance (ADR 0028).
         $c->set(
             \App\Modules\LiveClasses\ClassSessionRepository::class,
@@ -1179,6 +1201,7 @@ final class Application
             $c->get(GroupRepository::class),
             $c->get(CertificateService::class),
             $c->get(\App\Modules\LiveClasses\ClassSessionRepository::class),
+            $c->get(\App\Modules\ReportCards\ReportCardRepository::class),
         ));
         $c->set(\App\Modules\Guardians\Http\ReportSheetController::class, static fn (Container $c) => new \App\Modules\Guardians\Http\ReportSheetController(
             $c->get(View::class),
