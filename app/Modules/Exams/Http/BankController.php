@@ -16,6 +16,7 @@ use App\Modules\Exams\Bank\BankQuestion;
 use App\Modules\Exams\Bank\BankRepository;
 use App\Modules\Exams\Bank\QuestionBank;
 use App\Modules\Exams\Bank\QuestionBanks;
+use App\Modules\Exams\Bank\QuestionImages;
 use App\Modules\Exams\StarterKit\ExamStarterKit;
 use App\Modules\Reports\Csv;
 
@@ -29,6 +30,7 @@ final class BankController
         private readonly BankRepository $banks,
         private readonly Clock $clock,
         private readonly ExamStarterKit $kit,
+        private readonly QuestionImages $images,
     ) {
     }
 
@@ -162,6 +164,39 @@ final class BankController
         $this->session->flash('success', $question->retiredAt === null ? 'Retired: it will not be drawn into new papers.' : 'Back in use.');
 
         return Response::redirect('/teach/banks/' . $bank->id . ($question->retiredAt === null ? '' : '?status=retired'));
+    }
+
+    /** Adds or replaces the question's picture, or changes only its description (ADR 0044). */
+    public function image(Request $request): Response
+    {
+        $bank = $this->bank($request);
+        $question = $this->question($request, $bank);
+        $tenant = RequestContext::tenant($request);
+        $alt = (string) ($request->input('image_alt', '') ?? '');
+        $file = $request->file('image');
+        try {
+            if (($file === null || !$file->wasSent()) && $question->imageFileId !== null) {
+                $this->images->describe($tenant, RequestContext::user($request), $question, $alt);
+                $this->session->flash('success', 'Description saved.');
+            } else {
+                $this->images->attach($tenant, RequestContext::user($request), $question, $file, $alt);
+                $this->session->flash('success', 'Picture added. Candidates see it under the question.');
+            }
+        } catch (ValidationException $e) {
+            return $this->renderQuestion($request, $bank, $question, [], [], 422, $e->errors, $alt);
+        }
+
+        return Response::redirect('/teach/banks/' . $bank->id . '/questions/' . $question->id . '#picture');
+    }
+
+    public function removeImage(Request $request): Response
+    {
+        $bank = $this->bank($request);
+        $question = $this->question($request, $bank);
+        $this->images->remove(RequestContext::tenant($request), RequestContext::user($request), $question);
+        $this->session->flash('success', 'Picture removed.');
+
+        return Response::redirect('/teach/banks/' . $bank->id . '/questions/' . $question->id . '#picture');
     }
 
     public function import(Request $request): Response
@@ -317,9 +352,18 @@ final class BankController
     /**
      * @param array<string, string> $errors
      * @param array<string, mixed> $old
+     * @param array<string, string> $imageErrors
      */
-    private function renderQuestion(Request $request, QuestionBank $bank, ?BankQuestion $question, array $errors = [], array $old = [], int $status = 200): Response
-    {
+    private function renderQuestion(
+        Request $request,
+        QuestionBank $bank,
+        ?BankQuestion $question,
+        array $errors = [],
+        array $old = [],
+        int $status = 200,
+        array $imageErrors = [],
+        ?string $imageAlt = null,
+    ): Response {
         $tenant = RequestContext::tenant($request);
 
         return Response::html($this->view->render('exams/bank_question', [
@@ -330,6 +374,8 @@ final class BankController
             'topics' => $this->banks->topics($tenant->id, $bank->id),
             'errors' => $errors,
             'old' => $old,
+            'imageErrors' => $imageErrors,
+            'imageAlt' => $imageAlt ?? ($question !== null ? $question->imageAlt : ''),
         ]), $status);
     }
 }

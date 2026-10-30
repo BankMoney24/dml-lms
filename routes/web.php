@@ -201,6 +201,8 @@ return static function (Router $r): void {
     $r->get('/teach/banks/{bank:int}/questions/{question:int}', [$bank, 'editQuestion'], $teach);
     $r->post('/teach/banks/{bank:int}/questions/{question:int}', [$bank, 'updateQuestion'], $teach);
     $r->post('/teach/banks/{bank:int}/questions/{question:int}/retire', [$bank, 'retire'], $teach);
+    $r->post('/teach/banks/{bank:int}/questions/{question:int}/image', [$bank, 'image'], $teach);
+    $r->post('/teach/banks/{bank:int}/questions/{question:int}/image/remove', [$bank, 'removeImage'], $teach);
     $r->post('/teach/banks/{bank:int}/passages', [$bank, 'storePassage'], $teach);
     $r->post('/teach/banks/{bank:int}/passages/{passage:int}', [$bank, 'updatePassage'], $teach);
     $cbtAdmin = \App\Modules\Exams\Http\CbtAdminController::class;

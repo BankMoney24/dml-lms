@@ -7,7 +7,7 @@
  * @var \App\Modules\Guardians\GuardianLink $link
  * @var list<\App\Modules\Guardians\GuardianLink> $siblings
  * @var list<array{title: string, slug: string, status: string, done: int, total: int, last_at: ?string, due_on: ?string}> $courses
- * @var ?array{quizzes: list<array{course: string, lesson: string, best: int, passed: bool, attempts: int}>, assignments: list<array{course: string, lesson: string, status: string, at: string}>} $results
+ * @var ?array{quizzes: list<array{course: string, lesson: string, best: int, passed: bool, attempts: int}>, assignments: list<array{course: string, lesson: string, status: string, at: string}>, exams: list<array{title: string, at: string, total: int, max: int, percent: int, sections: list<array{label: string, scaled: int}>}>} $results
  * @var list<\App\Modules\Certificates\Certificate> $certificates
  * @var list<array{group: \App\Modules\Groups\LearnerGroup, teachers: list<string>, courses: list<array{course: \App\Modules\Courses\Course, due_on: ?string}>, announcements: list<array{id: int, body: string, author: string, author_id: ?int, created_at: string}>}> $groups
  * @var string $today
@@ -100,8 +100,26 @@ $nothing = !$link->canProgress && !$link->canResults && !$link->canNotices;
 <?php if ($results !== null): ?>
 <section class="section" aria-labelledby="results-h">
   <h2 id="results-h">Results</h2>
-  <?php if ($results['quizzes'] === [] && $results['assignments'] === []): ?>
-    <p class="muted">No quizzes or assignments handed in yet.</p>
+  <?php if ($results['quizzes'] === [] && $results['assignments'] === [] && $results['exams'] === []): ?>
+    <p class="muted">No quizzes, exams or assignments handed in yet.</p>
+  <?php endif; ?>
+  <?php if ($results['exams'] !== []): ?>
+  <h3 class="staff-sub">Exams</h3>
+  <div class="table-wrap">
+    <table class="table table-stack">
+      <caption class="visually-hidden">Exams: scores by subject</caption>
+      <thead><tr><th scope="col">Exam</th><th scope="col">Subjects (out of 100 each)</th><th scope="col" class="num">Total</th></tr></thead>
+      <tbody>
+      <?php foreach ($results['exams'] as $x): ?>
+        <tr>
+          <td><?= $v->e($x['title']) ?><span class="small muted">Sat <?= $v->datetime($x['at'], 'j M Y') ?></span></td>
+          <td data-label="Subjects"><?= $v->e(implode(', ', array_map(static fn (array $s): string => $s['label'] . ' ' . $s['scaled'], $x['sections']))) ?></td>
+          <td class="num" data-label="Total"><?= $x['total'] ?><span class="small muted">of <?= $x['max'] ?> (<?= $x['percent'] ?>% right)</span></td>
+        </tr>
+      <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
   <?php endif; ?>
   <?php if ($results['quizzes'] !== []): ?>
   <div class="table-wrap">
@@ -147,7 +165,7 @@ $nothing = !$link->canProgress && !$link->canResults && !$link->canNotices;
   <h2 id="terms-h">What you can see</h2>
   <ul class="checklist-plain">
     <li class="<?= $link->canProgress ? 'is-on' : 'is-off' ?>">Courses and progress: <?= $link->canProgress ? 'yes' : 'no' ?></li>
-    <li class="<?= $link->canResults ? 'is-on' : 'is-off' ?>">Quiz scores and assignment results: <?= $link->canResults ? 'yes' : 'no' ?></li>
+    <li class="<?= $link->canResults ? 'is-on' : 'is-off' ?>">Quiz and exam scores, and assignment results: <?= $link->canResults ? 'yes' : 'no' ?></li>
     <li class="<?= $link->canNotices ? 'is-on' : 'is-off' ?>">Announcements from <?= $v->e($first) ?>'s teachers: <?= $link->canNotices ? 'yes' : 'no' ?></li>
   </ul>
   <p class="small">The school linked your account to <?= $v->e($first) ?> on <?= $v->datetime($link->verifiedAt, 'j M Y') ?>. To change what you can see, to stop seeing it, or for any question about <?= $v->e($first) ?>'s information, contact <?= $v->e($school->name) ?><?= $school->contactEmail !== '' ? ' at ' . $v->e($school->contactEmail) : '' ?><?= $school->contactPhone !== '' ? ' or ' . $v->e($school->contactPhone) : '' ?>.</p>

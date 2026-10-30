@@ -29,6 +29,8 @@ final class BankQuestion
         public readonly int $timesSeen,
         public readonly int $timesCorrect,
         public readonly ?string $retiredAt,
+        public readonly ?int $imageFileId = null,
+        public readonly string $imageAlt = '',
     ) {
     }
 
@@ -51,7 +53,15 @@ final class BankQuestion
             (int) $r['times_seen'],
             (int) $r['times_correct'],
             isset($r['retired_at']) ? (string) $r['retired_at'] : null,
+            isset($r['image_file_id']) ? (int) $r['image_file_id'] : null,
+            (string) ($r['image_alt'] ?? ''),
         );
+    }
+
+    /** @return ?array{src: string, alt: string} the picture, for the exam room and review pages */
+    public function image(): ?array
+    {
+        return $this->imageFileId === null ? null : ['src' => '/files/' . $this->imageFileId, 'alt' => $this->imageAlt];
     }
 
     public function correctLetter(): string

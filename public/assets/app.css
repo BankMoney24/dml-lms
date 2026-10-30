@@ -3911,3 +3911,20 @@ body.focus-play .focus-main { max-width: 32rem; display: flex; flex-direction: c
 /* Tests starter kit (update 43) */
 .kit-row { margin-top: var(--space-6); max-width: 40rem; }
 .starter-kit form { margin-top: var(--space-3); }
+
+/* Exams to sit, on the home page (update 44) */
+.exam-mini { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+.exam-mini a { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-2); margin: 0 calc(-1 * var(--space-2)); border-radius: var(--radius-s); color: var(--ink); text-decoration: none; }
+.exam-mini a:hover { background: var(--paper); }
+.exam-mini a > svg { flex: none; margin-top: 0.15rem; color: var(--primary); }
+.exam-mini a > span { display: grid; min-width: 0; line-height: 1.35; }
+.exam-mini-title { font-weight: 700; color: var(--primary); text-decoration: underline; text-underline-offset: 0.18em; }
+.exam-mini-live { font-weight: 700; }
+
+/* Pictures in bank questions (update 44) */
+.qpic { margin: var(--space-3) 0; }
+.qpic img { display: block; max-width: 100%; height: auto; max-height: 26rem; border: 1px solid var(--line); border-radius: var(--radius-s); background: #fff; }
+.cbt-pic img { max-height: 22rem; }
+.question-picture { margin-top: var(--space-6); max-width: 46rem; }
+.bq-has-pic { display: inline-flex; align-items: center; gap: 0.25rem; }
+.bq-has-pic svg { width: 1em; height: 1em; }

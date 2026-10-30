@@ -121,9 +121,10 @@ final class FileService
         ?int $submissionId,
         ?int $supportMessageId = null,
         ?int $classSessionId = null,
+        ?int $bankQuestionId = null,
     ): array {
-        if (count(array_filter([$lessonId, $submissionId, $supportMessageId, $classSessionId], static fn (?int $id): bool => $id !== null)) !== 1) {
-            throw new \LogicException('A file belongs to exactly one lesson, submission, help message or class.');
+        if (count(array_filter([$lessonId, $submissionId, $supportMessageId, $classSessionId, $bankQuestionId], static fn (?int $id): bool => $id !== null)) !== 1) {
+            throw new \LogicException('A file belongs to exactly one lesson, submission, help message, class or bank question.');
         }
         $stored = [];
         $movedPaths = [];
@@ -140,6 +141,7 @@ final class FileService
                     'submission_id' => $submissionId,
                     'support_message_id' => $supportMessageId,
                     'class_session_id' => $classSessionId,
+                    'bank_question_id' => $bankQuestionId,
                     'uploaded_by' => $userId,
                     'original_name' => $p->name,
                     'extension' => $p->extension,

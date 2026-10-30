@@ -699,8 +699,9 @@ final class ConsoleApplication
         $tenants = $this->container->get(\App\Modules\Tenancy\TenantRepository::class);
         $submitted = $this->container->get(\App\Modules\Exams\Cbt\CbtExams::class)->submitOverdue(static fn (int $id): ?\App\Modules\Tenancy\Tenant => $tenants->findById($id));
         $ended = $this->container->get(\App\Modules\Exams\Live\LiveGame::class)->endStale();
-        if ($submitted + $ended > 0) {
-            printf("Submitted %d exam attempts whose time ran out; ended %d live quizzes left open.\n", $submitted, $ended);
+        $told = $this->container->get(\App\Modules\Exams\Cbt\CbtExams::class)->announceDue(static fn (int $id): ?\App\Modules\Tenancy\Tenant => $tenants->findById($id));
+        if ($submitted + $ended + $told > 0) {
+            printf("Submitted %d exam attempts whose time ran out; ended %d live quizzes left open; told %d candidates their results are ready.\n", $submitted, $ended, $told);
         }
 
         return 0;

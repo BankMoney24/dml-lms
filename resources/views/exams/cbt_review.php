@@ -71,6 +71,7 @@ $shownPassages = [];
           <?php endif; ?>
           <p class="review-verdict">Question <?= $it['n'] ?>: <?= $choice === null ? 'not answered' : ($right ? 'right' : 'wrong') ?></p>
           <div class="prose prose-small"><?= $v->markdown($q->prompt) ?></div>
+          <?php if ($q->imageFileId !== null): ?><figure class="qpic"><img src="/files/<?= $q->imageFileId ?>" alt="<?= $v->e($q->imageAlt) ?>" loading="lazy"></figure><?php endif; ?>
           <ul class="review-options">
             <?php foreach ($q->options as $i => $o): ?>
             <li class="<?= $i === $q->correct ? 'is-key' : '' ?><?= $i === $choice && !$right ? ' is-chosen' : '' ?>">

@@ -35,6 +35,7 @@ final class FileController
         private readonly SubmissionRepository $submissions,
         private readonly ?\App\Modules\Support\SupportService $support = null,
         private readonly ?\App\Modules\LiveClasses\LiveClasses $live = null,
+        private readonly ?\App\Modules\Exams\Bank\QuestionImages $questionImages = null,
     ) {
     }
 
@@ -80,6 +81,10 @@ final class FileController
             $submission = $this->submissions->find($file->tenantId, $file->submissionId);
 
             return $submission !== null && ($submission->userId === $user->user->id || $user->can(Permission::CourseManage));
+        }
+        if ($file->bankQuestionId !== null) {
+            // A picture in an exam question (ADR 0044).
+            return $this->questionImages?->mayRead($tenant, $user, $file->bankQuestionId) ?? false;
         }
         if ($file->supportMessageId !== null) {
             return $this->support?->mayReadMessageFile($file->tenantId, $user, $file->supportMessageId) ?? false;

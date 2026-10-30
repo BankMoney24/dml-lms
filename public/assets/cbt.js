@@ -50,7 +50,7 @@
   var paletteToggle = $('[data-cbt-palette-toggle]');
   var paletteBox = $('[data-cbt-palette-box]');
 
-  var paper = null;          // { sections: [{label, questions: [{id, n, prompt, passage, options, answer, flag}]}], passages: {} }
+  var paper = null;          // { sections: [{label, questions: [{id, n, prompt, image, passage, options, answer, flag}]}], passages: {} }
   var flat = [];             // every question in paper order: {s, i, q}
   var at = 0;                // index into flat
   var pending = {};          // question id -> shown option index, or null to clear
@@ -179,6 +179,10 @@
     var fs = el('fieldset', { class: 'cbt-options' }, null, questionEl);
     var legend = el('legend', { class: 'cbt-prompt prose' }, null, fs);
     legend.innerHTML = q.prompt; // rendered on the server
+    if (q.image) {
+      var fig = el('figure', { class: 'qpic cbt-pic' }, null, fs);
+      el('img', { src: q.image.src, alt: q.image.alt, loading: 'eager', decoding: 'async' }, null, fig);
+    }
     q.options.forEach(function (text, i) {
       var id = 'opt-' + q.id + '-' + i;
       var lab = el('label', { class: 'cbt-option' + (q.answer === i ? ' is-chosen' : ''), for: id }, null, fs);

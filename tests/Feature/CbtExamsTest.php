@@ -134,7 +134,7 @@ final class CbtExamsTest extends AppTestCase
         $this->assertSame(1800, $paper['seconds_left']);
         foreach ($paper['sections'] as $s) {
             foreach ($s['questions'] as $q) {
-                $this->assertSame(['id', 'n', 'prompt', 'passage', 'options', 'answer', 'flag'], array_keys($q), 'the paper never carries the answers');
+                $this->assertSame(['id', 'n', 'prompt', 'image', 'passage', 'options', 'answer', 'flag'], array_keys($q), 'the paper never carries the answers');
             }
         }
         $this->assertSame(13, $paper['sections'][2]['questions'][3]['n']);

@@ -26,6 +26,8 @@ $comingUp ??= [];
 $recentNotes ??= [];
 /** @var list<\App\Modules\LiveClasses\ClassSession> $nextClasses */
 $nextClasses ??= [];
+/** @var list<array{exam: \App\Modules\Exams\Cbt\CbtExam, attempt: ?\App\Modules\Exams\Cbt\CbtAttempt, minutes_left: ?int}> $examsToSit */
+$examsToSit ??= [];
 /** @var ?\App\Modules\Meetings\Meeting $liveMeeting */
 $liveMeeting ??= null;
 $nowTs ??= time();
@@ -42,7 +44,7 @@ $hour = (int) $now->format('G');
 $greeting = $hour < 12 ? 'Good morning' : ($hour < 17 ? 'Good afternoon' : 'Good evening');
 $myPaths ??= [];
 $earned ??= [];
-$hasSide = $activity !== null || $comingUp !== [] || $recentNotes !== [] || $earned !== [] || $nextClasses !== [];
+$hasSide = $activity !== null || $comingUp !== [] || $recentNotes !== [] || $earned !== [] || $nextClasses !== [] || $examsToSit !== [];
 $hasMain = $continue !== null || $children !== [] || $myGroups !== [] || $myPaths !== [] || $liveNow !== null || $liveMeeting !== null;
 ?>
 <header class="home-head">
@@ -196,6 +198,22 @@ $hasMain = $continue !== null || $children !== [] || $myGroups !== [] || $myPath
   <?php endif; ?>
   <?php if ($hasSide): ?>
   <aside class="home-side" aria-label="Your study">
+    <?php if ($examsToSit !== []): ?>
+    <section class="panel exams-due" aria-labelledby="exams-due-h">
+      <h2 id="exams-due-h">Exams to sit</h2>
+      <ul class="exam-mini">
+        <?php foreach ($examsToSit as $row): $ex = $row['exam']; $at = $row['attempt']; ?>
+        <li>
+          <a href="<?= $at !== null ? '/exams/attempts/' . $at->id : '/exams/' . $ex->id ?>"><?= $v->icon('exam') ?><span><span class="exam-mini-title"><?= $v->e($ex->title) ?></span>
+          <span class="small<?= $at !== null ? ' exam-mini-live' : ' muted' ?>"><?= $at !== null
+              ? 'In progress: ' . $v->e($v->plural((int) $row['minutes_left'], 'minute')) . ' left'
+              : $v->e($ex->durationMinutes . ' minutes' . ($ex->closesAt !== null ? ', closes ' . $v->datetime($ex->closesAt, 'j M, H:i') : '')) ?></span></span></a>
+        </li>
+        <?php endforeach; ?>
+      </ul>
+      <p class="small panel-link"><a href="/exams">All exams and practice tests</a></p>
+    </section>
+    <?php endif; ?>
     <?php if ($activity !== null): ?>
     <section class="panel study-panel" aria-labelledby="streak-h">
       <h2 id="streak-h">Your learning</h2>

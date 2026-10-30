@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Guardians;
 
+use App\Core\Clock;
 use App\Core\Database\Connection;
 
 /**
@@ -13,7 +14,7 @@ use App\Core\Database\Connection;
  */
 final class ChildReport
 {
-    public function __construct(private readonly Connection $db)
+    public function __construct(private readonly Connection $db, private readonly ?Clock $clock = null)
     {
     }
 
@@ -49,7 +50,8 @@ final class ChildReport
     /**
      * @return array{
      *   quizzes: list<array{course: string, lesson: string, best: int, passed: bool, attempts: int}>,
-     *   assignments: list<array{course: string, lesson: string, status: string, at: string}>
+     *   assignments: list<array{course: string, lesson: string, status: string, at: string}>,
+     *   exams: list<array{title: string, at: string, total: int, max: int, percent: int, sections: list<array{label: string, scaled: int}>}>
      * }
      */
     public function results(int $tenantId, int $learnerId): array
@@ -85,6 +87,42 @@ final class ChildReport
             [$tenantId, $learnerId, $tenantId],
         ));
 
-        return ['quizzes' => $quizzes, 'assignments' => $assignments];
+        return ['quizzes' => $quizzes, 'assignments' => $assignments, 'exams' => $this->exams($tenantId, $learnerId)];
+    }
+
+    /**
+     * CBT exam results the learner can see themselves (ADR 0044): never held-back or hidden
+     * results, never practice tests or a teacher trying a paper. The latest attempt at each exam.
+     *
+     * @return list<array{title: string, at: string, total: int, max: int, percent: int, sections: list<array{label: string, scaled: int}>}>
+     */
+    public function exams(int $tenantId, int $learnerId): array
+    {
+        $now = ($this->clock?->now() ?? new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('Y-m-d H:i:s');
+        $rows = $this->db->fetchAll(
+            "SELECT e.title, a.submitted_at, a.result, a.percent
+             FROM cbt_attempts a
+             JOIN (SELECT exam_id, MAX(id) AS id FROM cbt_attempts WHERE tenant_id = ? AND user_id = ? AND exam_id IS NOT NULL AND submitted_at IS NOT NULL GROUP BY exam_id) latest
+               ON latest.id = a.id
+             JOIN cbt_exams e ON e.tenant_id = a.tenant_id AND e.id = a.exam_id
+             WHERE a.tenant_id = ?
+               AND (e.results = 'immediately' OR (e.results = 'after_close' AND (e.status = 'closed' OR (e.closes_at IS NOT NULL AND e.closes_at <= ?))))
+             ORDER BY a.submitted_at DESC LIMIT 30",
+            [$tenantId, $learnerId, $tenantId, $now],
+        );
+        $out = [];
+        foreach ($rows as $r) {
+            $result = json_decode((string) $r['result'], true);
+            $sections = [];
+            foreach (is_array($result['sections'] ?? null) ? $result['sections'] : [] as $s) {
+                $sections[] = ['label' => (string) ($s['label'] ?? ''), 'scaled' => (int) ($s['scaled'] ?? 0)];
+            }
+            $out[] = [
+                'title' => (string) $r['title'], 'at' => (string) $r['submitted_at'],
+                'total' => (int) ($result['total'] ?? 0), 'max' => (int) ($result['max'] ?? 0), 'percent' => (int) $r['percent'], 'sections' => $sections,
+            ];
+        }
+
+        return $out;
     }
 }

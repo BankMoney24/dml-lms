@@ -7,7 +7,7 @@
  * @var \App\Modules\Tenancy\Tenant $school
  * @var string $learnerName
  * @var array{from: string, to: string, error: ?string} $period
- * @var array{groups: list<string>, courses: ?list<array{title: string, status: string, done: int, total: int, last_at: ?string, average: ?int}>, lessonsInPeriod: ?int, attendance: ?array{held: int, present: int, late: int, absent: int, excused: int, unmarked: int, rate: ?int}, results: ?array{quizzes: list<array{course: string, lesson: string, best: int, passed: bool, attempts: int}>, assignments: list<array{course: string, lesson: string, status: string, at: string}>}, certificates: ?list<\App\Modules\Certificates\Certificate>} $data
+ * @var array{groups: list<string>, courses: ?list<array{title: string, status: string, done: int, total: int, last_at: ?string, average: ?int}>, lessonsInPeriod: ?int, attendance: ?array{held: int, present: int, late: int, absent: int, excused: int, unmarked: int, rate: ?int}, results: ?array{quizzes: list<array{course: string, lesson: string, best: int, passed: bool, attempts: int}>, assignments: list<array{course: string, lesson: string, status: string, at: string}>, exams: list<array{title: string, at: string, total: int, max: int, percent: int, sections: list<array{label: string, scaled: int}>}>}, certificates: ?list<\App\Modules\Certificates\Certificate>} $data
  * @var string $back
  * @var bool $staff
  * @var string $here
@@ -101,6 +101,17 @@ $assignmentLabels = ['submitted' => 'Waiting for the teacher', 'approved' => 'Ap
       <tbody>
       <?php foreach ($data['results']['quizzes'] as $q): ?>
         <tr><th scope="row"><?= $v->e($q['lesson']) ?><span class="small muted"><?= $v->e($q['course']) ?></span></th><td class="num"><?= $q['best'] ?>%</td><td><?= $q['passed'] ? 'Passed' : 'Not passed yet' ?></td><td class="num"><?= $q['attempts'] ?></td></tr>
+      <?php endforeach; ?>
+      </tbody>
+    </table></div>
+    <?php endif; ?>
+    <?php if ($data['results']['exams'] !== []): ?>
+    <h2 id="r-exams">Exams</h2>
+    <div class="report-scroll"><table class="table receipt-lines" aria-labelledby="r-exams">
+      <thead><tr><th scope="col">Exam</th><th scope="col">Subjects (out of 100 each)</th><th scope="col" class="num">Total</th><th scope="col">Sat</th></tr></thead>
+      <tbody>
+      <?php foreach ($data['results']['exams'] as $x): ?>
+        <tr><th scope="row"><?= $v->e($x['title']) ?></th><td><?= $v->e(implode(', ', array_map(static fn (array $s): string => $s['label'] . ' ' . $s['scaled'], $x['sections']))) ?></td><td class="num"><?= $x['total'] ?> of <?= $x['max'] ?></td><td><?= $v->datetime($x['at'], 'j M Y') ?></td></tr>
       <?php endforeach; ?>
       </tbody>
     </table></div>

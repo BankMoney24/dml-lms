@@ -97,7 +97,7 @@ final class GuardiansTest extends AppTestCase
         $child = $this->get(self::HOST, '/children/' . $this->tobi->id)->body;
         $this->assertStringContainsString('Course school', $child);
         $this->assertStringNotContainsString('Best score', $child, 'results not shared');
-        $this->assertStringContainsString('Quiz scores and assignment results: no', $child);
+        $this->assertStringContainsString('Quiz and exam scores, and assignment results: no', $child);
 
         $this->signIn('admin@school.test');
         $link = (int) $this->db()->fetchValue('SELECT id FROM guardian_links');

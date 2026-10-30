@@ -21,6 +21,8 @@ final class Notifier
     public const PAYMENT_PAID = 'payment.paid';
     public const PAYMENT_REFUNDED = 'payment.refunded';
     public const CERTIFICATE = 'certificate.issued';
+    public const EXAM_SET = 'exam.set';
+    public const EXAM_RESULTS = 'exam.results';
 
     public function __construct(private readonly NotificationRepository $notifications)
     {

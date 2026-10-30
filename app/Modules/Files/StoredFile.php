@@ -22,6 +22,7 @@ final class StoredFile
         public readonly string $createdAt,
         public readonly ?int $supportMessageId = null,
         public readonly ?int $classSessionId = null,
+        public readonly ?int $bankQuestionId = null,
     ) {
     }
 
@@ -44,6 +45,7 @@ final class StoredFile
             (string) $row['created_at'],
             isset($row['support_message_id']) ? (int) $row['support_message_id'] : null,
             isset($row['class_session_id']) ? (int) $row['class_session_id'] : null,
+            isset($row['bank_question_id']) ? (int) $row['bank_question_id'] : null,
         );
     }
 

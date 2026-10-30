@@ -203,6 +203,34 @@ final class BankRepository
         );
     }
 
+    public function setImage(int $tenantId, int $id, ?int $fileId, ?string $alt): void
+    {
+        $this->db->execute(
+            'UPDATE bank_questions SET image_file_id = ?, image_alt = ?, updated_at = ? WHERE tenant_id = ? AND id = ?',
+            [$fileId, $alt, $this->clock->sqlNow(), $tenantId, $id],
+        );
+    }
+
+    /**
+     * Whether this learner has the question in one of their papers (exam, practice or trial).
+     * Looks through their most recent 200 attempts.
+     */
+    public function inPaperOf(int $tenantId, int $userId, int $questionId): bool
+    {
+        foreach ($this->db->fetchAll('SELECT paper FROM cbt_attempts WHERE tenant_id = ? AND user_id = ? ORDER BY id DESC LIMIT 200', [$tenantId, $userId]) as $r) {
+            $paper = json_decode((string) $r['paper'], true);
+            foreach (is_array($paper['sections'] ?? null) ? $paper['sections'] : [] as $s) {
+                foreach (is_array($s['questions'] ?? null) ? $s['questions'] : [] as $q) {
+                    if ((int) ($q['id'] ?? 0) === $questionId) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
     public function setRetired(int $tenantId, int $id, bool $retired): void
     {
         $this->db->execute(

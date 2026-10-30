@@ -496,6 +496,7 @@ final class Application
             $c->get(\App\Modules\Achievements\Achievements::class),
             $c->get(\App\Modules\LiveClasses\ClassSessionRepository::class),
             $c->get(\App\Modules\Meetings\MeetingRepository::class),
+            $c->get(\App\Modules\Exams\Cbt\CbtExams::class),
         ));
         $c->set(LoginController::class, static fn (Container $c) => new LoginController(
             $c->get(View::class),
@@ -589,6 +590,7 @@ final class Application
             $c->get(SubmissionRepository::class),
             $c->get(SupportService::class),
             $c->get(\App\Modules\LiveClasses\LiveClasses::class),
+            $c->get(\App\Modules\Exams\Bank\QuestionImages::class),
         ));
         $c->set(CertificateController::class, static fn (Container $c) => new CertificateController(
             $c->get(View::class),
@@ -1049,6 +1051,13 @@ final class Application
             $c->get(Connection::class),
             $c->get(AuditLog::class),
         ));
+        $c->set(\App\Modules\Exams\Bank\QuestionImages::class, static fn (Container $c) => new \App\Modules\Exams\Bank\QuestionImages(
+            $c->get(\App\Modules\Exams\Bank\BankRepository::class),
+            $c->get(FileService::class),
+            $c->get(FileRepository::class),
+            $c->get(Connection::class),
+            $c->get(AuditLog::class),
+        ));
         $c->set(\App\Modules\Exams\Cbt\CbtRepository::class, static fn (Container $c) => new \App\Modules\Exams\Cbt\CbtRepository($c->get(Connection::class), $c->get(Clock::class)));
         $c->set(\App\Modules\Exams\Cbt\CbtExams::class, static fn (Container $c) => new \App\Modules\Exams\Cbt\CbtExams(
             $c->get(\App\Modules\Exams\Cbt\CbtRepository::class),
@@ -1056,6 +1065,8 @@ final class Application
             $c->get(Connection::class),
             $c->get(Clock::class),
             $c->get(AuditLog::class),
+            new \App\Modules\Exams\Cbt\PaperBuilder(),
+            $c->get(Notifier::class),
         ));
         $c->set(\App\Modules\Exams\Live\LiveRepository::class, static fn (Container $c) => new \App\Modules\Exams\Live\LiveRepository($c->get(Connection::class), $c->get(Clock::class)));
         $c->set(\App\Modules\Exams\Live\LiveGame::class, static fn (Container $c) => new \App\Modules\Exams\Live\LiveGame(
@@ -1081,6 +1092,7 @@ final class Application
             $c->get(\App\Modules\Exams\Bank\BankRepository::class),
             $c->get(Clock::class),
             $c->get(\App\Modules\Exams\StarterKit\ExamStarterKit::class),
+            $c->get(\App\Modules\Exams\Bank\QuestionImages::class),
         ));
         $c->set(\App\Modules\Exams\Http\CbtAdminController::class, static fn (Container $c) => new \App\Modules\Exams\Http\CbtAdminController(
             $c->get(View::class),
@@ -1162,7 +1174,7 @@ final class Application
             $c->get(View::class),
             $c->get(GuardianService::class),
             $c->get(GuardianRepository::class),
-            new ChildReport($c->get(Connection::class)),
+            new ChildReport($c->get(Connection::class), $c->get(Clock::class)),
             $c->get(GroupRepository::class),
             $c->get(CertificateService::class),
             $c->get(\App\Modules\LiveClasses\ClassSessionRepository::class),
@@ -1172,7 +1184,7 @@ final class Application
             $c->get(GuardianService::class),
             new \App\Modules\Guardians\ReportSheet(
                 $c->get(Connection::class),
-                new ChildReport($c->get(Connection::class)),
+                new ChildReport($c->get(Connection::class), $c->get(Clock::class)),
                 $c->get(GroupRepository::class),
                 $c->get(CertificateService::class),
                 $c->get(Clock::class),

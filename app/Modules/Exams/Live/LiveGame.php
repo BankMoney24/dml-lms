@@ -126,7 +126,8 @@ final class LiveGame
         $fits = array_values(array_filter(
             $this->banks->allQuestions($tenant->id, $bank->id),
             static fn ($q): bool => count($q->options) >= 2 && count($q->options) <= 4 && mb_strlen($q->prompt) <= 500
-                && max(0, ...array_map('mb_strlen', $q->options)) <= 120,
+                && max(0, ...array_map('mb_strlen', $q->options)) <= 120
+                && $q->imageFileId === null && $q->passageId === null,
         ));
         shuffle($fits);
         $added = 0;
@@ -135,7 +136,7 @@ final class LiveGame
             $added++;
         }
         if ($added === 0) {
-            throw ValidationException::single('bank', 'That bank has no questions that fit a live quiz (up to four short options).');
+            throw ValidationException::single('bank', 'That bank has no questions that fit a live quiz (up to four short options, with no passage or picture).');
         }
         $this->live->touchQuiz($tenant->id, $quiz->id);
 

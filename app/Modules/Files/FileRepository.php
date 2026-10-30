@@ -120,7 +120,7 @@ final class FileRepository
     }
 
     /**
-     * @param array{lesson_id: ?int, submission_id: ?int, support_message_id?: ?int, class_session_id?: ?int, uploaded_by: int, original_name: string, extension: string,
+     * @param array{lesson_id: ?int, submission_id: ?int, support_message_id?: ?int, class_session_id?: ?int, bank_question_id?: ?int, uploaded_by: int, original_name: string, extension: string,
      *              mime_type: string, size_bytes: int, sha256: string, storage_key: string, scan_status: string} $f
      */
     public function insert(int $tenantId, array $f): int
@@ -134,11 +134,12 @@ final class FileRepository
         }
 
         return $this->db->insert(
-            'INSERT INTO files (tenant_id, lesson_id, submission_id, support_message_id, class_session_id, uploaded_by, original_name, extension, mime_type,
+            'INSERT INTO files (tenant_id, lesson_id, submission_id, support_message_id, class_session_id, bank_question_id, uploaded_by, original_name, extension, mime_type,
                                 size_bytes, sha256, storage_key, scan_status, position, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
-                $tenantId, $f['lesson_id'], $f['submission_id'], $f['support_message_id'] ?? null, $f['class_session_id'] ?? null, $f['uploaded_by'], $f['original_name'], $f['extension'],
+                $tenantId, $f['lesson_id'], $f['submission_id'], $f['support_message_id'] ?? null, $f['class_session_id'] ?? null, $f['bank_question_id'] ?? null,
+                $f['uploaded_by'], $f['original_name'], $f['extension'],
                 $f['mime_type'], $f['size_bytes'], $f['sha256'], $f['storage_key'], $f['scan_status'], $position, $this->clock->sqlNow(),
             ],
         );

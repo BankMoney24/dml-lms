@@ -227,6 +227,60 @@ final class CbtRepository
         $this->db->execute('DELETE FROM cbt_attempts WHERE tenant_id = ? AND id = ?', [$tenantId, $id]);
     }
 
+    /** @return list<int> the learners who may sit an exam: every active learner, or the members of its classes */
+    public function audience(int $tenantId, CbtExam $exam): array
+    {
+        $rows = $exam->audience === 'groups'
+            ? $this->db->fetchAll(
+                "SELECT DISTINCT m.user_id FROM cbt_exam_groups g
+                 JOIN learner_group_members m ON m.tenant_id = g.tenant_id AND m.group_id = g.group_id AND m.role = 'learner'
+                 JOIN memberships s ON s.tenant_id = m.tenant_id AND s.user_id = m.user_id AND s.status = 'active'
+                 WHERE g.tenant_id = ? AND g.exam_id = ? LIMIT 20000",
+                [$tenantId, $exam->id],
+            )
+            : $this->db->fetchAll("SELECT user_id FROM memberships WHERE tenant_id = ? AND role = 'learner' AND status = 'active' LIMIT 20000", [$tenantId]);
+
+        return array_map(static fn (array $r): int => (int) $r['user_id'], $rows);
+    }
+
+    /** @return list<array{user_id: int, attempt_id: int}> each candidate's latest submitted attempt */
+    public function latestSubmitted(int $tenantId, int $examId): array
+    {
+        return array_map(
+            static fn (array $r): array => ['user_id' => (int) $r['user_id'], 'attempt_id' => (int) $r['id']],
+            $this->db->fetchAll(
+                'SELECT a.user_id, MAX(a.id) AS id FROM cbt_attempts a
+                 WHERE a.tenant_id = ? AND a.exam_id = ? AND a.submitted_at IS NOT NULL GROUP BY a.user_id LIMIT 20000',
+                [$tenantId, $examId],
+            ),
+        );
+    }
+
+    /**
+     * Exams whose results show "when the exam closes", now closed, that candidates have not been told about, any school.
+     *
+     * @return list<array{tenant_id: int, id: int}>
+     */
+    public function resultsDue(string $now, int $limit = 100): array
+    {
+        return array_map(
+            static fn (array $r): array => ['tenant_id' => (int) $r['tenant_id'], 'id' => (int) $r['id']],
+            $this->db->fetchAll(
+                "SELECT tenant_id, id FROM cbt_exams
+                 WHERE results = 'after_close' AND results_announced_at IS NULL
+                   AND (status = 'closed' OR (status = 'published' AND closes_at IS NOT NULL AND closes_at <= ?))
+                 ORDER BY id LIMIT " . $limit,
+                [$now],
+            ),
+        );
+    }
+
+    /** Marks the results as announced; false when another run got there first. */
+    public function markAnnounced(int $tenantId, int $examId, string $at): bool
+    {
+        return $this->db->execute('UPDATE cbt_exams SET results_announced_at = ? WHERE tenant_id = ? AND id = ? AND results_announced_at IS NULL', [$at, $tenantId, $examId]) > 0;
+    }
+
     /**
      * Attempts past their deadline and grace that nobody submitted, any school.
      *

@@ -47,6 +47,7 @@ final class HomeController
         private readonly ?\App\Modules\Achievements\Achievements $achievements = null,
         private readonly ?\App\Modules\LiveClasses\ClassSessionRepository $classes = null,
         private readonly ?\App\Modules\Meetings\MeetingRepository $meetings = null,
+        private readonly ?\App\Modules\Exams\Cbt\CbtExams $cbt = null,
     ) {
     }
 
@@ -218,7 +219,11 @@ final class HomeController
             }
         }
 
+        // CBT exams this learner can sit now, or has started (ADR 0044).
+        $examsToSit = $learns ? $this->cbt?->toSit($tenant, $user) ?? [] : [];
+
         return Response::html($this->view->render('dashboard/index', [
+            'examsToSit' => $examsToSit,
             'nextClasses' => $nextClasses,
             'liveMeeting' => $liveMeeting,
             'nowTs' => $nowUtc->getTimestamp(),

@@ -54,7 +54,7 @@ $active = array_values(array_filter($links, static fn ($l): bool => $l->isActive
         <fieldset class="field">
           <legend class="small">They can see</legend>
           <label class="choice choice-tight"><input type="checkbox" name="progress" value="1"<?= $l->canProgress ? ' checked' : '' ?>><span>Courses and progress</span></label>
-          <label class="choice choice-tight"><input type="checkbox" name="results" value="1"<?= $l->canResults ? ' checked' : '' ?>><span>Quiz scores and assignment results</span></label>
+          <label class="choice choice-tight"><input type="checkbox" name="results" value="1"<?= $l->canResults ? ' checked' : '' ?>><span>Quiz and exam scores, and assignment results</span></label>
           <label class="choice choice-tight"><input type="checkbox" name="notices" value="1"<?= $l->canNotices ? ' checked' : '' ?>><span>Class announcements</span></label>
         </fieldset>
         <div class="row-actions">
@@ -83,7 +83,7 @@ $active = array_values(array_filter($links, static fn ($l): bool => $l->isActive
         <fieldset class="field">
           <legend>They can see</legend>
           <label class="choice choice-tight"><input type="checkbox" name="progress" value="1"<?= $checked('progress') ?>><span>Courses and progress</span></label>
-          <label class="choice choice-tight"><input type="checkbox" name="results" value="1"<?= $checked('results') ?>><span>Quiz scores and assignment results</span></label>
+          <label class="choice choice-tight"><input type="checkbox" name="results" value="1"<?= $checked('results') ?>><span>Quiz and exam scores, and assignment results</span></label>
           <label class="choice choice-tight"><input type="checkbox" name="notices" value="1"<?= $checked('notices') ?>><span>Class announcements</span></label>
         </fieldset>
         <p class="small muted">Check who they are before linking. Guardians can only look; they never see other learners or change anything.</p>

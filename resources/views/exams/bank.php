@@ -74,6 +74,7 @@ $filtered = $find !== '' || $topic !== '' || $state !== 'active';
           <?php endforeach; ?>
         </ul>
         <p class="bq-meta small">
+          <?php if ($q->imageFileId !== null): ?><span class="bq-has-pic"><?= $v->icon('image') ?>Picture</span><?php endif; ?>
           <?php if ($q->topic !== ''): ?><span class="bq-topic"><?= $v->e($q->topic) ?></span><?php endif; ?>
           <?php if ($q->difficulty !== null): ?><span><?= $v->e(BankQuestion::DIFFICULTY[$q->difficulty]) ?></span><?php endif; ?>
           <?php if ($q->facility() !== null): ?><span><?= $q->facility() ?>% right in <?= $q->timesSeen ?> attempts</span><?php elseif ($q->timesSeen > 0): ?><span>Seen in <?= $q->timesSeen ?> <?= $q->timesSeen === 1 ? 'attempt' : 'attempts' ?></span><?php endif; ?>

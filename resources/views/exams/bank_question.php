@@ -9,6 +9,8 @@
  * @var list<string> $topics
  * @var array<string, string> $errors
  * @var array<string, mixed> $old
+ * @var array<string, string> $imageErrors
+ * @var string $imageAlt
  */
 use App\Modules\Exams\Bank\BankQuestion;
 
@@ -68,3 +70,35 @@ $difficulty = $o('difficulty', $question?->difficulty !== null ? (string) $quest
     <a href="<?= $base ?>">Cancel</a>
   </div>
 </form>
+
+<section class="panel question-picture" id="picture" aria-labelledby="picture-h">
+  <h2 id="picture-h">Picture</h2>
+  <?php if ($question === null): ?>
+    <p class="small muted">Add the question first. Then you can give it a picture: a diagram, graph, map or circuit.</p>
+  <?php else: ?>
+    <?= $v->errorSummary($imageErrors, ['image' => 'image', 'image_alt' => 'image_alt']) ?>
+    <?php if ($question->imageFileId !== null): ?>
+      <figure class="qpic">
+        <img src="/files/<?= $question->imageFileId ?>" alt="<?= $v->e($question->imageAlt) ?>" loading="lazy">
+        <figcaption class="small muted">Description: <?= $v->e($question->imageAlt) ?></figcaption>
+      </figure>
+    <?php endif; ?>
+    <form method="post" action="<?= $base ?>/questions/<?= $question->id ?>/image" enctype="multipart/form-data" class="form" novalidate>
+      <?= $v->csrfField() ?>
+      <div class="field<?= isset($imageErrors['image']) ? ' has-error' : '' ?>">
+        <label for="image"><?= $question->imageFileId === null ? 'Picture' : 'Replace the picture' ?><?= $question->imageFileId !== null ? ' <span class="optional">(optional)</span>' : '' ?></label>
+        <p class="hint" id="image-hint">PNG, JPEG, WebP or GIF, under 2 MB. Crop it to what the question needs: candidates may be on mobile data.</p>
+        <input type="file" id="image" name="image" accept=".png,.jpg,.jpeg,.webp,.gif,image/png,image/jpeg,image/webp,image/gif" aria-describedby="image-hint<?= isset($imageErrors['image']) ? ' image-error' : '' ?>"<?= isset($imageErrors['image']) ? ' aria-invalid="true"' : '' ?>>
+        <?php if (isset($imageErrors['image'])): ?><p class="field-error" id="image-error"><?= $v->e($imageErrors['image']) ?></p><?php endif; ?>
+      </div>
+      <?= $v->field('image_alt', 'Describe the picture', ['type' => 'textarea', 'rows' => 2, 'value' => $imageAlt, 'error' => $imageErrors['image_alt'] ?? null, 'maxlength' => 300, 'hint' => 'One sentence for candidates who use a screen reader or whose phone cannot load it. Say what the question needs, not the answer: “A circuit: a 6 V battery and two 3 Ω resistors in series.”']) ?>
+      <button type="submit" class="button button-quiet"><?= $question->imageFileId === null ? 'Add the picture' : 'Save' ?></button>
+    </form>
+    <?php if ($question->imageFileId !== null): ?>
+    <form method="post" action="<?= $base ?>/questions/<?= $question->id ?>/image/remove" class="inline-form">
+      <?= $v->csrfField() ?>
+      <button type="submit" class="linklike small danger-link">Remove the picture</button>
+    </form>
+    <?php endif; ?>
+  <?php endif; ?>
+</section>

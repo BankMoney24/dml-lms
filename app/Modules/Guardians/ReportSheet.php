@@ -76,7 +76,8 @@ final class ReportSheet
      *   attendance: ?array{held: int, present: int, late: int, absent: int, excused: int, unmarked: int, rate: ?int},
      *   results: ?array{
      *     quizzes: list<array{course: string, lesson: string, best: int, passed: bool, attempts: int}>,
-     *     assignments: list<array{course: string, lesson: string, status: string, at: string}>
+     *     assignments: list<array{course: string, lesson: string, status: string, at: string}>,
+     *     exams: list<array{title: string, at: string, total: int, max: int, percent: int, sections: list<array{label: string, scaled: int}>}>
      *   },
      *   certificates: ?list<\App\Modules\Certificates\Certificate>
      * }

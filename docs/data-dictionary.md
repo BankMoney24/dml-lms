@@ -24,7 +24,7 @@ Personal data kinds: **Account** (who someone is), **Learning record** (what the
 | Discussions | [`lesson_answers`](#lesson-answers) | Answers to those questions; one may be accepted. | Written by a person |
 | Discussions | [`lesson_questions`](#lesson-questions) | Questions learners ask under a lesson. | Written by a person |
 | Families | [`guardian_links`](#guardian-links) | Which parent or guardian follows which learner, what they may see, and who checked their identity. | Family link |
-| Files | [`files`](#files) | Uploaded files (lesson files, media, class materials, help-desk attachments): name, type, size, storage key, scan result. | Written by a person |
+| Files | [`files`](#files) | Uploaded files (lesson files, media, class materials, help-desk attachments, pictures in bank questions): name, type, size, storage key, scan result. | Written by a person |
 | Help desk | [`support_messages`](#support-messages) | Messages in each help request. | Written by a person |
 | Help desk | [`support_requests`](#support-requests) | Help requests a person sends the school, with status. | Written by a person |
 | Learning | [`achievements`](#achievements) | Badges a learner has earned. | Learning record |
@@ -60,9 +60,9 @@ Personal data kinds: **Account** (who someone is), **Learning record** (what the
 | People | [`recovery_codes`](#recovery-codes) | Two-step sign-in recovery codes, stored as hashes. | Security |
 | People | [`users`](#users) | Accounts: name, email, password hash, two-step secret (encrypted), appearance. One account can belong to several schools. | Account |
 | Quizzes and exams | [`bank_passages`](#bank-passages) | Passages, tables or instructions that several bank questions share. | None |
-| Quizzes and exams | [`bank_questions`](#bank-questions) | Bank questions: options A to E, the right one, explanation, topic, difficulty, how often seen and answered right. | None |
+| Quizzes and exams | [`bank_questions`](#bank-questions) | Bank questions: options A to E, the right one, explanation, topic, difficulty, a picture and its description, times seen and right. | None |
 | Quizzes and exams | [`cbt_attempts`](#cbt-attempts) | One sitting of a CBT exam or practice test: the questions drawn, answers, flags, deadline, scores by subject. | Learning record |
-| Quizzes and exams | [`cbt_exams`](#cbt-exams) | CBT exams: sections drawn from banks, subjects to choose, time, window, who sits it, attempts, results policy, access code. | None |
+| Quizzes and exams | [`cbt_exams`](#cbt-exams) | CBT exams: sections from banks, subjects to choose, time, window, who sits it, attempts, results policy and announcement, access code. | None |
 | Quizzes and exams | [`cbt_exam_groups`](#cbt-exam-groups) | Which classes sit a CBT exam set for classes only. | None |
 | Quizzes and exams | [`live_answers`](#live-answers) | Every answer in a live quiz with its time and points. | Learning record |
 | Quizzes and exams | [`live_players`](#live-players) | Who joined a live quiz (a member, or a guest nickname), score, streak. | Learning record |
@@ -191,7 +191,7 @@ Passages, tables or instructions that several bank questions share.
 
 ## bank_questions
 
-Bank questions: options A to E, the right one, explanation, topic, difficulty, how often seen and answered right.
+Bank questions: options A to E, the right one, explanation, topic, difficulty, a picture and its description, times seen and right.
 
 | Column | Type | Null | Default | Key |
 |---|---|---|---|---|
@@ -199,6 +199,8 @@ Bank questions: options A to E, the right one, explanation, topic, difficulty, h
 | `tenant_id` | bigint(20) unsigned |  |  | index |
 | `bank_id` | bigint(20) unsigned |  |  |  |
 | `passage_id` | bigint(20) unsigned | yes | `NULL` | index |
+| `image_file_id` | bigint(20) unsigned | yes | `NULL` |  |
+| `image_alt` | varchar(300) | yes | `NULL` |  |
 | `prompt` | text |  |  |  |
 | `options` | longtext |  |  |  |
 | `correct` | tinyint(3) unsigned |  |  |  |
@@ -259,7 +261,7 @@ One sitting of a CBT exam or practice test: the questions drawn, answers, flags,
 
 ## cbt_exams
 
-CBT exams: sections drawn from banks, subjects to choose, time, window, who sits it, attempts, results policy, access code.
+CBT exams: sections from banks, subjects to choose, time, window, who sits it, attempts, results policy and announcement, access code.
 
 | Column | Type | Null | Default | Key |
 |---|---|---|---|---|
@@ -280,6 +282,7 @@ CBT exams: sections drawn from banks, subjects to choose, time, window, who sits
 | `shuffle_options` | tinyint(1) |  | `1` |  |
 | `access_code` | varchar(12) | yes | `NULL` |  |
 | `status` | varchar(10) |  | `'draft'` |  |
+| `results_announced_at` | datetime | yes | `NULL` |  |
 | `created_by` | bigint(20) unsigned |  |  | index |
 | `created_at` | datetime |  |  |  |
 | `updated_at` | datetime |  |  |  |
@@ -511,7 +514,7 @@ A learner's place on a course: active, completed or withdrawn, with dates.
 
 ## files
 
-Uploaded files (lesson files, media, class materials, help-desk attachments): name, type, size, storage key, scan result.
+Uploaded files (lesson files, media, class materials, help-desk attachments, pictures in bank questions): name, type, size, storage key, scan result.
 
 | Column | Type | Null | Default | Key |
 |---|---|---|---|---|
@@ -520,6 +523,7 @@ Uploaded files (lesson files, media, class materials, help-desk attachments): na
 | `lesson_id` | bigint(20) unsigned | yes | `NULL` |  |
 | `submission_id` | bigint(20) unsigned | yes | `NULL` |  |
 | `class_session_id` | bigint(20) unsigned | yes | `NULL` |  |
+| `bank_question_id` | bigint(20) unsigned | yes | `NULL` |  |
 | `support_message_id` | bigint(20) unsigned | yes | `NULL` |  |
 | `uploaded_by` | bigint(20) unsigned |  |  | index |
 | `original_name` | varchar(190) |  |  |  |

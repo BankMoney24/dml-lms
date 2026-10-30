@@ -13,6 +13,7 @@ use App\Modules\Exams\Bank\BankQuestion;
 use App\Modules\Exams\Bank\BankRepository;
 use App\Modules\Identity\CurrentUser;
 use App\Modules\Identity\Permission;
+use App\Modules\Notifications\Notifier;
 use App\Modules\Tenancy\Tenant;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -41,6 +42,7 @@ final class CbtExams
         private readonly Clock $clock,
         private readonly AuditLog $audit,
         private readonly PaperBuilder $papers = new PaperBuilder(),
+        private readonly ?Notifier $notifier = null,
     ) {
     }
 
@@ -75,6 +77,96 @@ final class CbtExams
         }
         $this->exams->setStatus($tenant->id, $exam->id, 'published');
         $this->audit->record($tenant->id, $by->user->id, 'cbt.published', 'cbt_exam', $exam->id);
+        if ($this->notifier !== null) {
+            $when = [];
+            if ($exam->opensAt !== null && $exam->opensAt > $this->clock->sqlNow()) {
+                $when[] = 'Opens ' . self::local($tenant, $exam->opensAt);
+            }
+            if ($exam->closesAt !== null) {
+                $when[] = 'closes ' . self::local($tenant, $exam->closesAt);
+            }
+            $body = $exam->durationMinutes . ' minutes, ' . $exam->questionsLabel() . ' questions.'
+                . ($when === [] ? ' Open now.' : ' ' . ucfirst(implode(', ', $when)) . '.');
+            $this->notifier->notifyMany($tenant->id, $this->exams->audience($tenant->id, $exam), Notifier::EXAM_SET, 'Exam set: ' . $exam->title, $body, '/exams/' . $exam->id);
+        }
+    }
+
+    /**
+     * Tells each candidate that results held until the exam closed are ready, once.
+     *
+     * @return int how many candidates were told
+     */
+    public function announceResults(Tenant $tenant, int $examId): int
+    {
+        $exam = $this->exams->findExam($tenant->id, $examId);
+        $now = $this->clock->sqlNow();
+        if ($exam === null || $exam->results !== 'after_close' || !$exam->resultsVisible($now) || !$this->exams->markAnnounced($tenant->id, $exam->id, $now)) {
+            return 0;
+        }
+        $told = 0;
+        foreach ($this->exams->latestSubmitted($tenant->id, $exam->id) as $c) {
+            $this->notifier?->notify(
+                $tenant->id,
+                $c['user_id'],
+                Notifier::EXAM_RESULTS,
+                'Results ready: ' . $exam->title,
+                'Your scores and, where the teacher allows it, your answers.',
+                '/exams/attempts/' . $c['attempt_id'] . '/result',
+            );
+            $told++;
+        }
+
+        return $told;
+    }
+
+    /**
+     * Announces results for every exam that has closed with results held back (cron).
+     *
+     * @param callable(int): ?Tenant $tenantById
+     */
+    public function announceDue(callable $tenantById): int
+    {
+        $n = 0;
+        foreach ($this->exams->resultsDue($this->clock->sqlNow()) as $row) {
+            $tenant = $tenantById($row['tenant_id']);
+            if ($tenant instanceof Tenant) {
+                $n += $this->db->transaction(fn (): int => $this->announceResults($tenant, $row['id']));
+            }
+        }
+
+        return $n;
+    }
+
+    /**
+     * Exams this learner can start now, or has started: for the home page.
+     *
+     * @return list<array{exam: CbtExam, attempt: ?CbtAttempt, minutes_left: ?int}>
+     */
+    public function toSit(Tenant $tenant, CurrentUser $who, int $limit = 4): array
+    {
+        if (!$who->can(Permission::CourseLearn)) {
+            return [];
+        }
+        $out = [];
+        foreach ($this->exams->examsFor($tenant->id, $who->user->id) as $exam) {
+            if ($exam->status !== 'published') {
+                continue;
+            }
+            $attempt = $this->openAttempt($tenant, $who->user->id, $exam);
+            if ($attempt !== null || $this->cannotStart($tenant, $who, $exam) === null) {
+                $out[] = ['exam' => $exam, 'attempt' => $attempt, 'minutes_left' => $attempt === null ? null : max(1, (int) ceil($attempt->secondsLeft($this->clock->now()) / 60))];
+            }
+            if (count($out) >= $limit) {
+                break;
+            }
+        }
+
+        return $out;
+    }
+
+    private static function local(Tenant $tenant, string $utc): string
+    {
+        return (new DateTimeImmutable($utc, new DateTimeZone('UTC')))->setTimezone(new DateTimeZone($tenant->timezone))->format('j M, H:i');
     }
 
     /** Closes the exam: no new attempts; attempts in progress are submitted with what they saved. */
@@ -89,6 +181,7 @@ final class CbtExams
             }
         }
         $this->audit->record($tenant->id, $by->user->id, 'cbt.closed', 'cbt_exam', $exam->id, ['submitted' => $closed]);
+        $this->announceResults($tenant, $exam->id);
 
         return $closed;
     }
@@ -307,6 +400,7 @@ final class CbtExams
                     'id' => $q->id,
                     'n' => $number,
                     'prompt' => $markdown->toHtml($q->prompt),
+                    'image' => $q->image(),
                     'passage' => $q->passageId,
                     'options' => array_map(static fn (int $i): string => $q->options[$i] ?? '', $perm),
                     'answer' => $chosen === null ? null : array_search($chosen, $perm, true),
