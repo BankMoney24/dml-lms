@@ -9,7 +9,9 @@ namespace App\Modules\VirtualLabs\Network;
  * @phpstan-type Device array{id: string, type: string, name: string, x: int, y: int, ip: ?int, mask: ?int, gateway: ?int,
  *   ifaces: array<string, array{ip: ?int, mask: ?int, up: bool, helper: ?int}>, routes: list<array{net: int, mask: int, via: int}>,
  *   dhcp: bool, ports: array<string, array{trunk: bool, vlan: int}>, vlans: array<int, string>,
- *   subs: array<string, array{parent: string, vlan: int, ip: ?int, mask: ?int, helper: ?int}>, pools: list<Pool>, excluded: list<array{0: int, 1: int}>}
+ *   subs: array<string, array{parent: string, vlan: int, ip: ?int, mask: ?int, helper: ?int}>, pools: list<Pool>, excluded: list<array{0: int, 1: int}>,
+ *   ospf: ?Ospf}
+ * @phpstan-type Ospf array{networks: list<array{net: int, wildcard: int, area: int}>, passive: list<string>, default: bool}
  *
  * A network a learner built in the network builder (ADR 0035), read from the
  * compact JSON the browser sends. Everything is checked and limited here: the
@@ -24,6 +26,7 @@ namespace App\Modules\VirtualLabs\Network;
  *   router: {"i": id, "t": "router", "n": name, "x", "y", "if": {port: {"ip", "m", "u": 0|1, "h": helper}}, "rt": [[network, mask, next hop]…],
  *            "si": {"Gi0/0.10": {"ip", "m", "v": vlan, "h": helper}}, "pl": [pool…], "ex": [[first, last]…]}
  *   pool:   {"n": name, "s": first address, "m": mask, "g": default gateway, "c": how many addresses}
+ *   (ADR 0041) a router may run OSPF: "os": {"n": [[network, wildcard, area]…], "pi": [passive interface…], "di": 0|1 (default-information originate)}
  */
 final class Topology
 {
@@ -33,6 +36,7 @@ final class Topology
     public const MAX_SUBS = 8;
     public const MAX_POOLS = 4;
     public const MAX_VLAN_NAMES = 16;
+    public const MAX_OSPF_NETWORKS = 8;
 
     /** Ports each kind of device has, in order. */
     public const PORTS = [
@@ -136,13 +140,14 @@ final class Topology
                         continue;
                     }
                     $net = self::ip($r[0] ?? null);
-                    $mask = self::mask($r[1] ?? null);
+                    $mask = self::routeMask($r[1] ?? null);
                     $via = self::ip($r[2] ?? null);
                     if ($net !== null && $mask !== null && $via !== null) {
                         $routes[] = ['net' => $net & $mask, 'mask' => $mask, 'via' => $via];
                     }
                 }
             }
+            $ospf = $type === 'router' && is_array($raw['os'] ?? null) ? self::ospf($raw['os'], $subs) : null;
             $isHost = in_array($type, self::HOSTS, true);
             $pools = [];
             if ($type === 'router' || $type === 'server') {
@@ -170,6 +175,7 @@ final class Topology
                 'subs' => $subs,
                 'pools' => $pools,
                 'excluded' => $excluded,
+                'ospf' => $ospf,
             ];
         }
 
@@ -227,6 +233,12 @@ final class Topology
                 }
                 if ($d['excluded'] !== []) {
                     $row['ex'] = array_map(static fn (array $r): array => [self::show($r[0]), self::show($r[1])], $d['excluded']);
+                }
+                if ($d['ospf'] !== null) {
+                    $row['os'] = [
+                        'n' => array_map(static fn (array $n): array => [self::show($n['net']), self::show($n['wildcard']), $n['area']], $d['ospf']['networks']),
+                        'pi' => $d['ospf']['passive'],
+                    ] + ($d['ospf']['default'] ? ['di' => 1] : []);
                 }
             } elseif ($d['type'] === 'switch') {
                 $sp = [];
@@ -304,6 +316,12 @@ final class Topology
         return ($inverted & ($inverted + 1)) === 0 ? $n : null;
     }
 
+    /** A route's mask: any mask, or 0.0.0.0 (/0) for a default route (ADR 0041). */
+    public static function routeMask(mixed $value): ?int
+    {
+        return is_string($value) && in_array(trim($value), ['0.0.0.0', '/0', '0'], true) ? 0 : self::mask($value);
+    }
+
     public static function prefixMask(int $bits): int
     {
         return $bits === 0 ? 0 : (0xFFFFFFFF << (32 - $bits)) & 0xFFFFFFFF;
@@ -361,6 +379,61 @@ final class Topology
             'gateway' => self::ip($raw['g'] ?? null),
             'count' => max(1, min($room, $count, 1000)),
         ];
+    }
+
+    /**
+     * A router's OSPF settings (ADR 0041). Network statements keep the network
+     * with the wildcard bits cleared, so matching is (address AND NOT wildcard) = network.
+     *
+     * @param array<mixed> $raw
+     * @param array<string, mixed> $subs
+     * @return Ospf
+     */
+    private static function ospf(array $raw, array $subs): array
+    {
+        $networks = [];
+        foreach (array_slice(is_array($raw['n'] ?? null) ? $raw['n'] : [], 0, self::MAX_OSPF_NETWORKS) as $n) {
+            $n = is_array($n) ? array_values($n) : [];
+            $net = self::ip($n[0] ?? null);
+            $wildcard = self::ip($n[1] ?? null);
+            $area = self::area($n[2] ?? null);
+            if ($net !== null && $wildcard !== null && $area !== null) {
+                $networks[] = ['net' => $net & ((~$wildcard) & 0xFFFFFFFF), 'wildcard' => $wildcard, 'area' => $area];
+            }
+        }
+        $passive = [];
+        foreach (array_slice(is_array($raw['pi'] ?? null) ? $raw['pi'] : [], 0, 12) as $port) {
+            $port = self::str($port, 12);
+            if ((in_array($port, self::PORTS['router'], true) || isset($subs[$port])) && !in_array($port, $passive, true)) {
+                $passive[] = $port;
+            }
+        }
+
+        return ['networks' => $networks, 'passive' => $passive, 'default' => ($raw['di'] ?? 0) == 1];
+    }
+
+    /** An OSPF area: a number from 0 to 4294967295, or dotted ("0.0.0.0"). */
+    public static function area(mixed $value): ?int
+    {
+        if (is_int($value)) {
+            return $value >= 0 && $value <= 0xFFFFFFFF ? $value : null;
+        }
+        if (is_string($value) && ctype_digit($value) && strlen($value) <= 10) {
+            $n = (int) $value;
+
+            return $n <= 0xFFFFFFFF ? $n : null;
+        }
+
+        return self::ip($value);
+    }
+
+    /** The same network without one cable (index into links), for "what if this link fails". */
+    public function withoutLink(int $index): self
+    {
+        $links = $this->links;
+        unset($links[$index]);
+
+        return new self($this->devices, array_values($links));
     }
 
     private static function str(mixed $value, int $max): string

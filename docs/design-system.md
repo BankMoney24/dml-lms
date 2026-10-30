@@ -50,6 +50,7 @@ Dark mode follows the device unless the person picks Light or Dark in the accoun
 * Forms with a text area (or `data-unsaved`) warn before the page is left with unsaved writing. Quiz forms keep their own on-device drafts instead.
 * Menus built on `<details data-menu>` close on Escape and on a click elsewhere.
 * Search suggests as you type; Enter still goes to the full results page.
+* In "I have paid the school", the amount follows what the payment is for (`form[data-claim-amounts]`) until the learner types an amount of their own.
 * The connection banner says plainly when the device is offline.
 * Nothing animates unless the person's device allows motion (`prefers-reduced-motion`).
 
@@ -64,6 +65,14 @@ The signed-in shell has three forms (ADR 0040):
 | Desktop | 75rem and up | The full navy sidebar. |
 
 Rows of courses on the home pages (`$listScroll`) swipe sideways on phones instead of stacking; the course list itself always stacks. Tables marked `.table-stack` turn into one card per row under 40rem. Every page is checked for sideways scrolling at 360–1440px.
+
+## Words on the page
+
+Write "learner" in templates. A school that calls them students, pupils or trainees sees its own word (ADR 0041): the page is rewritten after rendering, in the text and in the attributes people read (placeholder, title, aria-label, alt, data-label, submit buttons, the page description). Mark anything people wrote themselves, so it is left as written:
+
+* Long text: wrap it in `.prose` (lesson text, posts, site pages) or print it with `$v->paragraphs()`, which marks its paragraphs.
+* Short values: put `data-own-words` on the element, as the setup review does for answers.
+* Code in `code`, `pre`, `textarea`, `script` and `style` is never touched, and neither are links, form values or file names such as `learners.csv`.
 
 ## Accessibility baseline
 

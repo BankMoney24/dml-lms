@@ -894,3 +894,27 @@
   window.addEventListener('resize', function () { if (!pop.hidden && current) { place(current); } });
   window.addEventListener('scroll', function () { if (mode === 'hover') { close(false); } else if (!pop.hidden && current) { place(current); } }, { passive: true });
 }());
+
+/* "I have paid the school" (ADR 0041): the amount follows what the payment is for
+   (the whole course or part 1, or the next part of a plan) until the learner types their own. */
+(function () {
+  'use strict';
+  Array.prototype.forEach.call(document.querySelectorAll('form[data-claim-amounts]'), function (form) {
+    var amounts;
+    try { amounts = JSON.parse(form.getAttribute('data-claim-amounts') || '{}'); } catch (e) { return; }
+    var amount = form.querySelector('[name="amount"]');
+    var choice = form.querySelector('[name="for"]');
+    if (!amount || !amounts || typeof amounts !== 'object') { return; }
+    function num(v) { return parseFloat(String(v).replace(/[^0-9.]/g, '')); }
+    function ours(v) {
+      // Empty, or one of the amounts offered (the page may already show the full price): not typed by the learner.
+      return String(v).trim() === '' || Object.keys(amounts).some(function (k) { return num(amounts[k]) === num(v); });
+    }
+    function fill() {
+      var want = amounts[choice ? choice.value : ''];
+      if (typeof want === 'string' && ours(amount.value)) { amount.value = want; }
+    }
+    if (choice) { choice.addEventListener('change', fill); }
+    fill();
+  });
+}());

@@ -35,6 +35,11 @@
     var inv = 4294967295 - n;
     return ((inv + 1) & inv) === 0 || inv === 4294967295 ? n : null;
   }
+  /** A route's mask: any mask, or 0.0.0.0 (/0) for a default route. */
+  function routeMask(s) {
+    var v = String(s === null || s === undefined ? '' : s).trim();
+    return v === '0.0.0.0' || v === '/0' || v === '0' ? 0 : mask2n(v);
+  }
   function prefixOf(mask) { return 32 - Math.round(Math.log(4294967296 - mask) / Math.LN2); }
   function and(a, b) {
     // 32-bit AND without sign trouble.
@@ -100,6 +105,30 @@
       return lo !== null && hi !== null && hi >= lo ? [lo, hi] : null;
     }).filter(function (x) { return x !== null; });
   }
+  /** An OSPF area: a whole number up to 4294967295, or dotted ("0.0.0.0"). */
+  function areaOf(v) {
+    if (typeof v === 'number') { return Math.floor(v) === v && v >= 0 && v <= 4294967295 ? v : null; }
+    if (typeof v === 'string' && /^\d{1,10}$/.test(v)) { var n = parseInt(v, 10); return n <= 4294967295 ? n : null; }
+    return ip2n(v);
+  }
+  /** A router's OSPF settings (ADR 0041), checked: {networks:[{net, wildcard, area}], passive:[port], def} or null. */
+  function ospfOf(d) {
+    if (d.t !== 'router' || !d.os || typeof d.os !== 'object' || Array.isArray(d.os)) { return null; }
+    var subs = {};
+    subsOf(d).forEach(function (x) { subs[x.name] = true; });
+    var nets = [];
+    (Array.isArray(d.os.n) ? d.os.n : []).slice(0, 8).forEach(function (n) {
+      if (!Array.isArray(n)) { return; }
+      var net = ip2n(n[0]), wc = ip2n(n[1]), area = areaOf(n[2]);
+      if (net !== null && wc !== null && area !== null) { nets.push({ net: and(net, 4294967295 - wc), wildcard: wc, area: area }); }
+    });
+    var passive = [];
+    (Array.isArray(d.os.pi) ? d.os.pi : []).slice(0, 12).forEach(function (pt) {
+      pt = String(pt === null || pt === undefined ? '' : pt).trim().slice(0, 12);
+      if ((PORTS.router.indexOf(pt) >= 0 || subs[pt]) && passive.indexOf(pt) < 0) { passive.push(pt); }
+    });
+    return { networks: nets, passive: passive, def: d.os.di === 1 || d.os.di === '1' || d.os.di === true };
+  }
   function isHostAddr(ip, mask) {
     if (prefixOf(mask) >= 31) { return true; }
     var host = ip - and(ip, mask), all = 4294967295 - mask;
@@ -114,6 +143,9 @@
     this.onSeg = {};
     this.adj = {};
     this.leases = {};
+    this.ospfIfs = {};
+    this.nbrs = {};
+    this.ospfRt = {};
     var vl = { 1: true };
     state.d.forEach(function (d) {
       self.dev[d.i] = d;
@@ -137,8 +169,73 @@
         if (seg !== undefined) { (self.onSeg[seg] = self.onSeg[seg] || []).push({ dev: d.i, port: f.port, ip: f.ip, mask: f.mask }); }
       });
     });
+    this.runOspf(state);
     this.leaseAll(state);
   }
+  /** OSPF interfaces, neighbours and learned routes: the same rules as the server (ADR 0041). */
+  Sim.prototype.runOspf = function (state) {
+    var self = this, order = [];
+    state.d.forEach(function (d) {
+      var os = ospfOf(d);
+      if (!os) { return; }
+      var list = [];
+      self.ifaces(d).forEach(function (f) {
+        for (var i = 0; i < os.networks.length; i++) {
+          var n = os.networks[i];
+          if (and(f.ip, 4294967295 - n.wildcard) === n.net) { list.push({ port: f.port, ip: f.ip, mask: f.mask, area: n.area, passive: os.passive.indexOf(f.port) >= 0 }); break; }
+        }
+      });
+      self.ospfIfs[d.i] = list;
+      order.push(d.i);
+    });
+    order.forEach(function (a) {
+      self.nbrs[a] = [];
+      self.ospfIfs[a].forEach(function (ia) {
+        var seg = ia.passive ? null : self.seg(a, ia.port);
+        if (seg === null) { return; }
+        order.forEach(function (b) {
+          if (b === a) { return; }
+          self.ospfIfs[b].forEach(function (ib) {
+            if (!ib.passive && ib.ip !== ia.ip && ib.mask === ia.mask && ib.area === ia.area && sameNet(ib.ip, ia.ip, ia.mask) && self.seg(b, ib.port) === seg) {
+              self.nbrs[a].push({ dev: b, port: ia.port, ip: ib.ip, theirPort: ib.port, area: ia.area });
+            }
+          });
+        });
+      });
+    });
+    order.forEach(function (x) {
+      var dist = {}, first = {}, queue = [x], seen = [x];
+      dist[x] = 0;
+      while (queue.length) {
+        var u = queue.shift();
+        self.nbrs[u].forEach(function (nb) {
+          if (dist[nb.dev] !== undefined) { return; }
+          dist[nb.dev] = dist[u] + 1;
+          first[nb.dev] = u === x ? { via: nb.ip, port: nb.port } : first[u];
+          queue.push(nb.dev);
+          seen.push(nb.dev);
+        });
+      }
+      var connected = {};
+      self.ifaces(self.dev[x]).forEach(function (f) { connected[and(f.ip, f.mask) + '/' + f.mask] = true; });
+      var best = {}, keys = [];
+      seen.forEach(function (r) {
+        if (r === x) { return; }
+        self.ospfIfs[r].forEach(function (i) {
+          var key = and(i.ip, i.mask) + '/' + i.mask;
+          if (connected[key] || (best[key] && best[key].metric <= dist[r] + 1)) { return; }
+          if (!best[key]) { keys.push(key); }
+          best[key] = { net: and(i.ip, i.mask), mask: i.mask, via: first[r].via, port: first[r].port, metric: dist[r] + 1, external: false };
+        });
+        var os = ospfOf(self.dev[r]);
+        if (!best['0/0'] && os.def && (self.dev[r].rt || []).slice(0, 12).some(function (rt) { return Array.isArray(rt) && routeMask(rt[1]) === 0 && ip2n(rt[0]) !== null && ip2n(rt[2]) !== null; })) {
+          keys.push('0/0');
+          best['0/0'] = { net: 0, mask: 0, via: first[r].via, port: first[r].port, metric: 1, external: true };
+        }
+      });
+      self.ospfRt[x] = keys.map(function (k) { return best[k]; });
+    });
+  };
   /** What one end of a cable carries: {u: node, t10: node, …}. */
   Sim.prototype.ends = function (id, port, vlans) {
     var d = this.dev[id], out = {};
@@ -271,10 +368,14 @@
       if (sameNet(dst, f.ip, f.mask) && p > bestP) { best = { kind: 'c', port: f.port }; bestP = p; }
     });
     (d.rt || []).forEach(function (r) {
-      var net = ip2n(r[0]), mk = mask2n(r[1]), via = ip2n(r[2]);
+      var net = ip2n(r[0]), mk = routeMask(r[1]), via = ip2n(r[2]);
       if (net === null || mk === null || via === null) { return; }
       var p = prefixOf(mk);
       if (and(dst, mk) === and(net, mk) && p > bestP) { best = { kind: 'v', via: via }; bestP = p; }
+    });
+    (this.ospfRt[d.i] || []).forEach(function (r) {
+      var p = prefixOf(r.mask);
+      if (and(dst, r.mask) === r.net && p > bestP) { best = { kind: 'v', via: r.via }; bestP = p; }
     });
     if (!best) { return { ok: false, why: d.n + ' has no route to ' + n2ip(dst) }; }
     if (best.kind === 'c') {
@@ -364,7 +465,7 @@
   var W = 960, H = 540;
 
   function mount(root, p) {
-    var mode = p.mode === 'repair' || p.mode === 'vlan' ? p.mode : 'build';
+    var mode = p.mode === 'repair' || p.mode === 'vlan' || p.mode === 'ospf' ? p.mode : 'build';
     var hasStart = mode !== 'build' && !!p.start;
     var storeKey = 'dml-nb:' + location.pathname + '|' + p.server + '|' + mode;
     var state = load() || (hasStart ? JSON.parse(JSON.stringify(p.start)) : { d: [], l: [] });
@@ -412,6 +513,9 @@
       el('p', null, 'Connect ' + p.site + ' to the server room. The PCs go on LAN A, ' + p.lanA + '. The server SRV1 (' + p.server + ') is on LAN B, ' + p.lanB + '. R1 and R2 are joined by the link ' + p.link + '.', brief);
     } else if (mode === 'vlan') {
       el('p', null, 'In ' + p.site + ', staff and students share one switch. Keep them apart with VLAN ' + p.staffVlan + ' (staff, ' + p.staffNet + ') and VLAN ' + p.studentVlan + ' (students, ' + p.studentNet + '), route between them on R1, and let SRV1 (' + p.server + ') give every PC its address by DHCP.', brief);
+    } else if (mode === 'ospf') {
+      var sites = p.sites || ['the first site', 'the second', 'the third'];
+      el('p', null, sites[0] + ' (' + p.lans[0] + '), ' + sites[1] + ' (' + p.lans[1] + ') and ' + sites[2] + ' (' + p.lans[2] + ', with SRV1 at ' + p.server + ') each have a router, joined in a triangle. Every address is set, but nothing is routed. Turn on OSPF on R1, R2 and R3 so they learn every network, then shut down one link between routers and check that traffic goes the long way round.', brief);
     } else {
       el('p', null, 'People in ' + p.site + ' cannot reach the server SRV1 (' + p.server + '). The network is built, but three things are wrong. Test, find and fix them.', brief);
     }
@@ -563,7 +667,11 @@
         [[a, l[1], b], [b, l[3], a]].forEach(function (e) {
           var dx = e[2].x - e[0].x, dy = e[2].y - e[0].y, len = Math.max(1, Math.sqrt(dx * dx + dy * dy));
           S('circle', { cx: e[0].x + dx / len * 40, cy: e[0].y + dy / len * 40, r: 4.5, class: 'nb-light ' + (up ? 'is-up' : 'is-down') }, g);
-          S('text', { x: e[0].x + dx / len * 62, y: e[0].y + dy / len * 62 - 7, class: 'nb-port', 'text-anchor': 'middle' }, g, e[1] + endTag(e[0], e[1]));
+          // The device's name and summary sit below it (about 55 either side, 30 to 70 down): slide the port name
+          // further along the cable until it clears them, but never past the middle of the cable.
+          var at = 62;
+          while (at < len * 0.45 && Math.abs(dx / len * at) < 78 && dy / len * at - 7 > 18 && dy / len * at - 7 < 82) { at += 4; }
+          S('text', { x: e[0].x + dx / len * at, y: e[0].y + dy / len * at - 7, class: 'nb-port', 'text-anchor': 'middle' }, g, e[1] + endTag(e[0], e[1]));
         });
       });
     }
@@ -747,7 +855,7 @@
 
       var tabs = el('div', { class: 'nb-tabs', role: 'tablist', 'aria-label': d.n + ' views' }, null, inspector);
       var views = isHost(d) ? [['settings', 'IP settings']].concat(d.t === 'server' ? [['dhcp', 'DHCP service']] : []).concat([['cli', 'Command prompt'], ['ports', 'Cables']])
-        : d.t === 'router' ? [['settings', 'Interfaces'], ['subs', 'Subinterfaces'], ['routes', 'Routes'], ['dhcp', 'DHCP'], ['cli', 'CLI'], ['ports', 'Cables']]
+        : d.t === 'router' ? [['settings', 'Interfaces'], ['subs', 'Subinterfaces'], ['routes', 'Routes'], ['ospf', 'OSPF'], ['dhcp', 'DHCP'], ['cli', 'CLI'], ['ports', 'Cables']]
           : [['vlans', 'VLANs'], ['ports', 'Cables'], ['cli', 'CLI'], ['settings', 'Name']];
       if (!views.some(function (v) { return v[0] === tab; })) { tab = views[0][0]; }
       views.forEach(function (v) {
@@ -756,6 +864,7 @@
       });
       var panel = el('div', { class: 'nb-panel', role: 'tabpanel', 'aria-labelledby': 'nb-tab-' + tab }, null, inspector);
       if (tab === 'ports') { portsView(panel, d); } else if (tab === 'cli') { cliView(panel, d); } else if (tab === 'routes') { routesView(panel, d); }
+      else if (tab === 'ospf') { ospfView(panel, d); }
       else if (tab === 'vlans') { vlansView(panel, d); } else if (tab === 'subs') { subsView(panel, d); } else if (tab === 'dhcp') { dhcpView(panel, d); }
       else if (isHost(d)) { hostView(panel, d); } else if (d.t === 'router') { ifaceView(panel, d); } else { nameView(panel, d); }
     }
@@ -906,13 +1015,87 @@
       });
     }
     function addRoute(d, net, m, via) {
-      var n = ip2n(net), mk = mask2n(m), v = ip2n(via);
+      var n = ip2n(net), mk = routeMask(m), v = ip2n(via);
       if (n === null) { return 'The network should be an address like 10.1.2.0.'; }
-      if (mk === null) { return 'The mask should look like 255.255.255.0.'; }
+      if (mk === null) { return 'The mask should look like 255.255.255.0 (or 0.0.0.0 for a default route).'; }
       if (v === null) { return 'The next hop should be an address like 172.16.0.2.'; }
       if ((d.rt || []).length >= 12) { return 'A router here can hold 12 static routes.'; }
       d.rt = d.rt || [];
       d.rt.push([n2ip(and(n, mk)), n2ip(mk), n2ip(v)]);
+      return null;
+    }
+    /** The OSPF tab (ADR 0041): network statements, passive interfaces, what the router learned. */
+    function ospfView(panel, d) {
+      var on = !!d.os;
+      el('p', { class: 'small muted' }, 'OSPF lets routers tell each other which networks they have, so nobody types routes by hand. Each network statement turns OSPF on for the interfaces whose address it matches.', panel);
+      var tog = el('label', { class: 'choice choice-tight' }, null, panel);
+      var box = el('input', { type: 'checkbox', id: 'nb-os-on' }, null, tog);
+      box.checked = on;
+      el('span', null, 'Run OSPF on ' + d.n + ' (router ospf 1)', tog);
+      box.addEventListener('change', function () {
+        if (box.checked) { d.os = d.os || { n: [], pi: [] }; changed('OSPF is on for ' + d.n + '. Add a network statement for each network.'); }
+        else { delete d.os; changed('OSPF is off for ' + d.n + '.'); }
+      });
+      if (!on) { return; }
+      el('h4', { class: 'nb-h4' }, 'Network statements', panel);
+      var list = el('ul', { class: 'nb-routes' }, null, panel);
+      if (!(d.os.n || []).length) { el('li', { class: 'muted' }, 'None yet: no interface runs OSPF.', list); }
+      (d.os.n || []).forEach(function (n, i) {
+        var li = el('li', null, null, list);
+        el('span', { class: 'mono' }, 'network ' + n[0] + ' ' + n[1] + ' area ' + n[2], li);
+        var x = el('button', { type: 'button', class: 'linklike small' }, 'Remove', li);
+        x.setAttribute('aria-label', 'Remove network ' + n[0] + ' ' + n[1]);
+        x.addEventListener('click', function () { d.os.n.splice(i, 1); changed('Network statement removed.'); });
+      });
+      var form = el('form', { class: 'nb-form nb-form-row' }, null, panel);
+      var net = field(form, 'nb-os-net', 'Network', '', { inputmode: 'decimal', class: 'mono', maxlength: '15' });
+      var wc = field(form, 'nb-os-wc', 'Wildcard', '', { inputmode: 'decimal', class: 'mono', maxlength: '15', placeholder: '0.0.0.255' });
+      var ar = field(form, 'nb-os-area', 'Area', '0', { inputmode: 'numeric', class: 'mono', maxlength: '15' });
+      el('button', { type: 'submit', class: 'button button-small' }, 'Add', form);
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var r = addOspfNetwork(d, net.value, wc.value, ar.value);
+        if (r) { problem(form, r); return; }
+        changed('Network statement added on ' + d.n + '.');
+        var again = document.getElementById('nb-os-net');
+        if (again) { again.focus(); }
+      });
+      el('h4', { class: 'nb-h4' }, 'Passive interfaces', panel);
+      el('p', { class: 'small muted' }, 'A passive interface still has its network advertised, but sends no OSPF hellos: use it on ports to PCs, where no router listens.', panel);
+      var pf = el('div', { class: 'nb-passive', role: 'group', 'aria-label': 'Passive interfaces' }, null, panel);
+      PORTS.router.concat(Object.keys(d.si || {}).sort()).forEach(function (pt) {
+        var lb = el('label', { class: 'choice choice-tight' }, null, pf);
+        var cb = el('input', { type: 'checkbox' }, null, lb);
+        cb.checked = (d.os.pi || []).indexOf(pt) >= 0;
+        el('span', { class: 'mono' }, pt, lb);
+        cb.addEventListener('change', function () {
+          d.os.pi = (d.os.pi || []).filter(function (x) { return x !== pt; });
+          if (cb.checked) { d.os.pi.push(pt); }
+          changed(pt + (cb.checked ? ' is passive.' : ' sends hellos again.'));
+        });
+      });
+      var dl = el('label', { class: 'choice choice-tight' }, null, panel);
+      var dcb = el('input', { type: 'checkbox' }, null, dl);
+      dcb.checked = d.os.di === 1;
+      el('span', null, 'Share this router’s default route (default-information originate)', dl);
+      dcb.addEventListener('change', function () { if (dcb.checked) { d.os.di = 1; } else { delete d.os.di; } changed('Saved.'); });
+      el('h4', { class: 'nb-h4' }, 'What ' + d.n + ' sees now', panel);
+      var sm = sim();
+      var nb = sm.nbrs[d.i] || [];
+      var ul = el('ul', { class: 'nb-learned' }, null, panel);
+      if (!nb.length) { el('li', { class: 'muted' }, 'No neighbours yet.', ul); }
+      nb.forEach(function (x) { el('li', { class: 'mono' }, 'Neighbour ' + sm.dev[x.dev].n + ' (' + n2ip(x.ip) + ') on ' + x.port, ul); });
+      (sm.ospfRt[d.i] || []).forEach(function (r) { el('li', { class: 'mono' }, 'Learned ' + n2ip(r.net) + '/' + prefixOf(r.mask) + ' via ' + n2ip(r.via) + ' (' + r.port + ', cost ' + r.metric + ')', ul); });
+    }
+    function addOspfNetwork(d, net, wc, area) {
+      var n = ip2n(net), w = ip2n(wc), a = areaOf(String(area || '').trim());
+      if (n === null) { return 'The network should be an address like 10.1.2.0.'; }
+      if (w === null) { return 'The wildcard is the mask turned inside out: 0.0.0.255 for a /24, 0.0.0.3 for a /30, 0.0.0.0 for one exact address.'; }
+      if (a === null) { return 'The area is a number, usually 0.'; }
+      d.os = d.os || { n: [], pi: [] };
+      d.os.n = d.os.n || [];
+      if (d.os.n.length >= 8) { return 'A router here can hold 8 network statements.'; }
+      d.os.n.push([n2ip(and(n, 4294967295 - w)), n2ip(w), a]);
       return null;
     }
     function portsView(panel, d) {
@@ -1147,7 +1330,7 @@
       el('button', { type: 'submit', class: 'button button-small' }, 'Run', form);
       screen.scrollTop = screen.scrollHeight;
       var quick = el('div', { class: 'nt-quick', role: 'group', 'aria-label': 'Common commands' }, null, panel);
-      (d.t === 'router' ? ['enable', 'configure terminal', 'show ip interface brief', 'show ip route', 'show ip dhcp binding', 'show running-config', 'ping ' + p.server]
+      (d.t === 'router' ? ['enable', 'configure terminal', 'show ip interface brief', 'show ip route'].concat(d.os || p.mode === 'ospf' ? ['show ip ospf neighbor'] : ['show ip dhcp binding']).concat(['show running-config', 'ping ' + p.server])
         : d.t === 'switch' ? ['enable', 'configure terminal', 'show vlan brief', 'show interfaces trunk', 'show running-config']
           : ['ipconfig'].concat(d.dh === 1 ? ['ipconfig /renew'] : []).concat(['ping ' + p.server, 'tracert ' + p.server, 'arp -a'])).forEach(function (q) {
         var b = el('button', { type: 'button', class: 'pc-chip' }, q, quick);
@@ -1172,7 +1355,7 @@
     function prompt(d, c) {
       if (isHost(d)) { return 'C:\\> '; }
       var ifp = c.mode === 'if' && c.iface && c.iface.indexOf('.') > 0 ? '(config-subif)#' : (c.mode === 'if' && c.ifaces && c.ifaces.length > 1 ? '(config-if-range)#' : '(config-if)#');
-      return d.n + ({ user: '>', priv: '#', config: '(config)#', 'if': ifp, vlan: '(config-vlan)#', dhcp: '(dhcp-config)#' }[c.mode] || '>') + ' ';
+      return d.n + ({ user: '>', priv: '#', config: '(config)#', 'if': ifp, vlan: '(config-vlan)#', dhcp: '(dhcp-config)#', router: '(config-router)#' }[c.mode] || '>') + ' ';
     }
     function shell(d, line) {
       var w = line.trim().split(/\s+/), cmd = (w[0] || '').toLowerCase();
@@ -1274,19 +1457,20 @@
       if (raw === '') { return []; }
       var w = raw.split(/\s+/);
       var k = w.map(function (x) { return x.toLowerCase(); });
-      if (k[0] === 'do' && (c.mode === 'config' || c.mode === 'if' || c.mode === 'dhcp')) { return iosShow(d, k.slice(1), w.slice(1)); }
+      if (k[0] === 'do' && (c.mode === 'config' || c.mode === 'if' || c.mode === 'dhcp' || c.mode === 'router')) { return iosShow(d, k.slice(1), w.slice(1)); }
       if (k[0] === '?' || k[0] === 'help') {
         return {
           user: ['  enable                      go to privileged mode', '  ping <address>              send echo requests', '  show ip interface brief     interfaces and addresses', '  show ip route               the routing table'],
-          priv: ['  configure terminal          change the configuration', '  show ip interface brief', '  show ip route', '  show ip dhcp binding   show ip dhcp pool', '  show running-config', '  ping <address>   traceroute <address>', '  disable / exit'],
-          config: ['  hostname <name>', '  interface <Gi0/0|Gi0/1|Gi0/2>', '  interface Gi0/0.<n>         a subinterface (router on a stick)', '  no interface Gi0/0.<n>', '  ip route <network> <mask> <next hop>', '  no ip route <network> <mask> <next hop>', '  ip dhcp pool <name>', '  ip dhcp excluded-address <first> [<last>]', '  do show …   end   exit'],
+          priv: ['  configure terminal          change the configuration', '  show ip interface brief', '  show ip route', '  show ip ospf neighbor   show ip ospf interface brief   show ip protocols', '  show ip dhcp binding   show ip dhcp pool', '  show running-config', '  ping <address>   traceroute <address>', '  disable / exit'],
+          config: ['  hostname <name>', '  interface <Gi0/0|Gi0/1|Gi0/2>', '  interface Gi0/0.<n>         a subinterface (router on a stick)', '  no interface Gi0/0.<n>', '  ip route <network> <mask> <next hop>   (0.0.0.0 0.0.0.0 for a default route)', '  no ip route <network> <mask> <next hop>', '  router ospf <process id>    dynamic routing', '  no router ospf <process id>', '  ip dhcp pool <name>', '  ip dhcp excluded-address <first> [<last>]', '  do show …   end   exit'],
+          router: ['  network <network> <wildcard> area <area>   for example network 10.1.1.0 0.0.0.255 area 0', '  no network <network> <wildcard> area <area>', '  passive-interface <interface>   no hellos out of that interface', '  no passive-interface <interface>', '  default-information originate   share this router’s default route', '  router-id <a.b.c.d>', '  exit   end'],
           'if': ['  ip address <address> <mask>', '  no ip address', '  encapsulation dot1Q <vlan>   (subinterfaces)', '  ip helper-address <server>   relay DHCP to a server', '  no ip helper-address', '  no shutdown   (bring the interface up)', '  shutdown', '  exit   end'],
           dhcp: ['  network <network> <mask>', '  default-router <address>', '  exit   end']
         }[c.mode];
       }
       if (starts(k[0], 'end', 3)) { c.mode = c.mode === 'user' ? 'user' : 'priv'; c.iface = null; return []; }
       if (starts(k[0], 'exit', 2)) {
-        if (c.mode === 'if' || c.mode === 'dhcp') { c.mode = 'config'; c.iface = null; c.pool = null; } else if (c.mode === 'config') { c.mode = 'priv'; } else { c.mode = 'user'; }
+        if (c.mode === 'if' || c.mode === 'dhcp' || c.mode === 'router') { c.mode = 'config'; c.iface = null; c.pool = null; } else if (c.mode === 'config') { c.mode = 'priv'; } else { c.mode = 'user'; }
         return [];
       }
       if (c.mode === 'user' || c.mode === 'priv') {
@@ -1302,6 +1486,7 @@
         }
         return ['% Invalid input detected at \'^\' marker. Type ? for the commands.'];
       }
+      if (c.mode === 'router') { return iosRouter(d, c, w, k, line); }
       if (c.mode === 'dhcp') {
         var pool = (d.pl || []).filter(function (x) { return x.n === c.pool; })[0];
         if (!pool) { c.mode = 'config'; return ['% The pool was removed.']; }
@@ -1351,8 +1536,20 @@
         }
         if (k[0] === 'no' && k[1] === 'ip' && starts(k[2], 'route', 3)) {
           var before = (d.rt || []).length;
-          d.rt = (d.rt || []).filter(function (r) { return !(ip2n(r[0]) === and(ip2n(w[3]) || 0, mask2n(w[4]) || 0) && r[1] === n2ip(mask2n(w[4]) || 0) && (!w[5] || r[2] === w[5])); });
+          d.rt = (d.rt || []).filter(function (r) { return !(ip2n(r[0]) === and(ip2n(w[3]) || 0, routeMask(w[4]) || 0) && r[1] === n2ip(routeMask(w[4]) || 0) && (!w[5] || r[2] === w[5])); });
           return d.rt.length === before ? ['% No matching route to delete.'] : [];
+        }
+        if (starts(k[0], 'router', 3)) {
+          if (k[1] !== 'ospf') { return ['% This simulator routes with OSPF: router ospf 1']; }
+          if (!/^\d{1,5}$/.test(w[2] || '') || parseInt(w[2], 10) < 1) { return ['% Incomplete command. router ospf <process id>, for example router ospf 1']; }
+          d.os = d.os || { n: [], pi: [] };
+          c.mode = 'router';
+          return [];
+        }
+        if (k[0] === 'no' && starts(k[1], 'router', 3) && k[2] === 'ospf') {
+          if (!d.os) { return ['% OSPF is not running.']; }
+          delete d.os;
+          return [];
         }
         if (k[0] === 'ip' && k[1] === 'dhcp' && starts(k[2], 'pool', 2)) {
           var pn = w[3] || '';
@@ -1419,6 +1616,69 @@
       }
       return ['% Invalid input detected. Type ? for the commands.'];
     }
+    /** router ospf mode (ADR 0041). */
+    function iosRouter(d, c, w, k, line) {
+      if (!d.os) { c.mode = 'config'; return ['% OSPF was turned off.']; }
+      var neg = k[0] === 'no', a = neg ? 1 : 0;
+      if (starts(k[a], 'network', 3)) {
+        if (starts(k[a + 3] || '', 'area', 2) === false || w.length < a + 5) { return ['% Incomplete command. network <network> <wildcard> area <area>, for example network 10.1.1.0 0.0.0.255 area 0']; }
+        if (!neg) {
+          if (mask2n(w[a + 2]) !== null && mask2n(w[a + 2]) !== 4294967295 && w[a + 2] !== '0.0.0.0') {
+            return ['% ' + w[a + 2] + ' looks like a mask. OSPF wants a wildcard (the mask turned inside out): for 255.255.255.0 type 0.0.0.255.'];
+          }
+          var er = addOspfNetwork(d, w[a + 1], w[a + 2], w[a + 4]);
+          return er ? ['% ' + er] : [];
+        }
+        var n = ip2n(w[a + 1]), wc = ip2n(w[a + 2]), before = (d.os.n || []).length;
+        d.os.n = (d.os.n || []).filter(function (x) { return !(n !== null && wc !== null && x[0] === n2ip(and(n, 4294967295 - wc)) && x[1] === n2ip(wc) && String(x[2]) === String(areaOf(w[a + 4]))); });
+        return d.os.n.length === before ? ['% No matching network statement.'] : [];
+      }
+      if (starts(k[a], 'passive-interface', 7)) {
+        var pt = portName(w.slice(a + 1).join(''));
+        if (!pt) { return ['% passive-interface <interface>, for example passive-interface Gi0/0']; }
+        d.os.pi = (d.os.pi || []).filter(function (x) { return x !== pt; });
+        if (!neg) { d.os.pi.push(pt); }
+        return [];
+      }
+      if (starts(k[a], 'default-information', 9)) {
+        if (neg) { delete d.os.di; return []; }
+        if (!starts(k[a + 1] || '', 'originate', 4)) { return ['% default-information originate']; }
+        d.os.di = 1;
+        return (d.rt || []).some(function (r) { return routeMask(r[1]) === 0; }) ? [] : ['(Saved. ' + d.n + ' has no default route yet, so there is nothing to share until you add ip route 0.0.0.0 0.0.0.0 <next hop>.)'];
+      }
+      if (starts(k[a], 'router-id', 8)) { return ip2n(w[a + 1]) === null && !neg ? ['% router-id <a.b.c.d>'] : ['(Accepted. In this simulator neighbours are found without router IDs.)']; }
+      if (starts(k[a], 'log-adjacency-changes', 3) || starts(k[a], 'auto-cost', 4)) { return ['(Accepted. This simulator does not use it.)']; }
+      if (starts(k[0], 'interface', 3) || (k[0] === 'ip' && starts(k[1], 'route', 3)) || starts(k[0], 'router', 3) || starts(k[0], 'hostname', 4)) { c.mode = 'config'; return ios(d, c, line); }
+      return ['% Invalid input detected. Type ? for the commands.'];
+    }
+    function ospfLines(d, what) {
+      var sm = new Sim(state);
+      if (!d.os) { return ['(OSPF is not running on ' + d.n + '. Start it with router ospf 1 in configure terminal.)']; }
+      if (/^ip\s+ospf\s+n/.test(what)) {
+        var nb = sm.nbrs[d.i] || [];
+        var rows = ['Neighbor ID     Pri   State           Dead Time   Address         Interface'];
+        nb.forEach(function (x) {
+          rows.push((sm.dev[x.dev].n + '                ').slice(0, 16) + '  1   FULL/  -        00:00:35    ' + (n2ip(x.ip) + '                ').slice(0, 16) + 'GigabitEthernet' + x.port.slice(2));
+        });
+        if (!nb.length) { rows.push('(no neighbours: check that both ends run OSPF on that link, are not passive, and share the network, mask and area)'); }
+        return rows;
+      }
+      if (/^ip\s+ospf\s+int/.test(what)) {
+        var ifs = sm.ospfIfs[d.i] || [];
+        var out = ['Interface    PID   Area            IP Address/Mask    Cost  State Nbrs F/C'];
+        ifs.forEach(function (f) {
+          var n = (sm.nbrs[d.i] || []).filter(function (x) { return x.port === f.port; }).length;
+          out.push((f.port + '             ').slice(0, 13) + '1     ' + (String(f.area) + '                ').slice(0, 16) + ((n2ip(f.ip) + '/' + prefixOf(f.mask)) + '                   ').slice(0, 19) + '1     ' + (f.passive ? 'PASV ' : (n ? 'DR   ' : 'WAIT ')) + n + '/' + n);
+        });
+        if (!ifs.length) { out.push('(no interface runs OSPF: no network statement matches a working interface)'); }
+        return out;
+      }
+      var p = ['Routing Protocol is "ospf 1"', '  Routing for Networks:'];
+      (d.os.n || []).forEach(function (n) { p.push('    ' + n[0] + ' ' + n[1] + ' area ' + n[2]); });
+      if ((d.os.pi || []).length) { p.push('  Passive Interface(s):'); d.os.pi.forEach(function (x) { p.push('    GigabitEthernet' + x.slice(2)); }); }
+      p.push('  Distance: (default is 110)');
+      return p;
+    }
     function iosShow(d, k, w) {
       var what = k.slice(1).join(' ');
       if (/^ip\s+int(erface)?\s+br(ief)?/.test(what) || /^ip\s+int\s+b/.test(what)) {
@@ -1437,17 +1697,23 @@
         });
         return rows;
       }
+      if (/^ip\s+(ospf|proto)/.test(what)) { return ospfLines(d, what); }
       if (/^ip\s+ro/.test(what)) {
         var sm = new Sim(state);
-        var out = ['Codes: C - connected, L - local, S - static', ''];
+        var out = ['Codes: C - connected, L - local, S - static, O - OSPF, E2 - OSPF external type 2', ''];
         var def = (d.rt || []).filter(function (r) { return r[0] === '0.0.0.0' && r[1] === '0.0.0.0'; })[0];
-        out.push(def ? 'Gateway of last resort is ' + def[2] + ' to network 0.0.0.0' : 'Gateway of last resort is not set', '');
+        var odef = (sm.ospfRt[d.i] || []).filter(function (r) { return r.mask === 0; })[0];
+        out.push(def ? 'Gateway of last resort is ' + def[2] + ' to network 0.0.0.0' : (odef ? 'Gateway of last resort is ' + n2ip(odef.via) + ' to network 0.0.0.0' : 'Gateway of last resort is not set'), '');
         sm.ifaces(d).forEach(function (f) {
           out.push('C    ' + n2ip(and(f.ip, f.mask)) + '/' + prefixOf(f.mask) + ' is directly connected, GigabitEthernet' + f.port.slice(2));
           out.push('L    ' + n2ip(f.ip) + '/32 is directly connected, GigabitEthernet' + f.port.slice(2));
         });
-        (d.rt || []).forEach(function (r) { out.push((r[0] === '0.0.0.0' ? 'S*   ' : 'S    ') + r[0] + '/' + prefixOf(mask2n(r[1]) || 0) + ' [1/0] via ' + r[2]); });
-        if (out.length === 4) { out.push('(empty: no interface is up with an address, and there are no static routes)'); }
+        (d.rt || []).forEach(function (r) { out.push((r[0] === '0.0.0.0' ? 'S*   ' : 'S    ') + r[0] + '/' + prefixOf(routeMask(r[1]) || 0) + ' [1/0] via ' + r[2]); });
+        (sm.ospfRt[d.i] || []).forEach(function (r) {
+          var shadow = (d.rt || []).some(function (x) { return ip2n(x[0]) === r.net && routeMask(x[1]) === r.mask; });
+          if (!shadow) { out.push((r.external ? 'O*E2 ' : 'O    ') + n2ip(r.net) + '/' + prefixOf(r.mask) + ' [110/' + (r.external ? 1 : r.metric) + '] via ' + n2ip(r.via) + ', 00:01:12, GigabitEthernet' + r.port.slice(2)); }
+        });
+        if (out.length === 4) { out.push('(empty: no interface is up with an address, and there are no routes)'); }
         return out;
       }
       if (/^ip\s+dhcp\s+b/.test(what)) {
@@ -1488,10 +1754,17 @@
             cfg.push('!');
           });
         });
+        if (d.os) {
+          cfg.push('router ospf 1');
+          (d.os.pi || []).forEach(function (x) { cfg.push(' passive-interface GigabitEthernet' + x.slice(2)); });
+          (d.os.n || []).forEach(function (n) { cfg.push(' network ' + n[0] + ' ' + n[1] + ' area ' + n[2]); });
+          if (d.os.di === 1) { cfg.push(' default-information originate'); }
+          cfg.push('!');
+        }
         (d.rt || []).forEach(function (r) { cfg.push('ip route ' + r[0] + ' ' + r[1] + ' ' + r[2]); });
         return cfg.concat(['!', 'end']);
       }
-      return ['% Try: show ip interface brief, show ip route, show ip dhcp binding, show running-config'];
+      return ['% Try: show ip interface brief, show ip route, show ip ospf neighbor, show ip dhcp binding, show running-config'];
     }
     /** The switch's command line (ADR 0038): VLANs, access ports and trunks. */
     function swios(d, c, line) {
@@ -1772,4 +2045,5 @@
   L.register('network-build', mount);
   L.register('network-repair', mount);
   L.register('network-vlan', mount);
+  L.register('network-ospf', mount);
 })(typeof window !== 'undefined' ? window : this);

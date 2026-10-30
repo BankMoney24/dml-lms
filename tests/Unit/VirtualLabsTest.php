@@ -64,6 +64,7 @@ final class VirtualLabsTest extends TestCase
             'network-build' => ['topology' => json_encode(NetworkLabsTest::workingNetwork($pub, 2), JSON_THROW_ON_ERROR)],
             'network-repair' => ['topology' => json_encode(NetworkLabsTest::workingNetwork($pub, 3), JSON_THROW_ON_ERROR)],
             'network-vlan' => ['topology' => json_encode(VlanDhcpTest::workingVlanNetwork($pub), JSON_THROW_ON_ERROR)],
+            'network-ospf' => ['topology' => json_encode(OspfTest::working($pub), JSON_THROW_ON_ERROR)],
             'firewall-rules' => ['rules' => json_encode(NetworkLabsTest::goodRules($pub), JSON_THROW_ON_ERROR)],
             'dns-lookup' => [
                 'address' => (string) $sec['answer'], 'cname' => (string) $sec['cname'], 'ns' => (string) $sec['ns'][0], 'mx' => (string) $sec['mx'],

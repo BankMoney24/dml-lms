@@ -117,7 +117,7 @@ final class NotificationsTest extends AppTestCase
 
         $this->signIn('tobi@school.test');
         $home = $this->get(self::HOST, '/')->body;
-        $this->assertStringContainsString('<p>Lab day on Friday.</p><p>Bring your charger.</p>', $home);
+        $this->assertStringContainsString('<p data-own-words>Lab day on Friday.</p><p data-own-words>Bring your charger.</p>', $home);
         $this->assertContains('Test Educator posted in SS 2 Gold', $this->titlesFor($this->tobi));
 
         $this->signIn('ada@school.test');

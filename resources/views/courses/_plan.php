@@ -85,7 +85,13 @@ $title = match (true) {
       <details class="plan-direct"<?= $errors !== [] || !$onlineOn ? ' open' : '' ?>>
         <summary><?= $onlineOn ? 'Paid the school directly? Tell them' : 'Pay the school, then tell them' ?></summary>
         <?php if ($instructions !== ''): ?><div class="sub-bank"><?= $v->paragraphs($instructions) ?></div><?php endif; ?>
-        <?php $forChoice = null; $claimFoot = 'The school confirms it once the money arrives. Nothing is charged here.'; $payOnline = $onlineOn; include __DIR__ . '/_claim_form.php'; ?>
+        <?php
+        $forChoice = null;
+        $claimAmounts = ['' => $plan->partAmount($next)];
+        $claimFoot = 'The school confirms it once the money arrives. Nothing is charged here.';
+        $payOnline = $onlineOn;
+        include __DIR__ . '/_claim_form.php';
+        ?>
       </details>
     <?php endif; ?>
   <?php endif; ?>

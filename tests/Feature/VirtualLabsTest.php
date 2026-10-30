@@ -244,11 +244,11 @@ final class VirtualLabsTest extends AppTestCase
     public function testShippedLabCoursesImportAndShowUnderTheirTrack(): void
     {
         $importer = $this->app->get(CoursePackageImporter::class);
-        foreach (['ss2-science-practicals' => 5, 'practical-tech-skills' => 3, 'networking-foundations' => 7] as $package => $modules) {
+        foreach (['ss2-science-practicals' => 5, 'practical-tech-skills' => 3, 'networking-foundations' => 8] as $package => $modules) {
             $result = $importer->import($this->tenant->id, $this->author(), dirname(__DIR__, 2) . '/courses/' . $package, true);
             $this->assertSame($modules, $result['modules'], $package);
         }
-        $this->assertSame(14, (int) $this->db()->fetchValue("SELECT COUNT(*) FROM lessons WHERE type = 'lab' AND lab_key IS NOT NULL") - 1);
+        $this->assertSame(15, (int) $this->db()->fetchValue("SELECT COUNT(*) FROM lessons WHERE type = 'lab' AND lab_key IS NOT NULL") - 1);
         $this->assertEquals(['school' => 1, 'skills' => 2], $this->app->get(CourseRepository::class)->publishedTrackCounts($this->tenant->id));
         // The Packet Tracer path is optional, so the course can be finished without installing anything.
         $this->assertSame(2, (int) $this->db()->fetchValue('SELECT COUNT(*) FROM lessons WHERE is_mandatory = 0'));

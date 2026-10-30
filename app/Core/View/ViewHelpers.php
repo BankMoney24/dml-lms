@@ -55,7 +55,8 @@ final class ViewHelpers
         $blocks = preg_split("/\R{2,}/", trim($text)) ?: [];
         $html = '';
         foreach ($blocks as $block) {
-            $html .= '<p>' . nl2br($this->e(trim($block)), false) . '</p>';
+            // Someone's own writing: the school's word swap (ADR 0041) leaves it as written.
+            $html .= '<p data-own-words>' . nl2br($this->e(trim($block)), false) . '</p>';
         }
 
         return $html;

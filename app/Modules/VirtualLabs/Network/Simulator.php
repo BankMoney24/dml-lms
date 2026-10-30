@@ -27,7 +27,19 @@ namespace App\Modules\VirtualLabs\Network;
  *   - A host sends to its own network directly (ARP on its segment) and to
  *     anything else through its default gateway, which must answer on the segment.
  *   - A router delivers to itself, or forwards by longest prefix match over its
- *     connected networks and static routes; TTL stops loops.
+ *     connected networks, static routes and OSPF routes; at the same prefix,
+ *     connected beats static beats OSPF (administrative distance). TTL stops loops.
+ *   - OSPF (ADR 0041), one link-state database for the whole network:
+ *     a router interface runs OSPF when it is working and the first network
+ *     statement that matches it ((address AND NOT wildcard) = network) gives its
+ *     area. Two routers become neighbours across a segment when both interfaces
+ *     run OSPF, are not passive, share the network and mask, and are in the same
+ *     area. Every OSPF interface's network (passive ones too) is advertised. Each
+ *     router finds the shortest path to every other by hops (every link costs 1),
+ *     neighbours tried in interface order then device order; a network's metric
+ *     is the path cost plus 1 for the advertising router's own interface; ties
+ *     keep the first found. A router with "default-information originate" and a
+ *     static default route advertises 0.0.0.0/0 (metric 1, external).
  *   - A ping works only if the request arrives AND the reply gets back.
  */
 /**
@@ -47,6 +59,15 @@ final class Simulator
 
     /** @var array<string, array{ip: int, mask: int, gateway: ?int, server: string}|string> host id → its DHCP lease, or why it has none */
     private array $leases = [];
+
+    /** @var array<string, list<array{port: string, ip: int, mask: int, area: int, passive: bool}>> router id → its OSPF interfaces */
+    private array $ospfIfs = [];
+
+    /** @var array<string, list<array{dev: string, port: string, ip: int, theirPort: string, area: int}>> router id → OSPF neighbours */
+    private array $neighbours = [];
+
+    /** @var array<string, list<array{net: int, mask: int, via: int, port: string, metric: int, external: bool}>> router id → routes learned by OSPF */
+    private array $ospfRoutes = [];
 
     public function __construct(public readonly Topology $net)
     {
@@ -88,7 +109,130 @@ final class Simulator
                 }
             }
         }
+        $this->runOspf();
         $this->leaseAll();
+    }
+
+    /** Works out OSPF interfaces, neighbours and learned routes (ADR 0041). */
+    private function runOspf(): void
+    {
+        foreach ($this->net->devices as $d) {
+            if ($d['type'] !== 'router' || $d['ospf'] === null) {
+                continue;
+            }
+            $list = [];
+            foreach ($this->interfaces($d) as $port => [$ip, $mask]) {
+                foreach ($d['ospf']['networks'] as $n) {
+                    if (($ip & ((~$n['wildcard']) & 0xFFFFFFFF)) === $n['net']) {
+                        $list[] = ['port' => (string) $port, 'ip' => $ip, 'mask' => $mask, 'area' => $n['area'], 'passive' => in_array((string) $port, $d['ospf']['passive'], true)];
+                        break;
+                    }
+                }
+            }
+            $this->ospfIfs[$d['id']] = $list;
+        }
+        foreach ($this->ospfIfs as $a => $mine) {
+            $this->neighbours[$a] = [];
+            foreach ($mine as $ia) {
+                $seg = $ia['passive'] ? null : $this->segmentOf($a, $ia['port']);
+                if ($seg === null) {
+                    continue;
+                }
+                foreach ($this->ospfIfs as $b => $theirs) {
+                    if ($b === $a) {
+                        continue;
+                    }
+                    foreach ($theirs as $ib) {
+                        if (
+                            !$ib['passive'] && $ib['ip'] !== $ia['ip'] && $ib['mask'] === $ia['mask'] && $ib['area'] === $ia['area']
+                            && ($ib['ip'] & $ib['mask']) === ($ia['ip'] & $ia['mask']) && $this->segmentOf($b, $ib['port']) === $seg
+                        ) {
+                            $this->neighbours[$a][] = ['dev' => $b, 'port' => $ia['port'], 'ip' => $ib['ip'], 'theirPort' => $ib['port'], 'area' => $ia['area']];
+                        }
+                    }
+                }
+            }
+        }
+        foreach (array_keys($this->ospfIfs) as $x) {
+            $dist = [$x => 0];
+            $first = [];
+            $queue = [$x];
+            while ($queue !== []) {
+                $u = array_shift($queue);
+                foreach ($this->neighbours[$u] as $nb) {
+                    if (isset($dist[$nb['dev']])) {
+                        continue;
+                    }
+                    $dist[$nb['dev']] = $dist[$u] + 1;
+                    $first[$nb['dev']] = $u === $x ? ['via' => $nb['ip'], 'port' => $nb['port']] : $first[$u];
+                    $queue[] = $nb['dev'];
+                }
+            }
+            $connected = [];
+            foreach ($this->interfaces($this->net->devices[$x]) as [$ip, $mask]) {
+                $connected[($ip & $mask) . '/' . $mask] = true;
+            }
+            $best = [];
+            foreach ($dist as $r => $hops) {
+                if ($r === $x) {
+                    continue;
+                }
+                foreach ($this->ospfIfs[$r] as $i) {
+                    $key = ($i['ip'] & $i['mask']) . '/' . $i['mask'];
+                    if (isset($connected[$key]) || (isset($best[$key]) && $best[$key]['metric'] <= $hops + 1)) {
+                        continue;
+                    }
+                    $best[$key] = ['net' => $i['ip'] & $i['mask'], 'mask' => $i['mask'], 'via' => $first[$r]['via'], 'port' => $first[$r]['port'], 'metric' => $hops + 1, 'external' => false];
+                }
+                $rd = $this->net->devices[$r];
+                if (!isset($best['0/0']) && ($rd['ospf']['default'] ?? false) && $this->hasStaticDefault($rd)) {
+                    $best['0/0'] = ['net' => 0, 'mask' => 0, 'via' => $first[$r]['via'], 'port' => $first[$r]['port'], 'metric' => 1, 'external' => true];
+                }
+            }
+            $this->ospfRoutes[$x] = array_values($best);
+        }
+    }
+
+    /** @param Device $d */
+    private function hasStaticDefault(array $d): bool
+    {
+        foreach ($d['routes'] as $r) {
+            if ($r['mask'] === 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * A router's OSPF neighbours (empty when it does not run OSPF).
+     *
+     * @return list<array{dev: string, port: string, ip: int, theirPort: string, area: int}>
+     */
+    public function ospfNeighbours(string $id): array
+    {
+        return $this->neighbours[$id] ?? [];
+    }
+
+    /**
+     * A router's interfaces that run OSPF.
+     *
+     * @return list<array{port: string, ip: int, mask: int, area: int, passive: bool}>
+     */
+    public function ospfInterfaces(string $id): array
+    {
+        return $this->ospfIfs[$id] ?? [];
+    }
+
+    /**
+     * Routes a router learned by OSPF.
+     *
+     * @return list<array{net: int, mask: int, via: int, port: string, metric: int, external: bool}>
+     */
+    public function ospfRoutes(string $id): array
+    {
+        return $this->ospfRoutes[$id] ?? [];
     }
 
     /**
@@ -431,7 +575,7 @@ final class Simulator
                 $bestPrefix = $p;
             }
         }
-        foreach ($dev['routes'] as $r) {
+        foreach ([...$dev['routes'], ...($this->ospfRoutes[$dev['id']] ?? [])] as $r) {
             $p = Topology::prefixOf($r['mask']);
             if (($dst & $r['mask']) === $r['net'] && $p > $bestPrefix) {
                 $best = ['via', $r['via']];

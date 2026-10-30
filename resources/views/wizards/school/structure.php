@@ -44,3 +44,16 @@ $hints = [
   </label>
   <?php $first = false; endforeach; ?>
 </fieldset>
+
+<?php $learner = (string) ($values['learner_term'] ?? 'learner'); ?>
+<fieldset class="field pick-list pick-row" data-own-words<?= isset($errors['learner_term']) ? ' aria-describedby="learner_term-error"' : '' ?>>
+  <legend>What do you call the people who learn here?</legend>
+  <p class="hint">Menus, buttons, page text and reports use your word wherever they would say “learner”. Lessons, posts and anything else people write stay as they wrote them.</p>
+  <?php if (isset($errors['learner_term'])): ?><p class="field-error" id="learner_term-error"><?= $v->e($errors['learner_term']) ?></p><?php endif; ?>
+  <?php $first = true; foreach (\App\Modules\Tenancy\Tenant::LEARNER_TERMS as $key => [$one, $many]): ?>
+  <label class="choice pick">
+    <input type="radio" name="learner_term" value="<?= $v->e($key) ?>"<?= $learner === $key ? ' checked' : '' ?><?= $first ? ' id="learner_term"' : '' ?>>
+    <span><strong><?= $v->e(ucfirst($one)) ?></strong><span class="pick-hint"><?= $v->e(['learner' => 'Any age, any kind of course', 'student' => 'Secondary schools, colleges, universities', 'pupil' => 'Primary schools', 'trainee' => 'Training centres, apprenticeships'][$key]) ?></span></span>
+  </label>
+  <?php $first = false; endforeach; ?>
+</fieldset>

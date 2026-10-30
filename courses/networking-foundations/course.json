@@ -3,14 +3,15 @@
  "summary": "Build real-looking networks in your browser: cable PCs, switches and routers, give them addresses, add static routes and prove it with ping. Then follow a DNS lookup from the root, write firewall rules for a school server and repair a broken office network. Split a switch into VLANs and hand out addresses with DHCP. Six labs with new numbers every time, and an optional path into Cisco Packet Tracer.",
  "track": "skills",
  "level": "intermediate",
- "duration_hours": 14,
+ "duration_hours": 16,
  "outcomes": [
   "Explain what PCs, switches and routers do and cable them correctly",
   "Plan and set IPv4 addresses, masks and default gateways, including /30 router links",
   "Configure router interfaces and static routes from forms or a Cisco-style command line",
   "Test a network with ping, tracert and step-by-step packet simulation, there and back",
   "Follow a DNS lookup through referrals and read A, NS, CNAME and MX records",
-  "Write least-privilege firewall rules and troubleshoot a network from the bottom up"
+  "Write least-privilege firewall rules and troubleshoot a network from the bottom up",
+  "Configure single-area OSPF with network statements, wildcards and passive interfaces, and show that it routes round a failed link"
  ],
  "prerequisites": "Comfort using a computer or phone browser. The Practical Tech Skills course (subnetting) helps but is not required.",
  "modules": [
@@ -433,6 +434,73 @@
        ],
        "correct": 1,
        "explanation": "The relay forwards the students' DHCP broadcast to the server, which uses the pool for their network."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Dynamic routing with OSPF",
+   "lessons": [
+    {
+     "type": "text",
+     "title": "OSPF: routers that learn the way",
+     "file": "lessons/09-ospf.md"
+    },
+    {
+     "type": "lab",
+     "title": "Lab: dynamic routing with OSPF",
+     "lab": "network-ospf"
+    },
+    {
+     "type": "quiz",
+     "title": "Check: OSPF",
+     "pass_threshold": 70,
+     "intro": "Four questions on OSPF.",
+     "questions": [
+      {
+       "prompt": "What is the OSPF wildcard for a /30 router link (mask 255.255.255.252)?",
+       "options": [
+        "255.255.255.252",
+        "0.0.0.3",
+        "0.0.0.252",
+        "255.255.255.0"
+       ],
+       "correct": 1,
+       "explanation": "The wildcard is the mask turned inside out: 255.255.255.252 becomes 0.0.0.3."
+      },
+      {
+       "prompt": "Why make a router's LAN port passive?",
+       "options": [
+        "To stop the LAN's network being advertised",
+        "No router listens there, so hellos are pointless, but the network is still advertised",
+        "To make the port faster",
+        "To turn the port off at night"
+       ],
+       "correct": 1,
+       "explanation": "A passive interface sends no hellos but its network still goes into OSPF."
+      },
+      {
+       "prompt": "Two routers on the same link do not become neighbours. Which of these could be the reason?",
+       "options": [
+        "One router has a static default route",
+        "They are in different areas",
+        "The PCs behind them use DHCP",
+        "The link is a /30"
+       ],
+       "correct": 1,
+       "explanation": "Neighbours must agree on the network, mask and area, and neither side may be passive."
+      },
+      {
+       "prompt": "Three routers are joined in a triangle with OSPF. The link between R1 and R2 fails. What happens to traffic from R1 to R2's LAN?",
+       "options": [
+        "It is lost until someone types a new route",
+        "It goes the long way round, through R3",
+        "It is sent back to the PC",
+        "OSPF shuts down the whole network"
+       ],
+       "correct": 1,
+       "explanation": "OSPF notices the failed link and works out the next best path, through R3."
       }
      ]
     }

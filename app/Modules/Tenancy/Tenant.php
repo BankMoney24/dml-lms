@@ -35,6 +35,14 @@ final class Tenant
         'set' => ['set', 'sets'],
     ];
 
+    /** What the school calls the people who learn there (ADR 0041): key => [singular, plural]. */
+    public const LEARNER_TERMS = [
+        'learner' => ['learner', 'learners'],
+        'student' => ['student', 'students'],
+        'pupil' => ['pupil', 'pupils'],
+        'trainee' => ['trainee', 'trainees'],
+    ];
+
     /** The usual word for each kind of institution, when the school has not chosen one. */
     private const DEFAULT_GROUP_TERMS = ['school' => 'class', 'training_centre' => 'cohort'];
 
@@ -70,6 +78,7 @@ final class Tenant
         public readonly string $registration = 'closed',
         public readonly ?string $joinCode = null,
         public readonly bool $parentRequests = true,
+        public readonly string $learnerTerm = 'learner',
     ) {
     }
 
@@ -110,6 +119,7 @@ final class Tenant
             in_array($row['registration'] ?? '', ['closed', 'code', 'open'], true) ? (string) $row['registration'] : 'closed',
             isset($row['join_code']) && $row['join_code'] !== '' ? (string) $row['join_code'] : null,
             (bool) ($row['parent_requests'] ?? true),
+            isset($row['learner_term']) && isset(self::LEARNER_TERMS[(string) $row['learner_term']]) ? (string) $row['learner_term'] : 'learner',
         );
     }
 
@@ -171,6 +181,14 @@ final class Tenant
     public function groupWord(bool $plural = false, bool $capital = false): string
     {
         $word = self::GROUP_TERMS[$this->groupTermKey()][$plural ? 1 : 0];
+
+        return $capital ? ucfirst($word) : $word;
+    }
+
+    /** The school's word for a learner: "student", "students", "Pupil"… */
+    public function learnerWord(bool $plural = false, bool $capital = false): string
+    {
+        $word = self::LEARNER_TERMS[$this->learnerTerm][$plural ? 1 : 0];
 
         return $capital ? ucfirst($word) : $word;
     }

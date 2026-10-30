@@ -36,7 +36,7 @@ final class CoreTest extends TestCase
 
         $this->assertSame('&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;', $v->e('<script>alert("x")</script>'));
         $html = $v->paragraphs("First <b>para</b>\n\nSecond\nline");
-        $this->assertSame('<p>First &lt;b&gt;para&lt;/b&gt;</p><p>Second<br>' . "\n" . 'line</p>', $html);
+        $this->assertSame('<p data-own-words>First &lt;b&gt;para&lt;/b&gt;</p><p data-own-words>Second<br>' . "\n" . 'line</p>', $html);
     }
 
     public function testEnvFileParsing(): void

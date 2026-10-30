@@ -3505,7 +3505,13 @@ main.wrap { padding-top: clamp(1.5rem, 1rem + 2vw, 3rem); padding-bottom: clamp(
 
 /* ---------- Lists that stack into cards on small screens ---------- */
 @media (max-width: 40rem) {
-  .table-stack tr { padding: 0.9rem 1rem; }
+  .table-stack tr { padding: 0.9rem 1rem; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: 0.6rem 1rem; }
+  .table-stack tbody tr:hover { background: transparent; }
+  .table.table-stack td, .table.table-stack th[scope="row"] { padding: 0; background: transparent; border: 0; }
+  .table.table-stack th[scope="row"] { font-size: 1rem; color: var(--ink); }
+  .table-stack td { overflow-wrap: anywhere; min-width: 0; }
+  .table-stack td code { white-space: normal; word-break: break-all; }
+  .table-stack td[data-label]::before { margin-bottom: 0.1rem; font-weight: 600; }
   .table-wrap { border-radius: var(--radius-m); }
   .actions .button { flex: 1 1 auto; }
   .form > .button, .sub-actions .button { width: 100%; }
@@ -3523,3 +3529,21 @@ main.wrap { padding-top: clamp(1.5rem, 1rem + 2vw, 3rem); padding-bottom: clamp(
 .hero-search input[type="search"] { background: transparent !important; border: 0 !important; box-shadow: none !important; color: #12161f; }
 .hero-search .button { border-radius: 12px; }
 @media (max-width: 30rem) { .hero-search > .icon { top: 1.7rem; } }
+
+/* ------------------------------------------------------------------
+   Update 41 (ADR 0041): screen-by-screen fixes
+   ------------------------------------------------------------------ */
+/* Report figures: an odd count no longer leaves a grey hole in the grid. */
+.report-figures { background: var(--surface); }
+.report-figure { box-shadow: 0 0 0 1px var(--line); }
+
+/* Network builder: the OSPF tab (ADR 0041). */
+.nb-h4 { font-size: 0.9375rem; margin: var(--space-4) 0 var(--space-2); }
+.nb-name, svg .nb-sub { paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+.nb-passive { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); margin-bottom: var(--space-3); }
+.nb-learned { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); font-size: 0.8125rem; }
+.nb-learned li { padding: var(--space-1) var(--space-2); border-radius: var(--radius-s, 6px); background: var(--surface-2); overflow-wrap: anywhere; }
+/* Row headings in a table body read as the first cell, not as another column heading. */
+.table tbody th[scope="row"] { background: transparent; color: var(--ink); font-size: inherit; font-weight: 650; padding: 0.85rem 1rem; }
+/* A link in a row heading sits next to plain text (an email, a count): keep it underlined so it stands out in both modes. */
+.table tbody th[scope="row"] > a:not(.button) { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }

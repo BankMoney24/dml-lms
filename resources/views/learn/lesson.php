@@ -181,6 +181,18 @@ $latest = $submissions[0] ?? null;
     <?php endif; ?>
   <?php endif; ?>
 
+  <?php /* Next and previous straight after the lesson, before questions and (on narrow screens) the outline. */ ?>
+  <nav class="lesson-nav" aria-label="Lessons">
+    <?php if ($previous !== null): ?>
+      <a class="pager pager-prev" href="<?= $base ?>/lessons/<?= $previous->id ?>" rel="prev"><span class="pager-dir">Previous lesson</span><span class="pager-title"><?= $v->e($previous->title) ?></span></a>
+    <?php else: ?><span></span><?php endif; ?>
+    <?php if ($next !== null): ?>
+      <a class="pager pager-next" href="<?= $base ?>/lessons/<?= $next->id ?>" rel="next"><span class="pager-dir">Next lesson</span><span class="pager-title"><?= $v->e($next->title) ?></span></a>
+    <?php else: ?>
+      <a class="pager pager-next" href="<?= $base ?>"><span class="pager-dir">End of the course</span><span class="pager-title">Back to the course page</span></a>
+    <?php endif; ?>
+  </nav>
+
   <?php if ($qaEnabled): ?>
   <section class="qa-section" id="questions" aria-labelledby="qa-h">
     <div class="qa-section-head">
@@ -221,14 +233,3 @@ $latest = $submissions[0] ?? null;
   </div>
 </aside>
 </div>
-
-<nav class="lesson-nav" aria-label="Lessons">
-  <?php if ($previous !== null): ?>
-    <a class="pager pager-prev" href="<?= $base ?>/lessons/<?= $previous->id ?>" rel="prev"><span class="pager-dir">Previous lesson</span><span class="pager-title"><?= $v->e($previous->title) ?></span></a>
-  <?php else: ?><span></span><?php endif; ?>
-  <?php if ($next !== null): ?>
-    <a class="pager pager-next" href="<?= $base ?>/lessons/<?= $next->id ?>" rel="next"><span class="pager-dir">Next lesson</span><span class="pager-title"><?= $v->e($next->title) ?></span></a>
-  <?php else: ?>
-    <a class="pager pager-next" href="<?= $base ?>"><span class="pager-dir">End of the course</span><span class="pager-title">Back to the course page</span></a>
-  <?php endif; ?>
-</nav>

@@ -48,7 +48,7 @@ $notes = array_values(array_filter($review['problems'], static fn (array $p): bo
     <?php else: ?>
       <dl class="facts">
         <?php foreach ($section['lines'] as [$label, $value]): ?>
-          <dt><?= $v->e($label) ?></dt><dd><?= $v->e($value) ?></dd>
+          <dt><?= $v->e($label) ?></dt><dd data-own-words><?= $v->e($value) ?></dd>
         <?php endforeach; ?>
       </dl>
     <?php endif; ?>

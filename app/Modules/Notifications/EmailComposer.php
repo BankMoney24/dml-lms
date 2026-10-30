@@ -28,7 +28,7 @@ final class EmailComposer
             $toName,
             $subject,
             trim($this->view->render('emails/' . $template . '_text', $data, null)) . "\n",
-            $this->view->render('emails/' . $template, $data, 'emails/layout'),
+            $this->view->render('emails/' . $template, $data, 'emails/layout', false),
         );
     }
 }

@@ -1079,6 +1079,7 @@ One row per school: name, branding, time zone, settings chosen in setup.
 | `calendar` | varchar(20) | yes | `NULL` |  |
 | `levels` | text | yes | `NULL` |  |
 | `group_term` | varchar(20) | yes | `NULL` |  |
+| `learner_term` | varchar(20) | yes | `NULL` |  |
 | `certificates_enabled` | tinyint(1) |  | `1` |  |
 | `public_catalogue` | tinyint(1) |  | `1` |  |
 | `setup_completed_at` | datetime | yes | `NULL` |  |

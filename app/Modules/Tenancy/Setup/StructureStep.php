@@ -55,10 +55,10 @@ final class StructureStep extends WizardStep
         $kind = (string) ($all['type']['kind'] ?? $tenant->kind ?? 'other');
         [$calendar, $levels, $term] = self::SUGGESTIONS[$kind] ?? self::SUGGESTIONS['other'];
         if ($tenant->calendar !== null) {
-            return ['calendar' => $tenant->calendar, 'levels' => implode("\n", $tenant->levels), 'group_term' => $tenant->groupTerm ?? $term];
+            return ['calendar' => $tenant->calendar, 'levels' => implode("\n", $tenant->levels), 'group_term' => $tenant->groupTerm ?? $term, 'learner_term' => $tenant->learnerTerm];
         }
 
-        return ['calendar' => $calendar, 'levels' => implode("\n", $levels), 'group_term' => $term];
+        return ['calendar' => $calendar, 'levels' => implode("\n", $levels), 'group_term' => $term, 'learner_term' => $tenant->learnerTerm];
     }
 
     public function read(Request $request): array
@@ -67,6 +67,7 @@ final class StructureStep extends WizardStep
             'calendar' => $request->input('calendar', '') ?? '',
             'levels' => $request->input('levels', '') ?? '',
             'group_term' => $request->input('group_term', '') ?? '',
+            'learner_term' => $request->input('learner_term', '') ?? '',
         ];
     }
 
@@ -80,6 +81,10 @@ final class StructureStep extends WizardStep
         $term = (string) ($raw['group_term'] ?? '');
         if ($term !== '' && !isset(Tenant::GROUP_TERMS[$term])) {
             $errors['group_term'] = 'Choose what you call a group of learners.';
+        }
+        $learner = (string) ($raw['learner_term'] ?? '');
+        if ($learner !== '' && !isset(Tenant::LEARNER_TERMS[$learner])) {
+            $errors['learner_term'] = 'Choose what you call the people who learn here.';
         }
         $levels = self::levels((string) ($raw['levels'] ?? ''));
         if (count($levels) > self::MAX_LEVELS) {
@@ -95,7 +100,7 @@ final class StructureStep extends WizardStep
             throw new ValidationException($errors);
         }
 
-        return ['calendar' => $calendar, 'levels' => implode("\n", $levels), 'group_term' => $term];
+        return ['calendar' => $calendar, 'levels' => implode("\n", $levels), 'group_term' => $term, 'learner_term' => $learner === '' ? 'learner' : $learner];
     }
 
     public function summary(WizardContext $ctx, array $data): array
@@ -106,6 +111,7 @@ final class StructureStep extends WizardStep
             ['Year organised in', Tenant::CALENDARS[(string) ($data['calendar'] ?? '')] ?? 'Not set'],
             ['Classes or levels', $levels === [] ? 'None listed' : implode(', ', $levels)],
             ['Groups of learners are called', ucfirst(Tenant::GROUP_TERMS[(string) ($data['group_term'] ?? '')][1] ?? $ctx->tenant->groupWord(true))],
+            ['People who learn here are called', ucfirst(Tenant::LEARNER_TERMS[(string) ($data['learner_term'] ?? '')][1] ?? $ctx->tenant->learnerWord(true))],
         ];
     }
 

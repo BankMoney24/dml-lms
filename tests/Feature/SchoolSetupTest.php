@@ -113,7 +113,8 @@ final class SchoolSetupTest extends AppTestCase
         $this->as('owner@school.test');
         $this->step('welcome');
         $this->step('type', ['kind' => 'school']);
-        $this->step('structure', ['calendar' => 'terms', 'levels' => "JSS 1\nJSS 2\n\nJSS 2\nJSS 3", 'group_term' => 'stream']);
+        $this->assertSame(422, $this->step('structure', ['calendar' => 'terms', 'learner_term' => 'scholar'])->status, 'only the offered words');
+        $this->step('structure', ['calendar' => 'terms', 'levels' => "JSS 1\nJSS 2\n\nJSS 2\nJSS 3", 'group_term' => 'stream', 'learner_term' => 'student']);
         $brand = $this->upload(self::HOST, self::W . '/brand', [
             'action' => 'continue', 'name' => 'Sunrise College', 'tagline' => 'Learn by doing', 'theme' => 'blue',
             'contact_email' => 'Office@Sunrise.test', 'contact_phone' => '+234 801 234 5678', 'website' => 'sunrise.test',
@@ -129,7 +130,7 @@ final class SchoolSetupTest extends AppTestCase
 
         $review = $this->get(self::HOST, self::W . '/review')->body;
         $expected = ['Sunrise College', 'JSS 1, JSS 2, JSS 3', 'https://sunrise.test', 'office@sunrise.test',
-            'Linux Server Administration (added as drafts)', '1 admin, 1 educator', 'Launch your school', 'Streams'];
+            'Linux Server Administration (added as drafts)', '1 admin, 1 educator', 'Launch your school', 'Streams', 'Students'];
         foreach ($expected as $text) {
             $this->assertStringContainsString($text, $review);
         }
@@ -142,6 +143,7 @@ final class SchoolSetupTest extends AppTestCase
         $this->assertFalse($school->certificatesEnabled);
         $this->assertFalse($school->publicCatalogue);
         $this->assertSame('Streams', $school->groupWord(true, true));
+        $this->assertSame('Students', $school->learnerWord(true, true));
         $this->assertTrue($school->isSetUp());
         $this->assertTrue($school->hasLogo());
         $this->assertSame('image/png', $school->logoType);

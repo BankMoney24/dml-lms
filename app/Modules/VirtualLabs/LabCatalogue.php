@@ -33,6 +33,7 @@ final class LabCatalogue
             new Labs\NetworkBuildLab(),
             new Labs\NetworkRepairLab(),
             new Labs\NetworkVlanLab(),
+            new Labs\NetworkOspfLab(),
             new Labs\FirewallLab(),
             new Labs\DnsLab(),
             new Labs\PendulumLab(),

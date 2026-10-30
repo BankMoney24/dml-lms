@@ -222,7 +222,11 @@ $claimRejected = $claim !== null && $claim->status === 'rejected';
           <p>Ask the school office for their bank details, pay <strong><?= $v->e((string) $course->priceLabel()) ?></strong><?= $payParts ? ' (or the first part, ' . $v->e($money($partOne)) . ')' : '' ?>, then tell the school below so they can find your payment.</p>
         <?php endif; ?>
 
-        <?php $forChoice = $payParts ? ['full' => 'The whole course (' . $course->priceLabel() . ')', 'part' => 'Part 1 of ' . $parts . ' (' . $money($partOne) . ')'] : null; include __DIR__ . '/_claim_form.php'; ?>
+        <?php
+        $forChoice = $payParts ? ['full' => 'The whole course (' . $course->priceLabel() . ')', 'part' => 'Part 1 of ' . $parts . ' (' . $money($partOne) . ')'] : null;
+        $claimAmounts = $payParts ? ['full' => (int) $course->priceMinor, 'part' => $partOne] : ['' => (int) $course->priceMinor];
+        include __DIR__ . '/_claim_form.php';
+        ?>
       </section>
       <?php endif; ?>
     <?php endif; ?>

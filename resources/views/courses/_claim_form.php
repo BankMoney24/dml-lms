@@ -13,12 +13,17 @@
  * @var ?array<string, mixed> $quote
  * @var ?array<string, string> $forChoice what the payment is for, when the learner may pay in parts
  * @var ?string $claimFoot replaces the closing line
+ * @var ?array<string, int> $claimAmounts the amount (minor units) for each choice, or for '' when there is no choice:
+ *                                       fills the amount field (app.js) until the learner types their own
  */
 $forChoice ??= null;
 $claimFoot ??= null;
+$claimAmounts ??= null;
+$major = static fn (int $minor): string => intdiv($minor, 100) . ($minor % 100 !== 0 ? sprintf('.%02d', $minor % 100) : '');
+$amountsAttr = $claimAmounts === null ? '' : ' data-claim-amounts="' . $v->e((string) json_encode(array_map($major, $claimAmounts), JSON_THROW_ON_ERROR)) . '"';
 ?>
         <?= $v->errorSummary($errors) ?>
-        <form method="post" action="<?= $v->e($here) ?>/transfer" class="form sub-claim" novalidate>
+        <form method="post" action="<?= $v->e($here) ?>/transfer" class="form sub-claim"<?= $amountsAttr ?> novalidate>
           <?= $v->csrfField() ?>
           <h3 class="sub-claim-title">I have paid</h3>
           <?php if ($forChoice !== null): ?>

@@ -30,16 +30,22 @@ final class View
         $this->shared = [];
     }
 
-    /** @param array<string, mixed> $data */
-    public function render(string $template, array $data = [], ?string $layout = 'layouts/app'): string
+    /**
+     * @param array<string, mixed> $data
+     * @param bool $schoolWords put the school's own words in (ADR 0041); emails keep the platform's
+     */
+    public function render(string $template, array $data = [], ?string $layout = 'layouts/app', bool $schoolWords = true): string
     {
         $helpers = new ViewHelpers($this->shared, $this->assetVersion);
         $content = $this->renderFile($template, $data, $helpers);
         if ($layout === null) {
             return $content;
         }
+        $page = $this->renderFile($layout, $data + ['content' => $content], $helpers);
+        // The school's own words (ADR 0041), on whole pages only.
+        $words = $this->shared['words'] ?? [];
 
-        return $this->renderFile($layout, $data + ['content' => $content], $helpers);
+        return $schoolWords && is_array($words) && $words !== [] ? (new WordSwap($words))->page($page) : $page;
     }
 
     /** @param array<string, mixed> $data */

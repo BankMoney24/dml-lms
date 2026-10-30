@@ -38,6 +38,7 @@ final class AuthenticateSession implements Middleware
     {
         $tenant = $this->tenants->current();
         $this->view->share('tenant', $tenant);
+        $this->view->share('words', $tenant !== null && $tenant->learnerTerm !== 'learner' ? ['learner' => \App\Modules\Tenancy\Tenant::LEARNER_TERMS[$tenant->learnerTerm]] : []);
 
         if ($tenant !== null) {
             $current = $this->auth->resolve($tenant);
