@@ -56,6 +56,8 @@
   var pending = {};          // question id -> shown option index, or null to clear
   var flagsDirty = false;
   var seq = 0;
+  // Leaving the page (another tab or app, a minimised browser) is counted for the teacher (ADR 0045).
+  var away = { count: 0, seconds: 0 }, awaySince = null, watched = false, toldAway = false;
   var saving = false;
   var saveTimer = null;
   var retryTimer = null;
@@ -260,7 +262,7 @@
     var mySeq = sending ? seq + 1 : seq;
     saving = true;
     if (sending) { status('Saving…', ''); }
-    post(urls.save, { seq: mySeq, answers: changes, flags: flags() }).then(function (r) {
+    post(urls.save, { seq: mySeq, answers: changes, flags: flags(), away: away }).then(function (r) {
       return r.json().then(function (data) { return { http: r.status, data: data }; });
     }).then(function (res) {
       saving = false;
@@ -312,7 +314,7 @@
     var changes = {};
     Object.keys(pending).forEach(function (k) { changes[k] = pending[k]; });
     var send = function () {
-      post(urls.submit, { seq: seq + 1, answers: changes, flags: flags(), reason: reason }).then(function (r) { return r.json(); }).then(function (data) {
+      post(urls.submit, { seq: seq + 1, answers: changes, flags: flags(), reason: reason, away: away }).then(function (r) { return r.json(); }).then(function (data) {
         try { window.localStorage.removeItem(STORE); } catch (e) { /* fine */ }
         window.location.href = (data && data.redirect) || urls.result;
       }).catch(function () {
@@ -388,6 +390,22 @@
     if (k === 'N') { e.preventDefault(); go(at + 1); } else if (k === 'P') { e.preventDefault(); go(at - 1); } else if (k === 'F') { e.preventDefault(); toggleFlag(); } else if (k === 'S') { e.preventDefault(); openDialog(); }
   });
   window.addEventListener('online', function () { flush(true); });
+  function leave() { if (paper && !finished && awaySince === null) { awaySince = Date.now(); } }
+  function back() {
+    if (awaySince === null) { return; }
+    var secs = Math.round((Date.now() - awaySince) / 1000);
+    awaySince = null;
+    if (finished || secs < 2) { return; } // a flicker of focus is not leaving
+    away.count++;
+    away.seconds += secs;
+    if (watched && !toldAway) { toldAway = true; say('You left the exam page. Your teacher can see how often, and for how long.'); }
+    flush(true);
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') { leave(); } else if (document.hasFocus()) { back(); }
+  });
+  window.addEventListener('blur', leave);
+  window.addEventListener('focus', function () { if (document.visibilityState === 'visible') { back(); } });
   /* ---------- start ---------- */
   window.fetch(urls.paper, { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(function (r) {
     if (!r.ok) { throw new Error('paper'); }
@@ -397,6 +415,8 @@
     paper = data;
     seq = data.seq || 0;
     untimed = !!data.untimed;
+    watched = !!data.watched;
+    if (data.away) { away.count = data.away.count || 0; away.seconds = data.away.seconds || 0; }
     paper.sections.forEach(function (s, si) { s.questions.forEach(function (q, i) { flat.push({ s: si, i: i, q: q }); }); });
     if (!flat.length) { status('This paper has no questions. Tell your teacher.', 'warn'); return; }
     restore();

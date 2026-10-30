@@ -920,6 +920,7 @@ final class Application
             $c->get(Clock::class),
             $c->get(\App\Modules\LiveClasses\LiveClasses::class),
             $c->get(\App\Modules\LiveClasses\ClassSessionRepository::class),
+            $c->get(\App\Modules\Exams\Cbt\CbtRepository::class),
         ));
         // Live classes and attendance (ADR 0028).
         $c->set(

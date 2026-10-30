@@ -33,6 +33,7 @@ final class GroupController
         private readonly Clock $clock,
         private readonly ?\App\Modules\LiveClasses\LiveClasses $live = null,
         private readonly ?\App\Modules\LiveClasses\ClassSessionRepository $classes = null,
+        private readonly ?\App\Modules\Exams\Cbt\CbtRepository $cbt = null,
     ) {
     }
 
@@ -373,9 +374,63 @@ final class GroupController
                 'courses' => $this->courses->listPublished($tenant->id, 100),
                 'classroomReady' => $this->live?->classroomReady($tenant) ?? false,
             ],
+            'exams' => $this->exams($tenant, $group, $data['learners']),
             'errors' => $errors,
             'old' => $old,
         ]), $status);
+    }
+
+    /**
+     * The class's CBT exams and each learner's latest result (ADR 0045). Teachers see every score,
+     * whatever the exam shows candidates.
+     *
+     * @param list<array{user_id: int, name: string, email: string, added_at: string}> $learners
+     * @return ?array{list: list<\App\Modules\Exams\Cbt\CbtExam>, cells: array<int, array<int, array{percent: ?int, total: ?int, max: ?int, done: bool, away: int}>>}
+     */
+    private function exams(Tenant $tenant, LearnerGroup $group, array $learners): ?array
+    {
+        if ($this->cbt === null) {
+            return null;
+        }
+        $list = $this->cbt->forGroup($tenant->id, $group->id, 6);
+
+        return [
+            'list' => $list,
+            'cells' => $this->cbt->latestFor($tenant->id, array_map(static fn ($e): int => $e->id, $list), array_map(static fn (array $l): int => $l['user_id'], $learners)),
+        ];
+    }
+
+    /** Exam results as a spreadsheet: one row per learner, a column per exam (total, out of, percent). */
+    public function examsExport(Request $request): Response
+    {
+        [$tenant, $group] = $this->group($request);
+        $learners = $this->groups->members($tenant->id, $group->id, GroupRepository::LEARNER);
+        $exams = $this->exams($tenant, $group, $learners) ?? ['list' => [], 'cells' => []];
+        $header = ['Learner', 'Email'];
+        foreach ($exams['list'] as $e) {
+            $header[] = $e->title . ' (total)';
+            $header[] = $e->title . ' (out of)';
+            $header[] = $e->title . ' (% right)';
+        }
+        $rows = [];
+        foreach ($learners as $l) {
+            $row = [$l['name'], $l['email']];
+            foreach ($exams['list'] as $e) {
+                $cell = $exams['cells'][$l['user_id']][$e->id] ?? null;
+                $done = $cell !== null && $cell['done'];
+                $row[] = $done ? $cell['total'] : ($cell === null ? 'not sat' : 'sitting');
+                $row[] = $done ? $cell['max'] : null;
+                $row[] = $done ? $cell['percent'] : null;
+            }
+            $rows[] = $row;
+        }
+        $file = trim((string) preg_replace('/[^A-Za-z0-9]+/', '-', $group->name), '-');
+
+        return new Response(\App\Modules\Reports\Csv::build($header, $rows), 200, [
+            'Content-Type' => 'text/csv; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename="' . ($file === '' ? 'class' : $file) . '-exams.csv"',
+            'Cache-Control' => 'private, no-store',
+        ]);
     }
 
     /**

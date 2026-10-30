@@ -227,6 +227,68 @@ final class CbtRepository
         $this->db->execute('DELETE FROM cbt_attempts WHERE tenant_id = ? AND id = ?', [$tenantId, $id]);
     }
 
+    /**
+     * Published or closed exams this class sits: set for the class, or for everyone. Newest first.
+     *
+     * @return list<CbtExam>
+     */
+    public function forGroup(int $tenantId, int $groupId, int $limit = 8): array
+    {
+        $rows = $this->db->fetchAll(
+            "SELECT e.* FROM cbt_exams e
+             WHERE e.tenant_id = ? AND e.status IN ('published', 'closed')
+               AND (e.audience = 'everyone' OR EXISTS (SELECT 1 FROM cbt_exam_groups g WHERE g.tenant_id = e.tenant_id AND g.exam_id = e.id AND g.group_id = ?))
+             ORDER BY e.id DESC LIMIT " . max(1, min(50, $limit)),
+            [$tenantId, $groupId],
+        );
+
+        return array_map(fn (array $r): CbtExam => CbtExam::fromRow($r, $this->groupIds($tenantId, (int) $r['id'])), $rows);
+    }
+
+    /**
+     * Each learner's latest attempt at each exam: submitted with its score, or still in progress.
+     *
+     * @param list<int> $examIds
+     * @param list<int> $userIds
+     * @return array<int, array<int, array{percent: ?int, total: ?int, max: ?int, done: bool, away: int}>> by user id, then exam id
+     */
+    public function latestFor(int $tenantId, array $examIds, array $userIds): array
+    {
+        if ($examIds === [] || $userIds === []) {
+            return [];
+        }
+        $ex = implode(',', array_fill(0, count($examIds), '?'));
+        $us = implode(',', array_fill(0, count($userIds), '?'));
+        $rows = $this->db->fetchAll(
+            "SELECT a.user_id, a.exam_id, a.percent, a.result, a.submitted_at, a.away_count FROM cbt_attempts a
+             JOIN (SELECT user_id, exam_id, MAX(id) AS id FROM cbt_attempts WHERE tenant_id = ? AND exam_id IN ({$ex}) AND user_id IN ({$us}) GROUP BY user_id, exam_id) l
+               ON l.id = a.id",
+            [$tenantId, ...$examIds, ...$userIds],
+        );
+        $out = [];
+        foreach ($rows as $r) {
+            $result = $r['result'] === null ? null : json_decode((string) $r['result'], true);
+            $out[(int) $r['user_id']][(int) $r['exam_id']] = [
+                'percent' => $r['percent'] === null ? null : (int) $r['percent'],
+                'total' => is_array($result) ? (int) ($result['total'] ?? 0) : null,
+                'max' => is_array($result) ? (int) ($result['max'] ?? 0) : null,
+                'done' => $r['submitted_at'] !== null,
+                'away' => (int) $r['away_count'],
+            ];
+        }
+
+        return $out;
+    }
+
+    /** Keeps the larger of the stored and reported away totals: the room sends running totals. */
+    public function recordAway(int $tenantId, int $id, int $count, int $seconds): void
+    {
+        $this->db->execute(
+            'UPDATE cbt_attempts SET away_count = GREATEST(away_count, ?), away_seconds = GREATEST(away_seconds, ?) WHERE tenant_id = ? AND id = ? AND submitted_at IS NULL',
+            [max(0, min(10000, $count)), max(0, min(86400, $seconds)), $tenantId, $id],
+        );
+    }
+
     /** @return list<int> the learners who may sit an exam: every active learner, or the members of its classes */
     public function audience(int $tenantId, CbtExam $exam): array
     {

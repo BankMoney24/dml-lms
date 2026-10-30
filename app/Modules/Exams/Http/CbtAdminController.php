@@ -171,12 +171,13 @@ final class CbtAdminController
                 $a->submittedAt === null ? 'in progress' : (string) $a->submitReason,
                 ...array_map(static fn (string $l): ?int => $scores[$l] ?? null, $labels),
                 $a->result['total'] ?? null, $a->result['max'] ?? null, $a->correctCount, $a->questionCount, $a->percent,
+                $a->awayCount, $a->awaySeconds,
             ];
         }
         $file = preg_replace('/[^a-z0-9-]+/', '-', strtolower($exam->title)) . '-' . $this->clock->now()->format('Y-m-d') . '.csv';
 
         return new Response(Csv::build(['candidate', 'email', 'started', 'submitted', 'how', ...array_map(static fn (string $l): string => $l . ' (/100)', $labels), 'total',
-            'out of', 'right', 'questions', 'percent'], $rows), 200, [
+            'out of', 'right', 'questions', 'percent', 'left the page (times)', 'away (seconds)'], $rows), 200, [
             'Content-Type' => 'text/csv; charset=utf-8',
             'Content-Disposition' => 'attachment; filename="' . trim((string) $file, '-') . '"',
             'Cache-Control' => 'private, no-store',

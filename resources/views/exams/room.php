@@ -16,6 +16,7 @@ $base = '/exams/attempts/' . $attempt->id;
     <div class="cbt-who">
       <h1 class="cbt-title"><?= $v->e($attempt->title) ?></h1>
       <p class="cbt-candidate"><span class="visually-hidden">Candidate: </span><?= $v->e($candidate) ?></p>
+      <?php if ($exam !== null): ?><p class="cbt-watch small">Your teacher sees if you leave this page or switch apps.</p><?php endif; ?>
     </div>
     <div class="cbt-clock">
       <p class="cbt-timer" data-cbt-timer><span class="visually-hidden">Time left: </span><span data-cbt-time>--:--</span></p>

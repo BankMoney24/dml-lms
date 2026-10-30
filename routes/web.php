@@ -350,6 +350,7 @@ return static function (Router $r): void {
     $r->post('/groups', [GroupController::class, 'store'], ['tenant', 'auth', 'can:groups.manage']);
     $r->get('/groups/{group:int}', [GroupController::class, 'show'], $groups);
     $r->get('/groups/{group:int}/progress.csv', [GroupController::class, 'export'], $groups);
+    $r->get('/groups/{group:int}/exams.csv', [GroupController::class, 'examsExport'], $groups);
     $r->post('/groups/{group:int}/details', [GroupController::class, 'update'], ['tenant', 'auth', 'can:groups.manage']);
     $r->post('/groups/{group:int}/archive', [GroupController::class, 'archive'], ['tenant', 'auth', 'can:groups.manage']);
     $r->post('/groups/{group:int}/teachers', [GroupController::class, 'teachers'], ['tenant', 'auth', 'can:groups.manage']);

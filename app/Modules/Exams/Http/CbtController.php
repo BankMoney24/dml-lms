@@ -146,6 +146,7 @@ final class CbtController
         if (!is_array($data)) {
             return Response::json(['ok' => false, 'error' => 'bad_request'], 400);
         }
+        $this->service->recordAway(RequestContext::tenant($request), $attempt->id, RequestContext::user($request)->user->id, $data['away'] ?? null);
         $result = $this->service->saveAnswers(
             RequestContext::tenant($request),
             $attempt->id,
@@ -164,6 +165,9 @@ final class CbtController
         $attempt = $this->mine($request);
         $reason = $request->input('reason') === 'time' ? 'time' : 'candidate';
         $data = json_decode($request->rawBody, true);
+        if (is_array($data)) {
+            $this->service->recordAway($tenant, $attempt->id, $attempt->userId, $data['away'] ?? null);
+        }
         if (is_array($data) && is_array($data['answers'] ?? null)) {
             // The last answers travel with the submission, so nothing chosen in the final seconds is lost.
             $flags = array_values(array_map('intval', is_array($data['flags'] ?? null) ? $data['flags'] : []));

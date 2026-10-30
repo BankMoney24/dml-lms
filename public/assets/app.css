@@ -3928,3 +3928,10 @@ body.focus-play .focus-main { max-width: 32rem; display: flex; flex-direction: c
 .question-picture { margin-top: var(--space-6); max-width: 46rem; }
 .bq-has-pic { display: inline-flex; align-items: center; gap: 0.25rem; }
 .bq-has-pic svg { width: 1em; height: 1em; }
+
+/* Leaving the exam page (update 45) */
+.cbt-watch { margin: 0.15rem 0 0; color: var(--ink-soft); }
+.away-flag { display: block; font-weight: 700; }
+.class-exams td > span { display: block; }
+.class-exams .pg-count { white-space: nowrap; font-weight: 700; }
+.class-exams tfoot th, .class-exams tfoot td { border-top: 2px solid var(--line-strong, var(--line)); font-size: var(--step--1); }

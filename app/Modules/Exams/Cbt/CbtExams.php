@@ -422,6 +422,8 @@ final class CbtExams
             'untimed' => $attempt->isPractice() && $attempt->secondsLeft($this->clock->now()) > 6 * 3600,
             'seq' => $attempt->saveSeq,
             'submitted' => $attempt->isSubmitted(),
+            'away' => ['count' => $attempt->awayCount, 'seconds' => $attempt->awaySeconds],
+            'watched' => $attempt->examId !== null,
         ];
     }
 
@@ -468,6 +470,23 @@ final class CbtExams
 
             return ['ok' => true, 'seq' => $seq, 'seconds_left' => $a->secondsLeft($now), 'submitted' => false];
         });
+    }
+
+    /**
+     * Records how often and how long the candidate left the exam page (ADR 0045), from the
+     * room's running totals. Only for the candidate's own attempt while it is open.
+     *
+     * @param mixed $away {"count": int, "seconds": int} as the room sends it
+     */
+    public function recordAway(Tenant $tenant, int $attemptId, int $userId, mixed $away): void
+    {
+        if (!is_array($away) || !is_numeric($away['count'] ?? null) || !is_numeric($away['seconds'] ?? null)) {
+            return;
+        }
+        $a = $this->exams->findAttempt($tenant->id, $attemptId);
+        if ($a !== null && $a->userId === $userId && !$a->isSubmitted()) {
+            $this->exams->recordAway($tenant->id, $a->id, (int) $away['count'], (int) $away['seconds']);
+        }
     }
 
     /**

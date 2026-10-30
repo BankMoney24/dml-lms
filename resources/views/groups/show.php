@@ -15,6 +15,7 @@
  * @var bool $managesAll
  * @var list<array{id: int, body: string, author: string, author_id: ?int, created_at: string}> $announcements
  * @var string $today Y-m-d in the school's time zone
+ * @var ?array{list: list<\App\Modules\Exams\Cbt\CbtExam>, cells: array<int, array<int, array{percent: ?int, total: ?int, max: ?int, done: bool, away: int}>>} $exams
  * @var array<string, string> $errors
  * @var array<string, string> $old
  * @var ?array{upcoming: list<\App\Modules\LiveClasses\ClassSession>, past: list<\App\Modules\LiveClasses\ClassSession>, attendance: array{held: int, rows: array<int, array{held: int, present: int, late: int, absent: int, excused: int, unmarked: int, rate: ?int}>}, mayTeach: bool, now: int, courses: list<\App\Modules\Courses\Course>} $liveClasses
@@ -106,6 +107,8 @@ $behind = [];
   <p class="small muted"><?= $v->e($v->plural(count($learners), 'learner')) ?>. Lessons done out of each course's lessons.<?= $behind !== [] ? ' ' . $v->e(sprintf('%s a course past its due date.', $v->plural(count($behind), 'learner has', 'learners have'))) : '' ?></p>
   <?php endif; ?>
 </section>
+
+<?php if (($exams ?? null) !== null): ?><?php include __DIR__ . '/_exams.php'; ?><?php endif; ?>
 
 <?php if (($liveClasses ?? null) !== null): ?><?php include __DIR__ . '/_classes.php'; ?><?php endif; ?>
 

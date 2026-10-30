@@ -30,7 +30,8 @@ use DateTimeZone;
  *   running out of time; the teacher closes it on day 72;
  * * the Mathematics class test is published and left open, with some attempts;
  * * a few learners set themselves practice tests;
- * * two finished live quiz games, on days 80 and 86.
+ * * two finished live quiz games, on days 80 and 86;
+ * * a few exam candidates who left the exam page now and then (ADR 0045).
  *
  * Only learners who had joined by then take part.
  */
@@ -165,6 +166,10 @@ final class SampleSchoolTests
         $outOfTime = mt_rand(1, 100) <= 8;
         $this->clock->shift(60 * ($outOfTime ? $minutes - 1 : mt_rand((int) max(3, $minutes * 0.4), (int) max(4, $minutes * 0.95))));
         $this->cbt->saveAnswers($this->tenant, $attempt->id, $learner->user->id, 1, $changes, $flags);
+        if ($attempt->examId !== null && mt_rand(1, 100) <= 15) {
+            // A few candidates left the exam page now and then (ADR 0045).
+            $this->cbt->recordAway($this->tenant, $attempt->id, $learner->user->id, ['count' => mt_rand(1, 3), 'seconds' => mt_rand(5, 90)]);
+        }
         if ($outOfTime) {
             $this->clock->shift(150);
         }

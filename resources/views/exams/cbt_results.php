@@ -49,7 +49,7 @@ $reasons = ['candidate' => 'Submitted', 'time' => 'Time ran out', 'closed' => 'E
   <h2 id="sitting-h">Sitting now</h2>
   <div class="table-wrap">
     <table class="table table-stack">
-      <thead><tr><th scope="col">Candidate</th><th scope="col">Answered</th><th scope="col">Time left</th><th scope="col">Last saved</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+      <thead><tr><th scope="col">Candidate</th><th scope="col">Answered</th><th scope="col">Time left</th><th scope="col">Last saved</th><th scope="col">Left the page</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
       <tbody>
       <?php foreach ($sitting as $a): $left = $a->secondsLeft($now); ?>
         <tr>
@@ -57,6 +57,7 @@ $reasons = ['candidate' => 'Submitted', 'time' => 'Time ran out', 'closed' => 'E
           <td data-label="Answered"><?= count($a->answers) ?> of <?= $a->questionCount ?></td>
           <td data-label="Time left"><?= $left > 0 ? (int) ceil($left / 60) . ' min' : 'Out of time' ?><?= $a->extraMinutes > 0 ? '<span class="small muted">+' . $a->extraMinutes . ' min added</span>' : '' ?></td>
           <td data-label="Last saved"><?= $a->lastSavedAt === null ? '<span class="muted">Nothing yet</span>' : $v->datetime($a->lastSavedAt, 'H:i:s') ?></td>
+          <td data-label="Left the page"><?= $a->awayLabel() === null ? '<span class="muted">No</span>' : '<span class="away-flag">' . $v->e((string) $a->awayLabel()) . '</span>' ?></td>
           <td class="table-stack-action">
             <form method="post" action="<?= $base ?>/attempts/<?= $a->id ?>/extend" class="inline-form">
               <?= $v->csrfField() ?>
@@ -81,7 +82,7 @@ $reasons = ['candidate' => 'Submitted', 'time' => 'Time ran out', 'closed' => 'E
       <thead><tr>
         <th scope="col">Candidate</th>
         <?php foreach ($labels as $l): ?><th scope="col" class="num"><?= $v->e($l) ?></th><?php endforeach; ?>
-        <th scope="col" class="num">Total</th><th scope="col" class="num">Right</th><th scope="col">How</th><th scope="col"><span class="visually-hidden">Actions</span></th>
+        <th scope="col" class="num">Total</th><th scope="col" class="num">Right</th><th scope="col">How</th><th scope="col">Left the page</th><th scope="col"><span class="visually-hidden">Actions</span></th>
       </tr></thead>
       <tbody>
       <?php foreach ($done as $a):
@@ -95,6 +96,7 @@ $reasons = ['candidate' => 'Submitted', 'time' => 'Time ran out', 'closed' => 'E
           <td data-label="Total" class="num"><strong><?= (int) ($a->result['total'] ?? 0) ?></strong><span class="small muted">of <?= (int) ($a->result['max'] ?? 0) ?></span></td>
           <td data-label="Right" class="num"><?= (int) $a->percent ?>%</td>
           <td data-label="How"><?= $v->e($reasons[(string) $a->submitReason] ?? '') ?></td>
+          <td data-label="Left the page"><?= $a->awayLabel() === null ? '<span class="muted">No</span>' : '<span class="away-flag">' . $v->e((string) $a->awayLabel()) . '</span>' ?></td>
           <td class="table-stack-action">
             <form method="post" action="<?= $base ?>/attempts/<?= $a->id ?>/reset" class="inline">
               <?= $v->csrfField() ?>
@@ -106,7 +108,7 @@ $reasons = ['candidate' => 'Submitted', 'time' => 'Time ran out', 'closed' => 'E
       </tbody>
     </table>
   </div>
-  <p class="small muted">Each subject is scored out of 100 (right answers ÷ questions × 100), so the total is out of 100 for each subject sat. “Let them sit again” removes that attempt, for example after a power cut; it is recorded in Activity.</p>
+  <p class="small muted">Each subject is scored out of 100 (right answers ÷ questions × 100), so the total is out of 100 for each subject sat. “Let them sit again” removes that attempt, for example after a power cut; it is recorded in Activity. “Left the page” counts the times the exam page was hidden or out of focus for 2 seconds or more (another tab or app, a minimised browser, a phone call); it can have innocent reasons, so ask before you act on it.</p>
 </section>
 
 <section aria-labelledby="items-h" class="section">

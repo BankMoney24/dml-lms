@@ -61,7 +61,7 @@ Personal data kinds: **Account** (who someone is), **Learning record** (what the
 | People | [`users`](#users) | Accounts: name, email, password hash, two-step secret (encrypted), appearance. One account can belong to several schools. | Account |
 | Quizzes and exams | [`bank_passages`](#bank-passages) | Passages, tables or instructions that several bank questions share. | None |
 | Quizzes and exams | [`bank_questions`](#bank-questions) | Bank questions: options A to E, the right one, explanation, topic, difficulty, a picture and its description, times seen and right. | None |
-| Quizzes and exams | [`cbt_attempts`](#cbt-attempts) | One sitting of a CBT exam or practice test: the questions drawn, answers, flags, deadline, scores by subject. | Learning record |
+| Quizzes and exams | [`cbt_attempts`](#cbt-attempts) | One sitting of a CBT exam or practice test: questions drawn, answers, flags, deadline, times the page was left, scores by subject. | Learning record |
 | Quizzes and exams | [`cbt_exams`](#cbt-exams) | CBT exams: sections from banks, subjects to choose, time, window, who sits it, attempts, results policy and announcement, access code. | None |
 | Quizzes and exams | [`cbt_exam_groups`](#cbt-exam-groups) | Which classes sit a CBT exam set for classes only. | None |
 | Quizzes and exams | [`live_answers`](#live-answers) | Every answer in a live quiz with its time and points. | Learning record |
@@ -235,7 +235,7 @@ Blog posts: title, summary, text, kind (news, event, story, guide), draft or pub
 
 ## cbt_attempts
 
-One sitting of a CBT exam or practice test: the questions drawn, answers, flags, deadline, scores by subject.
+One sitting of a CBT exam or practice test: questions drawn, answers, flags, deadline, times the page was left, scores by subject.
 
 | Column | Type | Null | Default | Key |
 |---|---|---|---|---|
@@ -252,6 +252,8 @@ One sitting of a CBT exam or practice test: the questions drawn, answers, flags,
 | `deadline_at` | datetime |  |  |  |
 | `extra_minutes` | smallint(5) unsigned |  | `0` |  |
 | `save_seq` | int(10) unsigned |  | `0` |  |
+| `away_count` | int(10) unsigned |  | `0` |  |
+| `away_seconds` | int(10) unsigned |  | `0` |  |
 | `last_saved_at` | datetime | yes | `NULL` |  |
 | `submitted_at` | datetime | yes | `NULL` | index |
 | `submit_reason` | varchar(10) | yes | `NULL` |  |

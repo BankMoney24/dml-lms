@@ -45,6 +45,8 @@ final class CbtAttempt
         public readonly ?int $percent,
         public readonly string $userName = '',
         public readonly string $userEmail = '',
+        public readonly int $awayCount = 0,
+        public readonly int $awaySeconds = 0,
     ) {
     }
 
@@ -100,7 +102,22 @@ final class CbtAttempt
             isset($r['percent']) ? (int) $r['percent'] : null,
             (string) ($r['user_name'] ?? ''),
             (string) ($r['user_email'] ?? ''),
+            (int) ($r['away_count'] ?? 0),
+            (int) ($r['away_seconds'] ?? 0),
         );
+    }
+
+    /** "3 times, 1 min 20 s" — how the candidate left the exam page, for teachers; null when they never did. */
+    public function awayLabel(): ?string
+    {
+        if ($this->awayCount === 0) {
+            return null;
+        }
+        $m = intdiv($this->awaySeconds, 60);
+        $s = $this->awaySeconds % 60;
+        $time = $m > 0 ? $m . ' min' . ($s > 0 ? ' ' . $s . ' s' : '') : $s . ' s';
+
+        return ($this->awayCount === 1 ? 'Once' : $this->awayCount . ' times') . ', ' . $time;
     }
 
     public function isSubmitted(): bool

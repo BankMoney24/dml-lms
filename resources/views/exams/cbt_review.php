@@ -30,6 +30,7 @@ $shownPassages = [];
   <?php endif; ?>
   <h1><?= $forTeacher ? $v->e($attempt->userName) : $v->e($attempt->title) ?></h1>
   <p class="lead"><?= $forTeacher ? $v->e($attempt->title) . '. ' : '' ?><?= $v->e($reasons[(string) $attempt->submitReason] ?? 'Submitted') ?> on <?= $v->datetime($attempt->submittedAt) ?>, after <?= $v->e($v->plural($attempt->minutesUsed(), 'minute')) ?>.</p>
+  <?php if ($forTeacher && $attempt->examId !== null && $attempt->awayLabel() !== null): ?><p class="small">Left the exam page: <strong><?= $v->e((string) $attempt->awayLabel()) ?></strong>. This can have innocent reasons, such as a phone call or a battery warning.</p><?php endif; ?>
 </header>
 
 <?php if (!$showScore): ?>
