@@ -44,6 +44,9 @@ Dark mode follows the device unless the person picks Light or Dark in the accoun
 | Choice | `.choice` label with a radio or checkbox | Whole row is the target (2.75rem tall) |
 | Board / pixels | `.board`, `.board-node.is-lit`, `partials/pixels.php` | Progress shown as squares; always with a text equivalent |
 | Launch list | `.launch` | Lit square = done, hollow = to do; each to-do links to where it is fixed |
+| Focus layout | `layouts/focus.php` with `focusClass`, `focusScript`, `exitHref`, `exitLabel` | Full screen, no sidebar, one exit link: the CBT exam room and the live quiz play screen (ADR 0042) |
+| Answer tiles | `.lq-0` … `.lq-3` (with `.lq-letter`), colours `--tile-0` … `--tile-3` | Live quiz answers. Always lettered A–D as well as coloured, white text checked for contrast in both modes; our own colours and no shapes, so they are not mistaken for another product's |
+| Exam palette | `.cbt-palette` buttons | One per question: answered, flagged and current shown by fill, outline and a flag mark, not by colour alone |
 
 ## Behaviour (app.js)
 

@@ -53,6 +53,7 @@ final class ConsoleApplication
                 'mail:work' => $this->mailWork(),
                 'lab:expire' => $this->labExpire(),
                 'payments:plan-reminders' => $this->planReminders(),
+                'exams:close' => $this->examsClose(),
                 'lab:list' => $this->labList(),
                 'mail:status' => $this->mailStatus(),
                 'mail:test' => $this->mailTest($args),
@@ -112,6 +113,8 @@ final class ConsoleApplication
           lab:expire                                Close lab sessions whose time ran out (cron, every 10 minutes)
           payments:plan-reminders                   Remind learners paying in parts before a part is due, when it is
                                                     late, and when the course pauses (cron, once a day)
+          exams:close                               Submit CBT attempts whose time ran out and end live quizzes
+                                                    left open for a day (cron, every 5 minutes)
           user:platform-admin <email> [--revoke]    Let a user see the System page (they must use two-step sign-in)
           classroom:connect <tenant-slug> --domain=<host> [--app-id=dml-lms] [--secret-file=<path>] [--low-data=1|0]
                                                     Connect the online classroom (Jitsi). The secret is read
@@ -684,6 +687,18 @@ final class ConsoleApplication
         $sent = $this->container->get(\App\Modules\Payments\Plans\PaymentPlans::class)->sendReminders();
         if (array_sum($sent) > 0) {
             printf("Reminded: %d due soon, %d late, %d paused.\n", $sent['soon'], $sent['due'], $sent['paused']);
+        }
+
+        return 0;
+    }
+
+    private function examsClose(): int
+    {
+        $tenants = $this->container->get(\App\Modules\Tenancy\TenantRepository::class);
+        $submitted = $this->container->get(\App\Modules\Exams\Cbt\CbtExams::class)->submitOverdue(static fn (int $id): ?\App\Modules\Tenancy\Tenant => $tenants->findById($id));
+        $ended = $this->container->get(\App\Modules\Exams\Live\LiveGame::class)->endStale();
+        if ($submitted + $ended > 0) {
+            printf("Submitted %d exam attempts whose time ran out; ended %d live quizzes left open.\n", $submitted, $ended);
         }
 
         return 0;

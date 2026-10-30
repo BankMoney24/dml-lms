@@ -47,8 +47,11 @@ final class AuthenticateSession implements Middleware
                 $this->view->share('user', $current->user);
                 $this->view->share('role', $current->membership?->role);
                 $this->view->share('permissions', $current->permissionNames());
-                $this->view->share('unread', $this->notifications?->unreadCount($tenant->id, $current->user->id) ?? 0);
-                $this->view->share('nav_counts', $this->navCounts?->for($current, $tenant->id) ?? []);
+                // Pages need the bell and sidebar counts; JSON that pages poll (exam saves, live quizzes) does not.
+                if (!str_contains((string) $request->header('accept'), 'application/json')) {
+                    $this->view->share('unread', $this->notifications?->unreadCount($tenant->id, $current->user->id) ?? 0);
+                    $this->view->share('nav_counts', $this->navCounts?->for($current, $tenant->id) ?? []);
+                }
 
                 if ($current->user->mustChangePassword && !in_array($request->path, self::ALLOWED_WHILE_PASSWORD_PENDING, true)) {
                     return Response::redirect('/account');

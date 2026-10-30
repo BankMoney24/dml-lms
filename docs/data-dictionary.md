@@ -59,6 +59,17 @@ Personal data kinds: **Account** (who someone is), **Learning record** (what the
 | People | [`memberships`](#memberships) | Who belongs to which school and with which role (owner, admin, educator, learner, guardian). | Account |
 | People | [`recovery_codes`](#recovery-codes) | Two-step sign-in recovery codes, stored as hashes. | Security |
 | People | [`users`](#users) | Accounts: name, email, password hash, two-step secret (encrypted), appearance. One account can belong to several schools. | Account |
+| Quizzes and exams | [`bank_passages`](#bank-passages) | Passages, tables or instructions that several bank questions share. | None |
+| Quizzes and exams | [`bank_questions`](#bank-questions) | Bank questions: options A to E, the right one, explanation, topic, difficulty, how often seen and answered right. | None |
+| Quizzes and exams | [`cbt_attempts`](#cbt-attempts) | One sitting of a CBT exam or practice test: the questions drawn, answers, flags, deadline, scores by subject. | Learning record |
+| Quizzes and exams | [`cbt_exams`](#cbt-exams) | CBT exams: sections drawn from banks, subjects to choose, time, window, who sits it, attempts, results policy, access code. | None |
+| Quizzes and exams | [`cbt_exam_groups`](#cbt-exam-groups) | Which classes sit a CBT exam set for classes only. | None |
+| Quizzes and exams | [`live_answers`](#live-answers) | Every answer in a live quiz with its time and points. | Learning record |
+| Quizzes and exams | [`live_players`](#live-players) | Who joined a live quiz (a member, or a guest nickname), score, streak. | Learning record |
+| Quizzes and exams | [`live_questions`](#live-questions) | Questions in a live quiz: answers, the right one, time limit, points. | None |
+| Quizzes and exams | [`live_quizzes`](#live-quizzes) | Live quizzes teachers run in class. | None |
+| Quizzes and exams | [`live_sessions`](#live-sessions) | Each time a live quiz is played: PIN, host, a copy of the questions, where the game is. | None |
+| Quizzes and exams | [`question_banks`](#question-banks) | A school's question banks, one per subject, and whether learners may practise from them. | None |
 | School | [`api_keys`](#api-keys) | Keys the school made for its own systems to read data through API v1: name, prefix, a hash of the key (never the key), who made it, last use. | Security |
 | Schools | [`tenants`](#tenants) | One row per school: name, branding, time zone, settings chosen in setup. | None |
 | Schools | [`tenant_domains`](#tenant-domains) | Web addresses that open a school; one is the primary address. | None |
@@ -164,6 +175,43 @@ Who did what and when (sign-ins, role changes, payments, refunds); field values 
 | `ip_hash` | char(64) | yes | `NULL` |  |
 | `created_at` | datetime |  |  |  |
 
+## bank_passages
+
+Passages, tables or instructions that several bank questions share.
+
+| Column | Type | Null | Default | Key |
+|---|---|---|---|---|
+| `id` | bigint(20) unsigned |  |  | primary |
+| `tenant_id` | bigint(20) unsigned |  |  | index |
+| `bank_id` | bigint(20) unsigned |  |  |  |
+| `title` | varchar(120) |  |  |  |
+| `body` | text |  |  |  |
+| `created_at` | datetime |  |  |  |
+| `updated_at` | datetime |  |  |  |
+
+## bank_questions
+
+Bank questions: options A to E, the right one, explanation, topic, difficulty, how often seen and answered right.
+
+| Column | Type | Null | Default | Key |
+|---|---|---|---|---|
+| `id` | bigint(20) unsigned |  |  | primary |
+| `tenant_id` | bigint(20) unsigned |  |  | index |
+| `bank_id` | bigint(20) unsigned |  |  |  |
+| `passage_id` | bigint(20) unsigned | yes | `NULL` | index |
+| `prompt` | text |  |  |  |
+| `options` | longtext |  |  |  |
+| `correct` | tinyint(3) unsigned |  |  |  |
+| `explanation` | text | yes | `NULL` |  |
+| `topic` | varchar(80) |  | `''` |  |
+| `difficulty` | tinyint(3) unsigned | yes | `NULL` |  |
+| `times_seen` | int(10) unsigned |  | `0` |  |
+| `times_correct` | int(10) unsigned |  | `0` |  |
+| `created_by` | bigint(20) unsigned |  |  | index |
+| `created_at` | datetime |  |  |  |
+| `updated_at` | datetime |  |  |  |
+| `retired_at` | datetime | yes | `NULL` |  |
+
 ## blog_posts
 
 Blog posts: title, summary, text, kind (news, event, story, guide), draft or published, the staff member who wrote it.
@@ -182,6 +230,69 @@ Blog posts: title, summary, text, kind (news, event, story, guide), draft or pub
 | `published_at` | datetime | yes | `NULL` |  |
 | `created_at` | datetime |  |  |  |
 | `updated_at` | datetime |  |  |  |
+
+## cbt_attempts
+
+One sitting of a CBT exam or practice test: the questions drawn, answers, flags, deadline, scores by subject.
+
+| Column | Type | Null | Default | Key |
+|---|---|---|---|---|
+| `id` | bigint(20) unsigned |  |  | primary |
+| `tenant_id` | bigint(20) unsigned |  |  | index |
+| `exam_id` | bigint(20) unsigned | yes | `NULL` |  |
+| `user_id` | bigint(20) unsigned |  |  |  |
+| `title` | varchar(160) |  |  |  |
+| `paper` | longtext |  |  |  |
+| `answers` | longtext |  |  |  |
+| `flags` | longtext |  |  |  |
+| `question_count` | int(10) unsigned |  |  |  |
+| `started_at` | datetime |  |  |  |
+| `deadline_at` | datetime |  |  |  |
+| `extra_minutes` | smallint(5) unsigned |  | `0` |  |
+| `save_seq` | int(10) unsigned |  | `0` |  |
+| `last_saved_at` | datetime | yes | `NULL` |  |
+| `submitted_at` | datetime | yes | `NULL` | index |
+| `submit_reason` | varchar(10) | yes | `NULL` |  |
+| `result` | longtext | yes | `NULL` |  |
+| `correct_count` | int(10) unsigned | yes | `NULL` |  |
+| `percent` | tinyint(3) unsigned | yes | `NULL` |  |
+
+## cbt_exams
+
+CBT exams: sections drawn from banks, subjects to choose, time, window, who sits it, attempts, results policy, access code.
+
+| Column | Type | Null | Default | Key |
+|---|---|---|---|---|
+| `id` | bigint(20) unsigned |  |  | primary |
+| `tenant_id` | bigint(20) unsigned |  |  | index |
+| `title` | varchar(120) |  |  |  |
+| `instructions` | text | yes | `NULL` |  |
+| `sections` | longtext |  |  |  |
+| `choose_count` | tinyint(3) unsigned |  | `0` |  |
+| `duration_minutes` | smallint(5) unsigned |  |  |  |
+| `opens_at` | datetime | yes | `NULL` |  |
+| `closes_at` | datetime | yes | `NULL` |  |
+| `audience` | varchar(10) |  | `'everyone'` |  |
+| `max_attempts` | tinyint(3) unsigned | yes | `NULL` |  |
+| `results` | varchar(12) |  | `'immediately'` |  |
+| `review` | tinyint(1) |  | `1` |  |
+| `shuffle_questions` | tinyint(1) |  | `1` |  |
+| `shuffle_options` | tinyint(1) |  | `1` |  |
+| `access_code` | varchar(12) | yes | `NULL` |  |
+| `status` | varchar(10) |  | `'draft'` |  |
+| `created_by` | bigint(20) unsigned |  |  | index |
+| `created_at` | datetime |  |  |  |
+| `updated_at` | datetime |  |  |  |
+
+## cbt_exam_groups
+
+Which classes sit a CBT exam set for classes only.
+
+| Column | Type | Null | Default | Key |
+|---|---|---|---|---|
+| `tenant_id` | bigint(20) unsigned |  |  | primary |
+| `exam_id` | bigint(20) unsigned |  |  | primary |
+| `group_id` | bigint(20) unsigned |  |  | primary |
 
 ## certificates
 
@@ -685,6 +796,96 @@ Questions learners ask under a lesson.
 | `created_at` | datetime |  |  |  |
 | `updated_at` | datetime |  |  |  |
 
+## live_answers
+
+Every answer in a live quiz with its time and points.
+
+| Column | Type | Null | Default | Key |
+|---|---|---|---|---|
+| `id` | bigint(20) unsigned |  |  | primary |
+| `tenant_id` | bigint(20) unsigned |  |  | index |
+| `session_id` | bigint(20) unsigned |  |  |  |
+| `player_id` | bigint(20) unsigned |  |  | index |
+| `position` | int(10) unsigned |  |  |  |
+| `choice` | tinyint(3) unsigned |  |  |  |
+| `correct` | tinyint(1) |  |  |  |
+| `points` | int(10) unsigned |  |  |  |
+| `ms` | int(10) unsigned |  |  |  |
+| `answered_at` | datetime(3) |  |  |  |
+
+## live_players
+
+Who joined a live quiz (a member, or a guest nickname), score, streak.
+
+| Column | Type | Null | Default | Key |
+|---|---|---|---|---|
+| `id` | bigint(20) unsigned |  |  | primary |
+| `tenant_id` | bigint(20) unsigned |  |  | index |
+| `session_id` | bigint(20) unsigned |  |  | index |
+| `user_id` | bigint(20) unsigned | yes | `NULL` | index |
+| `nickname` | varchar(24) |  |  |  |
+| `score` | int(10) unsigned |  | `0` |  |
+| `streak` | smallint(5) unsigned |  | `0` |  |
+| `correct_count` | smallint(5) unsigned |  | `0` |  |
+| `seen_position` | int(10) unsigned | yes | `NULL` |  |
+| `seen_at` | datetime(3) | yes | `NULL` |  |
+| `joined_at` | datetime |  |  |  |
+| `last_seen_at` | datetime |  |  |  |
+| `removed_at` | datetime | yes | `NULL` |  |
+
+## live_questions
+
+Questions in a live quiz: answers, the right one, time limit, points.
+
+| Column | Type | Null | Default | Key |
+|---|---|---|---|---|
+| `id` | bigint(20) unsigned |  |  | primary |
+| `tenant_id` | bigint(20) unsigned |  |  | index |
+| `quiz_id` | bigint(20) unsigned |  |  |  |
+| `position` | int(10) unsigned |  |  |  |
+| `prompt` | varchar(500) |  |  |  |
+| `options` | longtext |  |  |  |
+| `correct` | tinyint(3) unsigned |  |  |  |
+| `seconds` | smallint(5) unsigned |  | `20` |  |
+| `points` | varchar(10) |  | `'standard'` |  |
+
+## live_quizzes
+
+Live quizzes teachers run in class.
+
+| Column | Type | Null | Default | Key |
+|---|---|---|---|---|
+| `id` | bigint(20) unsigned |  |  | primary |
+| `tenant_id` | bigint(20) unsigned |  |  | index |
+| `title` | varchar(120) |  |  |  |
+| `created_by` | bigint(20) unsigned |  |  | index |
+| `created_at` | datetime |  |  |  |
+| `updated_at` | datetime |  |  |  |
+| `archived_at` | datetime | yes | `NULL` |  |
+
+## live_sessions
+
+Each time a live quiz is played: PIN, host, a copy of the questions, where the game is.
+
+| Column | Type | Null | Default | Key |
+|---|---|---|---|---|
+| `id` | bigint(20) unsigned |  |  | primary |
+| `tenant_id` | bigint(20) unsigned |  |  | index |
+| `quiz_id` | bigint(20) unsigned |  |  |  |
+| `host_id` | bigint(20) unsigned |  |  | index |
+| `pin` | char(6) |  |  |  |
+| `title` | varchar(120) |  |  |  |
+| `questions` | longtext |  |  |  |
+| `status` | varchar(10) |  | `'lobby'` |  |
+| `position` | int(10) unsigned | yes | `NULL` |  |
+| `question_started_at` | datetime(3) | yes | `NULL` |  |
+| `question_ends_at` | datetime(3) | yes | `NULL` |  |
+| `version` | int(10) unsigned |  | `1` |  |
+| `allow_guests` | tinyint(1) |  | `1` |  |
+| `fun_names` | tinyint(1) |  | `0` |  |
+| `created_at` | datetime |  |  |  |
+| `ended_at` | datetime | yes | `NULL` |  |
+
 ## login_throttles
 
 Failed sign-in counters per account and address, to slow down guessing.
@@ -941,6 +1142,22 @@ Quiz questions and their explanation.
 | `explanation` | text | yes | `NULL` |  |
 | `position` | int(10) unsigned |  |  |  |
 | `created_at` | datetime |  |  |  |
+
+## question_banks
+
+A school's question banks, one per subject, and whether learners may practise from them.
+
+| Column | Type | Null | Default | Key |
+|---|---|---|---|---|
+| `id` | bigint(20) unsigned |  |  | primary |
+| `tenant_id` | bigint(20) unsigned |  |  | index |
+| `name` | varchar(80) |  |  |  |
+| `description` | varchar(500) |  | `''` |  |
+| `practice` | tinyint(1) |  | `0` |  |
+| `created_by` | bigint(20) unsigned |  |  | index |
+| `created_at` | datetime |  |  |  |
+| `updated_at` | datetime |  |  |  |
+| `archived_at` | datetime | yes | `NULL` |  |
 
 ## question_options
 

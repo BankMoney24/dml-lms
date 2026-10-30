@@ -1,6 +1,7 @@
 # DML Learning Platform: send queued emails (password resets, invitations),
-# close lab sessions whose time ran out, and send payment plan reminders
-# (07:13 UTC is 08:13 in Lagos).
+# close lab sessions whose time ran out, submit CBT exams whose time ran out
+# (a candidate who closed the page still gets marked), and send payment plan
+# reminders (07:13 UTC is 08:13 in Lagos).
 # Installed to /etc/cron.d/dml-lms. Runs as the PHP user, which can read
 # shared/.env and write shared/storage but cannot change the code.
 # Pages also try to send right after the response; this catches retries.
@@ -8,4 +9,5 @@ SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/bin:/bin
 * * * * * dmllms php /var/www/dml-lms/current/bin/console mail:work >/dev/null
 */10 * * * * dmllms php /var/www/dml-lms/current/bin/console lab:expire >/dev/null
+*/5 * * * * dmllms php /var/www/dml-lms/current/bin/console exams:close >/dev/null
 13 7 * * * dmllms php /var/www/dml-lms/current/bin/console payments:plan-reminders >/dev/null

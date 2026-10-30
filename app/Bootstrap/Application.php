@@ -1042,6 +1042,66 @@ final class Application
             $c->get(\App\Modules\Api\ApiKeys::class),
             $c->get(\App\Modules\Api\ApiKeyRepository::class),
         ));
+        // Question banks, CBT exams and live quizzes (ADR 0042).
+        $c->set(\App\Modules\Exams\Bank\BankRepository::class, static fn (Container $c) => new \App\Modules\Exams\Bank\BankRepository($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(\App\Modules\Exams\Bank\QuestionBanks::class, static fn (Container $c) => new \App\Modules\Exams\Bank\QuestionBanks(
+            $c->get(\App\Modules\Exams\Bank\BankRepository::class),
+            $c->get(Connection::class),
+            $c->get(AuditLog::class),
+        ));
+        $c->set(\App\Modules\Exams\Cbt\CbtRepository::class, static fn (Container $c) => new \App\Modules\Exams\Cbt\CbtRepository($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(\App\Modules\Exams\Cbt\CbtExams::class, static fn (Container $c) => new \App\Modules\Exams\Cbt\CbtExams(
+            $c->get(\App\Modules\Exams\Cbt\CbtRepository::class),
+            $c->get(\App\Modules\Exams\Bank\BankRepository::class),
+            $c->get(Connection::class),
+            $c->get(Clock::class),
+            $c->get(AuditLog::class),
+        ));
+        $c->set(\App\Modules\Exams\Live\LiveRepository::class, static fn (Container $c) => new \App\Modules\Exams\Live\LiveRepository($c->get(Connection::class), $c->get(Clock::class)));
+        $c->set(\App\Modules\Exams\Live\LiveGame::class, static fn (Container $c) => new \App\Modules\Exams\Live\LiveGame(
+            $c->get(\App\Modules\Exams\Live\LiveRepository::class),
+            $c->get(\App\Modules\Exams\Bank\BankRepository::class),
+            $c->get(Connection::class),
+            $c->get(Clock::class),
+            $c->get(AuditLog::class),
+        ));
+        $c->set(\App\Modules\Exams\Http\BankController::class, static fn (Container $c) => new \App\Modules\Exams\Http\BankController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(\App\Modules\Exams\Bank\QuestionBanks::class),
+            $c->get(\App\Modules\Exams\Bank\BankRepository::class),
+            $c->get(Clock::class),
+        ));
+        $c->set(\App\Modules\Exams\Http\CbtAdminController::class, static fn (Container $c) => new \App\Modules\Exams\Http\CbtAdminController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(\App\Modules\Exams\Cbt\CbtExams::class),
+            $c->get(\App\Modules\Exams\Cbt\CbtRepository::class),
+            $c->get(\App\Modules\Exams\Bank\BankRepository::class),
+            $c->get(Clock::class),
+        ));
+        $c->set(\App\Modules\Exams\Http\CbtController::class, static fn (Container $c) => new \App\Modules\Exams\Http\CbtController(
+            $c->get(View::class),
+            $c->get(\App\Modules\Exams\Cbt\CbtExams::class),
+            $c->get(\App\Modules\Exams\Cbt\CbtRepository::class),
+            $c->get(\App\Modules\Exams\Bank\BankRepository::class),
+            $c->get(Clock::class),
+        ));
+        $c->set(\App\Modules\Exams\Http\LiveAdminController::class, static fn (Container $c) => new \App\Modules\Exams\Http\LiveAdminController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(\App\Modules\Exams\Live\LiveGame::class),
+            $c->get(\App\Modules\Exams\Live\LiveRepository::class),
+            $c->get(\App\Modules\Exams\Bank\BankRepository::class),
+            $c->get(Clock::class),
+        ));
+        $c->set(\App\Modules\Exams\Http\PlayController::class, static fn (Container $c) => new \App\Modules\Exams\Http\PlayController(
+            $c->get(View::class),
+            $c->get(Session::class),
+            $c->get(\App\Modules\Exams\Live\LiveGame::class),
+            $c->get(\App\Modules\Exams\Live\LiveRepository::class),
+            $c->get(RateLimiter::class),
+        ));
         $c->set(\App\Modules\Blog\BlogRepository::class, static fn (Container $c) => new \App\Modules\Blog\BlogRepository($c->get(Connection::class), $c->get(Clock::class)));
         $c->set(\App\Modules\Blog\Blog::class, static fn (Container $c) => new \App\Modules\Blog\Blog(
             $c->get(\App\Modules\Blog\BlogRepository::class),

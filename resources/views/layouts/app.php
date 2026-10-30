@@ -109,6 +109,7 @@ $shell = $tenant !== null && $user !== null;
         <?php if (($counts['in_group'] ?? 0) > 0 || ($counts['teaches_group'] ?? 0) > 0 || $v->can('groups.manage')): ?><?= $v->sideLink('/classes', 'Live classes', 'calendar', [], (int) ($counts['registers'] ?? 0), 'Classes') ?><?php endif; ?>
         <?php if (($counts['meetings'] ?? 0) > 0 || $v->can('course.manage') || $v->can('groups.manage')): ?><?= $v->sideLink('/meetings', 'Meetings', 'people', [], (int) ($counts['meetings'] ?? 0)) ?><?php endif; ?>
         <?php if ($v->can('course.learn')): ?><?= $v->sideLink('/saved', 'Saved and notes', 'saved', [], 0, 'Saved') ?><?php endif; ?>
+        <?php if ($v->can('course.learn')): ?><?= $v->sideLink('/exams', 'Exams and quizzes', 'exam', ['/play'], 0, 'Exams') ?><?php endif; ?>
         <?php if ($v->can('course.learn')): ?><?= $v->sideLink('/achievements', 'Achievements', 'sparkle', [], 0, 'Badges') ?><?php endif; ?>
         <?php if ($v->can('course.learn') || $v->can('course.manage')): ?><?= $v->sideLink('/playground', 'Code studio', 'code', [], 0, 'Code') ?><?php endif; ?>
         <?php if (($counts['children'] ?? 0) > 0): ?><?= $v->sideLink('/children', ($counts['children'] ?? 0) === 1 ? 'Your child' : 'Your children', 'child', [], 0, 'Children') ?><?php endif; ?>
@@ -123,6 +124,7 @@ $shell = $tenant !== null && $user !== null;
           <?= $v->sideLink('/teach/questions', 'Questions', 'help', [], (int) ($counts['questions'] ?? 0)) ?>
           <?= $v->sideLink('/teach/applications', 'Applications', 'inbox', [], (int) ($counts['applications'] ?? 0), 'Applicants') ?>
           <?php if ($v->can('reports.view')): ?><?= $v->sideLink('/school/reports', 'Reports', 'chart') ?><?php endif; ?>
+          <?= $v->sideLink('/teach/live', 'Quizzes and exams', 'quiz', ['/teach/exams', '/teach/banks'], 0, 'Tests') ?>
           <?= $v->sideLink('/teach/labs', 'Lab catalogue', 'lab', [], 0, 'Labs') ?>
         <?php endif; ?>
         <?= $v->sideLink('/groups', $tenant->groupWord(true, true), 'groups') ?>
